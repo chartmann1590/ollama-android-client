@@ -105,7 +105,18 @@ app/
 
 The APK will be generated in `app/build/outputs/apk/`
 
+## Documentation
+
+- [**Contributing Guidelines**](CONTRIBUTING.md) - How to contribute to this project
+- [**Code of Conduct**](CODE_OF_CONDUCT.md) - Community guidelines and standards
+- [**Privacy Policy**](PRIVACY_POLICY.md) - How we handle your data and privacy
+- [**Security Policy**](SECURITY.md) - How to report security vulnerabilities
+- [**Changelog**](CHANGELOG.md) - History of changes and updates
+- [**License**](LICENSE) - MIT License
+
 ## Contributing
+
+We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
@@ -115,7 +126,7 @@ The APK will be generated in `app/build/outputs/apk/`
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
