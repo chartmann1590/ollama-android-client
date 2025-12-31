@@ -1,0 +1,221 @@
+package com.charles.ollama.client.ui.chat
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
+import com.charles.ollama.client.domain.model.ChatThread
+import com.charles.ollama.client.ui.components.ErrorDialog
+import com.charles.ollama.client.ui.components.LoadingIndicator
+import java.text.SimpleDateFormat
+import java.util.*
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChatThreadsScreen(
+    onNavigateToChat: (Long) -> Unit,
+    onNavigateToServers: () -> Unit,
+    viewModel: ChatThreadsViewModel = hiltViewModel()
+) {
+    val scope = rememberCoroutineScope()
+    val threads by viewModel.threads.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val hasServer by viewModel.hasServer.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    
+    var showCreateDialog by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        if (!hasServer) {
+            onNavigateToServers()
+        }
+    }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Chat Threads") },
+                actions = {
+                    IconButton(onClick = { onNavigateToServers() }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Servers")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showCreateDialog = true }) {
+                Icon(Icons.Default.Add, contentDescription = "New Thread")
+            }
+        }
+    ) { padding ->
+        if (isLoading && threads.isEmpty()) {
+            LoadingIndicator()
+        } else if (threads.isEmpty() && !isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "No chat threads yet",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Create a new thread to get started",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            Column(modifier = Modifier.padding(padding)) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = viewModel::updateSearchQuery,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    placeholder = { Text("Search threads...") },
+                    singleLine = true
+                )
+                
+                LazyColumn {
+                    items(threads, key = { it.id }) { thread ->
+                        ThreadItem(
+                            thread = thread,
+                            onClick = { onNavigateToChat(thread.id) },
+                            onDelete = { viewModel.deleteThread(thread.id) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
+    if (showCreateDialog) {
+        CreateThreadDialog(
+            onDismiss = { showCreateDialog = false },
+            onCreate = { title ->
+                scope.launch {
+                    val threadId = viewModel.createThreadAsync(title, null)
+                    if (threadId > 0) {
+                        onNavigateToChat(threadId)
+                    }
+                }
+                showCreateDialog = false
+            }
+        )
+    }
+    
+    error?.let {
+        ErrorDialog(
+            message = it,
+            onDismiss = viewModel::clearError
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ThreadItem(
+    thread: ChatThread,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = thread.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                thread.model?.let {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = formatDate(thread.updatedAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CreateThreadDialog(
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New Chat Thread") },
+        text = {
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Thread Title") },
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onCreate(title) },
+                enabled = title.isNotBlank()
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+private fun formatDate(timestamp: Long): String {
+    val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+    return sdf.format(Date(timestamp))
+}
+

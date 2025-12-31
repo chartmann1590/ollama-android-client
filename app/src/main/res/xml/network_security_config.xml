@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Base configuration: Allow cleartext traffic for development and local servers -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <!-- Trust system certificates -->
+            <certificates src="system" />
+            <!-- Trust user-added certificates -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Domain-specific configurations -->
+    <!-- Allow cleartext for localhost and local network -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- Note: IP addresses in domain-config are limited. 
+             For IP-based access, use base-config with cleartextTrafficPermitted="true" -->
+    </domain-config>
+    
+    <!-- Allow cleartext for common local development domains -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">.local</domain>
+        <domain includeSubdomains="true">.lan</domain>
+    </domain-config>
+</network-security-config>
+

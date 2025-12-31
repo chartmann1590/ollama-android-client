@@ -1,0 +1,565 @@
+package com.charles.ollama.client.ui.chat
+
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.charles.ollama.client.domain.model.ChatMessage
+import com.charles.ollama.client.ui.components.ErrorDialog
+import com.charles.ollama.client.ui.components.LoadingIndicator
+import com.charles.ollama.client.ui.components.MessageBubble
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.InputStream
+import android.util.Base64
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChatScreen(
+    threadId: Long,
+    onNavigateBack: () -> Unit,
+    viewModel: ChatViewModel = hiltViewModel()
+) {
+    val messages by viewModel.messages.collectAsState()
+    val thread by viewModel.thread.collectAsState()
+    val selectedModel by viewModel.selectedModel.collectAsState()
+    val isVisionModel by viewModel.isVisionModel.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val availableModels by viewModel.availableModels.collectAsState()
+    val isLoadingModels by viewModel.isLoadingModels.collectAsState()
+    
+    var messageText by remember { mutableStateOf("") }
+    var selectedImages by remember { mutableStateOf<List<String>>(emptyList()) } // Base64 encoded images
+    var showModelSelector by remember { mutableStateOf(false) }
+    var showChatSettings by remember { mutableStateOf(false) }
+    var showTitleEditDialog by remember { mutableStateOf(false) }
+    
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                try {
+                    val inputStream: InputStream? = context.contentResolver.openInputStream(it)
+                    inputStream?.use { stream ->
+                        val bytes = stream.readBytes()
+                        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                        selectedImages = selectedImages + base64
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ChatScreen", "Error loading image", e)
+                }
+            }
+        }
+    }
+    
+    val listState = rememberLazyListState()
+    
+    LaunchedEffect(threadId) {
+        viewModel.setThreadId(threadId)
+    }
+    
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            scope.launch {
+                listState.animateScrollToItem(messages.size - 1)
+            }
+        }
+    }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(thread?.title ?: "Chat")
+                        selectedModel?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showChatSettings = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Chat Settings"
+                        )
+                    }
+                    IconButton(onClick = { showModelSelector = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Select Model"
+                        )
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(messages, key = { it.id }) { message ->
+                    val showThinking by viewModel.showThinking.collectAsState()
+                    MessageBubble(
+                        message = message,
+                        showThinking = showThinking
+                    )
+                }
+                
+                if (isLoading) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
+            }
+            
+            // Show selected images
+            if (selectedImages.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    selectedImages.forEachIndexed { index, base64Image ->
+                        Box(modifier = Modifier.size(80.dp)) {
+                            val bitmap = remember(base64Image) {
+                                try {
+                                    val imageBytes = Base64.decode(base64Image, Base64.NO_WRAP)
+                                    BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                            bitmap?.let {
+                                Image(
+                                    bitmap = it.asImageBitmap(),
+                                    contentDescription = "Selected image",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    selectedImages = selectedImages.filterIndexed { i, _ -> i != index }
+                                },
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Remove image",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                // Image picker button (only show for vision models)
+                if (isVisionModel) {
+                    IconButton(
+                        onClick = { imagePickerLauncher.launch("image/*") },
+                        enabled = !isLoading && selectedModel != null
+                    ) {
+                        Icon(Icons.Default.Image, contentDescription = "Add image")
+                    }
+                }
+                OutlinedTextField(
+                    value = messageText,
+                    onValueChange = { messageText = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Type a message...") },
+                    enabled = !isLoading && selectedModel != null,
+                    singleLine = false,
+                    maxLines = 4
+                )
+                FloatingActionButton(
+                    onClick = {
+                        if ((messageText.isNotBlank() || selectedImages.isNotEmpty()) && !isLoading && selectedModel != null) {
+                            viewModel.sendMessage(messageText, if (selectedImages.isNotEmpty()) selectedImages else null)
+                            messageText = ""
+                            selectedImages = emptyList()
+                        }
+                    },
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(Icons.Default.Send, contentDescription = "Send")
+                }
+            }
+        }
+    }
+    
+    if (showModelSelector) {
+        ModelSelectorDialog(
+            currentModel = selectedModel,
+            availableModels = availableModels,
+            isLoading = isLoadingModels,
+            onDismiss = { showModelSelector = false },
+            onSelect = { model ->
+                viewModel.setModel(model)
+                showModelSelector = false
+            },
+            onRefresh = { viewModel.loadAvailableModels() }
+        )
+    }
+    
+    if (showChatSettings) {
+        val showThinking by viewModel.showThinking.collectAsState()
+        ChatSettingsDialog(
+            thread = thread,
+            showThinking = showThinking,
+            onDismiss = { showChatSettings = false },
+            onStreamEnabledChanged = { enabled ->
+                viewModel.updateStreamEnabled(enabled)
+            },
+            onSystemPromptChanged = { prompt ->
+                viewModel.updateSystemPrompt(prompt)
+            },
+            onVibrationEnabledChanged = { enabled ->
+                viewModel.updateVibrationEnabled(enabled)
+            },
+            onShowThinkingChanged = { show ->
+                viewModel.setShowThinking(show)
+            }
+        )
+    }
+    
+    error?.let {
+        ErrorDialog(
+            message = it,
+            onDismiss = viewModel::clearError
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChatSettingsDialog(
+    thread: com.charles.ollama.client.data.database.entity.ChatThreadEntity?,
+    showThinking: Boolean,
+    onDismiss: () -> Unit,
+    onStreamEnabledChanged: (Boolean) -> Unit,
+    onSystemPromptChanged: (String) -> Unit,
+    onVibrationEnabledChanged: (Boolean) -> Unit,
+    onShowThinkingChanged: (Boolean) -> Unit
+) {
+    var streamEnabled by remember { mutableStateOf(thread?.streamEnabled ?: true) }
+    var systemPrompt by remember { mutableStateOf(thread?.systemPrompt ?: "") }
+    var vibrationEnabled by remember { mutableStateOf(thread?.vibrationEnabled ?: true) }
+    
+    LaunchedEffect(thread) {
+        streamEnabled = thread?.streamEnabled ?: true
+        systemPrompt = thread?.systemPrompt ?: ""
+        vibrationEnabled = thread?.vibrationEnabled ?: true
+    }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Chat Settings") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Streaming toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Stream Responses",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Enable streaming to see AI responses in real-time",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = streamEnabled,
+                        onCheckedChange = { 
+                            streamEnabled = it
+                            onStreamEnabledChanged(it)
+                        }
+                    )
+                }
+                
+                Divider()
+                
+                // Vibration toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Vibration on Stream",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Vibrate when new text arrives from streaming responses",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = vibrationEnabled,
+                        onCheckedChange = { 
+                            vibrationEnabled = it
+                            onVibrationEnabledChanged(it)
+                        }
+                    )
+                }
+                
+                Divider()
+                
+                // Show thinking toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Show Thinking",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Show thinking process from thinking models",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = showThinking,
+                        onCheckedChange = { 
+                            onShowThinkingChanged(it)
+                        }
+                    )
+                }
+                
+                Divider()
+                
+                // System prompt editor
+                Column {
+                    Text(
+                        text = "System Prompt",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Modify how the AI responds by setting a system prompt",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = systemPrompt,
+                        onValueChange = { systemPrompt = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Enter system prompt (optional)") },
+                        minLines = 4,
+                        maxLines = 8,
+                        singleLine = false
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSystemPromptChanged(systemPrompt)
+                    onDismiss()
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ModelSelectorDialog(
+    currentModel: String?,
+    availableModels: List<com.charles.ollama.client.domain.model.Model>,
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+    onRefresh: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Select Model")
+                IconButton(onClick = onRefresh) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
+                        contentDescription = "Refresh"
+                    )
+                }
+            }
+        },
+        text = {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (availableModels.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("No models available")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Make sure your server is connected and has models installed",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                ) {
+                    items(availableModels, key = { it.name }) { model ->
+                        Card(
+                            onClick = { onSelect(model.name) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (currentModel == model.name)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp)
+                            ) {
+                                Text(
+                                    text = model.name,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = if (currentModel == model.name) FontWeight.Bold else FontWeight.Normal
+                                )
+                                if (model.parameterSize != null) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Parameters: ${model.parameterSize}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
