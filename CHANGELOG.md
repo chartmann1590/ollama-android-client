@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Export chat history
 - Custom themes
 
-## [1.0.0] - 2024-01-XX
+## [1.0.0] - 2024-12-31
 
 ### Added
 - Initial release of Ollama Android Client
@@ -22,12 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Message history persistence using Room database
 - Real-time streaming responses from Ollama
 - Image attachment support in conversations
+- Image compression and optimization for database storage
 - Model management (list, pull, delete models)
 - Server configuration management
 - Multiple server support
 - Settings screen for app configuration
 - Firebase Analytics integration
 - Firebase Crashlytics integration
+- Firebase Performance Monitoring
 - Material Design 3 UI with Jetpack Compose
 - Dark theme support
 - Navigation using Jetpack Navigation Compose
@@ -35,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Network layer with Retrofit and OkHttp
 - Local database with Room
 - Coroutines for asynchronous operations
+
+### Improved
+- Enhanced chat message handling and database operations
+- Optimized image storage to prevent SQLite CursorWindow overflow
+- Improved UI components and message display
+- Better error handling and user feedback
 
 ### Technical Details
 - Minimum SDK: 33 (Android 13)
@@ -48,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
-- **1.0.0** (2024-01-XX): Initial release
+- **1.0.0** (2024-12-31): Initial release
 
 ---
 

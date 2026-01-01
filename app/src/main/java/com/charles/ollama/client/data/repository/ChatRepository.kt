@@ -14,6 +14,10 @@ import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.onStart
 import javax.inject.Inject
 
 class ChatRepository @Inject constructor(
@@ -50,8 +54,154 @@ class ChatRepository @Inject constructor(
         chatMessageDao.deleteMessagesByThreadId(threadId)
     }
     
-    fun getMessagesByThreadId(threadId: Long): Flow<List<ChatMessageEntity>> = 
-        chatMessageDao.getMessagesByThreadId(threadId)
+    fun getMessagesByThreadId(threadId: Long): Flow<List<ChatMessageEntity>> = flow {
+        // Load all messages one at a time to avoid CursorWindow overflow
+        // Even a single row can be too large, so we load them individually
+        suspend fun loadAllMessages(): List<ChatMessageEntity> {
+            val allMessages = mutableListOf<ChatMessageEntity>()
+            var offset = 0
+            val batchSize = 1 // Load one message at a time to handle very large messages
+            
+            while (true) {
+                try {
+                    val batch = chatMessageDao.getMessagesByThreadIdPaged(threadId, batchSize, offset)
+                    if (batch.isEmpty()) break
+                    allMessages.addAll(batch)
+                    offset += batchSize
+                    // Small delay between loads to avoid overwhelming the system
+                    delay(10)
+                } catch (e: android.database.sqlite.SQLiteBlobTooBigException) {
+                    // If even a single row is too large, try to load metadata only
+                    android.util.Log.w("ChatRepository", "Message at offset $offset too large, trying metadata query", e)
+                    try {
+                        var metadataBatch = chatMessageDao.getMessagesByThreadIdPagedMetadata(threadId, batchSize, offset)
+                        if (metadataBatch.isEmpty()) {
+                            // Try basic query without images
+                            metadataBatch = chatMessageDao.getMessagesByThreadIdPagedBasic(threadId, batchSize, offset)
+                            if (metadataBatch.isEmpty()) {
+                                offset += 1
+                                continue
+                            }
+                        }
+                        // Use metadata messages - they have empty content but preserve structure
+                        // Try to load images separately for each message, but fall back to metadata if that fails
+                        val fullMessages = metadataBatch.mapNotNull { metadataMsg ->
+                            var messageWithImages = metadataMsg
+                            // Try to load images separately (only for user messages to avoid unnecessary loads)
+                            if (metadataMsg.role == "user") {
+                                try {
+                                    // Try to get full message by ID - may fail if images are too large
+                                    val fullMsg = chatMessageDao.getMessageById(metadataMsg.id)
+                                    if (fullMsg != null && fullMsg.images != null) {
+                                        messageWithImages = metadataMsg.copy(images = fullMsg.images)
+                                    } else if (fullMsg != null) {
+                                        // Got full message but it has content - use it
+                                        messageWithImages = fullMsg
+                                    }
+                                } catch (e2: Exception) {
+                                    // If we can't load full message (images too large), use metadata version
+                                    // Images will be null, but optimistic messages may have them preserved
+                                    android.util.Log.w("ChatRepository", "Could not load full message ${metadataMsg.id}, using metadata (images too large)", e2)
+                                }
+                            } else {
+                                // For non-user messages, try to get full message but don't worry about images
+                                try {
+                                    val fullMsg = chatMessageDao.getMessageById(metadataMsg.id)
+                                    if (fullMsg != null) {
+                                        messageWithImages = fullMsg
+                                    }
+                                } catch (e2: Exception) {
+                                    // Use metadata version
+                                    android.util.Log.w("ChatRepository", "Could not load full message ${metadataMsg.id}, using metadata", e2)
+                                }
+                            }
+                            messageWithImages
+                        }
+                        allMessages.addAll(fullMessages)
+                        offset += batchSize
+                    } catch (e2: Exception) {
+                        android.util.Log.e("ChatRepository", "Error loading metadata for message at offset $offset", e2)
+                        // Try basic query as last resort
+                        try {
+                            val basicBatch = chatMessageDao.getMessagesByThreadIdPagedBasic(threadId, batchSize, offset)
+                            if (basicBatch.isNotEmpty()) {
+                                allMessages.addAll(basicBatch)
+                                offset += batchSize
+                            } else {
+                                offset += 1
+                            }
+                        } catch (e3: Exception) {
+                            android.util.Log.e("ChatRepository", "Error loading basic message at offset $offset", e3)
+                            offset += 1 // Move to next message
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ChatRepository", "Error loading message batch at offset $offset", e)
+                    break
+                }
+            }
+            return allMessages
+        }
+        
+        // Initial load - wrap in try-catch to handle any exceptions
+        var lastMessageCount = 0
+        var lastMessages = try {
+            loadAllMessages()
+        } catch (e: Exception) {
+            android.util.Log.e("ChatRepository", "Error in initial message load", e)
+            emptyList()
+        }
+        lastMessageCount = lastMessages.size
+        emit(lastMessages)
+        
+        // Poll for updates (every 1 second) to detect new messages or content changes
+        while (true) {
+            delay(1000)
+            try {
+                val currentCount = chatMessageDao.getMessageCount(threadId)
+                
+                // Check if count changed OR if the last assistant message's content changed
+                // This handles the case where a placeholder message is created and then filled with content
+                val lastAssistantMessage = lastMessages.filter { it.role == "assistant" }.lastOrNull()
+                val lastAssistantContentLength = lastAssistantMessage?.content?.length ?: 0
+                
+                // Get current last assistant message content length to detect content updates
+                // Only check if we have messages and the last one was an assistant message
+                var contentChanged = false
+                var currentAssistantContentLength = 0
+                if (currentCount > 0 && lastAssistantMessage != null) {
+                    try {
+                        val currentLastMessage = chatMessageDao.getMessagesByThreadIdPaged(threadId, 1, currentCount - 1).firstOrNull()
+                        currentAssistantContentLength = currentLastMessage?.takeIf { it.role == "assistant" }?.content?.length ?: 0
+                        contentChanged = currentAssistantContentLength != lastAssistantContentLength
+                    } catch (e: Exception) {
+                        // If we can't check, assume no change to avoid unnecessary reloads
+                        android.util.Log.w("ChatRepository", "Error checking content change", e)
+                    }
+                }
+                
+                if (currentCount != lastMessageCount || contentChanged) {
+                    // Messages changed, reload - wrap in try-catch
+                    try {
+                        lastMessages = loadAllMessages()
+                        lastMessageCount = lastMessages.size
+                        emit(lastMessages)
+                    } catch (e: Exception) {
+                        android.util.Log.e("ChatRepository", "Error reloading messages", e)
+                        // Continue polling even on error
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ChatRepository", "Error checking for message updates", e)
+                // Continue polling even on error
+            }
+        }
+    }.catch { e ->
+        android.util.Log.e("ChatRepository", "Error in getMessagesByThreadId Flow", e)
+        // For SQLiteBlobTooBigException, just emit empty list - don't propagate
+        // For other errors, also emit empty list to prevent crashes
+        emit(emptyList())
+    }
     
     suspend fun sendMessage(
         threadId: Long,
@@ -69,7 +219,23 @@ class ChatRepository @Inject constructor(
             val effectiveSystemPrompt = systemPrompt ?: thread?.systemPrompt
             
             // Get existing messages for context
-            val existingMessages = chatMessageDao.getMessagesByThreadIdSync(threadId)
+            // Use pagination to avoid CursorWindow overflow with large messages
+            val existingMessages = try {
+                chatMessageDao.getMessagesByThreadIdSync(threadId)
+            } catch (e: android.database.sqlite.SQLiteBlobTooBigException) {
+                // Fallback to paginated loading if we hit the CursorWindow limit
+                android.util.Log.w("ChatRepository", "CursorWindow overflow in sendMessage, using paginated loading", e)
+                val allMessages = mutableListOf<ChatMessageEntity>()
+                var offset = 0
+                val batchSize = 50
+                while (true) {
+                    val batch = chatMessageDao.getMessagesByThreadIdPaged(threadId, batchSize, offset)
+                    if (batch.isEmpty()) break
+                    allMessages.addAll(batch)
+                    offset += batchSize
+                }
+                allMessages
+            }
             val messageHistory = existingMessages.map { msg ->
                 ChatMessageDto(role = msg.role, content = msg.content, images = msg.images)
             }
@@ -159,7 +325,23 @@ class ChatRepository @Inject constructor(
     ): Flow<StreamDelta> = flow {
         try {
             // Get existing messages for context
-            val existingMessages = chatMessageDao.getMessagesByThreadIdSync(threadId)
+            // Use pagination to avoid CursorWindow overflow with large messages
+            val existingMessages = try {
+                chatMessageDao.getMessagesByThreadIdSync(threadId)
+            } catch (e: android.database.sqlite.SQLiteBlobTooBigException) {
+                // Fallback to paginated loading if we hit the CursorWindow limit
+                android.util.Log.w("ChatRepository", "CursorWindow overflow in streamMessage, using paginated loading", e)
+                val allMessages = mutableListOf<ChatMessageEntity>()
+                var offset = 0
+                val batchSize = 50
+                while (true) {
+                    val batch = chatMessageDao.getMessagesByThreadIdPaged(threadId, batchSize, offset)
+                    if (batch.isEmpty()) break
+                    allMessages.addAll(batch)
+                    offset += batchSize
+                }
+                allMessages
+            }
             val messageHistory = existingMessages.map { msg ->
                 ChatMessageDto(role = msg.role, content = msg.content, images = msg.images)
             }
@@ -270,6 +452,15 @@ class ChatRepository @Inject constructor(
     
     suspend fun insertMessage(message: ChatMessageEntity) {
         chatMessageDao.insertMessage(message)
+    }
+    
+    suspend fun getMessageById(messageId: Long): ChatMessageEntity? {
+        return try {
+            chatMessageDao.getMessageById(messageId)
+        } catch (e: Exception) {
+            android.util.Log.w("ChatRepository", "Could not get message $messageId", e)
+            null
+        }
     }
 }
 

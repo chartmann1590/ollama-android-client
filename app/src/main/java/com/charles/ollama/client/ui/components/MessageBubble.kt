@@ -23,11 +23,20 @@ import com.charles.ollama.client.domain.model.ChatMessage
 fun MessageBubble(
     message: ChatMessage,
     showThinking: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLoadImages: ((Long) -> Unit)? = null
 ) {
     val isUser = message.role == "user"
     val hasThinking = message.thinking != null && message.thinking.isNotBlank()
     var isThinkingExpanded by remember { mutableStateOf(showThinking && hasThinking) }
+    
+    // Try to load images on-demand if they're missing for a user message
+    LaunchedEffect(message.id, message.images) {
+        if (isUser && message.images == null && message.id > 0 && onLoadImages != null) {
+            // Try loading images on-demand for user messages that should have them
+            onLoadImages(message.id)
+        }
+    }
     
     // Debug logging
     LaunchedEffect(message.id, hasThinking, showThinking) {

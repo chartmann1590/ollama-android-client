@@ -135,60 +135,113 @@ class ChatViewModel @Inject constructor(
     
     private fun observeMessages() {
         viewModelScope.launch {
-            combine(
-                _threadId
-                    .filterNotNull()
-                    .flatMapLatest { threadId ->
-                        chatRepository.getMessagesByThreadId(threadId)
-                    },
-                _streamingContent,
-                _streamingThinking
-            ) { entities, streamingContent, streamingThinking ->
-                entities.map { entity ->
-                    // If this is the last assistant message, prefer streaming content if available
-                    val assistantMessages = entities.filter { it.role == "assistant" }
-                    val isLastAssistant = entity.role == "assistant" && 
-                        assistantMessages.isNotEmpty() &&
-                        assistantMessages.last().id == entity.id
-                    
-                    val (content, thinking) = if (isLastAssistant && streamingContent != null && streamingContent.isNotEmpty()) {
-                        // Use streaming content if available (it's the most up-to-date)
-                        // streamingContent is already the parsed response, streamingThinking is already the parsed thinking
-                        android.util.Log.d("ChatViewModel", "Using streaming content for message ${entity.id}: thinking=${streamingThinking != null} (${streamingThinking?.length ?: 0} chars)")
-                        Pair(streamingContent, streamingThinking)
-                    } else {
-                        // Use database content
-                        android.util.Log.d("ChatViewModel", "Using database content for message ${entity.id}: thinking=${entity.thinking != null} (${entity.thinking?.length ?: 0} chars)")
-                        Pair(entity.content, entity.thinking)
+            try {
+                combine(
+                    _threadId
+                        .filterNotNull()
+                        .flatMapLatest { threadId ->
+                            chatRepository.getMessagesByThreadId(threadId)
+                                .catch { e ->
+                                    // Handle errors in the Flow gracefully
+                                    android.util.Log.e("ChatViewModel", "Error in message Flow", e)
+                                    // Don't set error state for database issues - just log and emit empty list
+                                    if (e !is android.database.sqlite.SQLiteBlobTooBigException) {
+                                        _error.value = "Failed to load messages: ${e.message}"
+                                    }
+                                    emit(emptyList())
+                                }
+                        },
+                    _streamingContent,
+                    _streamingThinking
+                ) { entities, streamingContent, streamingThinking ->
+                    entities.map { entity ->
+                        // If this is the last assistant message, prefer streaming content if available
+                        val assistantMessages = entities.filter { it.role == "assistant" }
+                        val isLastAssistant = entity.role == "assistant" && 
+                            assistantMessages.isNotEmpty() &&
+                            assistantMessages.last().id == entity.id
+                        
+                        val (content, thinking) = if (isLastAssistant && streamingContent != null && streamingContent.isNotEmpty()) {
+                            // Use streaming content if available (it's the most up-to-date)
+                            // streamingContent is already the parsed response, streamingThinking is already the parsed thinking
+                            android.util.Log.d("ChatViewModel", "Using streaming content for message ${entity.id}: thinking=${streamingThinking != null} (${streamingThinking?.length ?: 0} chars)")
+                            Pair(streamingContent, streamingThinking)
+                        } else {
+                            // Use database content
+                            android.util.Log.d("ChatViewModel", "Using database content for message ${entity.id}: thinking=${entity.thinking != null} (${entity.thinking?.length ?: 0} chars)")
+                            Pair(entity.content, entity.thinking)
+                        }
+                        
+                        // Debug logging
+                        if (thinking != null) {
+                            android.util.Log.d("ChatViewModel", "Message ${entity.id} has thinking: ${thinking.length} chars, content: ${content.length} chars")
+                        } else if (isLastAssistant) {
+                            android.util.Log.d("ChatViewModel", "Message ${entity.id} has NO thinking (isLastAssistant=$isLastAssistant)")
+                        }
+                        
+                        val chatMessage = ChatMessage(
+                            id = entity.id,
+                            threadId = entity.threadId,
+                            role = entity.role,
+                            content = content,
+                            thinking = thinking,
+                            images = entity.images,
+                            timestamp = entity.timestamp
+                        )
+                        chatMessage
                     }
-                    
-                    // Debug logging
-                    if (thinking != null) {
-                        android.util.Log.d("ChatViewModel", "Message ${entity.id} has thinking: ${thinking.length} chars, content: ${content.length} chars")
-                    } else if (isLastAssistant) {
-                        android.util.Log.d("ChatViewModel", "Message ${entity.id} has NO thinking (isLastAssistant=$isLastAssistant)")
+                }
+                    .collect { messageList ->
+                        // Merge with optimistic messages (messages with negative IDs are temporary)
+                        val currentOptimistic = _messages.value.filter { it.id < 0 }
+                        val dbMessages = messageList
+                        
+                        // Match DB messages with optimistic messages and preserve images from optimistic if DB has null
+                        val dbMessagesWithPreservedImages = dbMessages.map { dbMsg ->
+                            // Find matching optimistic message
+                            val matchingOptimistic = currentOptimistic.firstOrNull { optMsg ->
+                                optMsg.role == dbMsg.role &&
+                                optMsg.content == dbMsg.content &&
+                                kotlin.math.abs(optMsg.timestamp - dbMsg.timestamp) < 5000
+                            }
+                            
+                            // If DB message has null images but optimistic has images, preserve optimistic images
+                            if (matchingOptimistic != null && dbMsg.images == null && matchingOptimistic.images != null) {
+                                dbMsg.copy(images = matchingOptimistic.images)
+                            } else {
+                                dbMsg
+                            }
+                        }
+                        
+                        // Keep optimistic messages that don't have a DB match yet
+                        val unmatchedOptimistic = currentOptimistic.filter { optMsg ->
+                            dbMessagesWithPreservedImages.none { dbMsg ->
+                                optMsg.role == dbMsg.role &&
+                                optMsg.content == dbMsg.content &&
+                                kotlin.math.abs(optMsg.timestamp - dbMsg.timestamp) < 5000
+                            }
+                        }
+                        
+                        // Combine and sort by timestamp
+                        val newMessages = (unmatchedOptimistic + dbMessagesWithPreservedImages).sortedBy { it.timestamp }
+                        _messages.value = newMessages
                     }
-                    
-                    ChatMessage(
-                        id = entity.id,
-                        threadId = entity.threadId,
-                        role = entity.role,
-                        content = content,
-                        thinking = thinking,
-                        images = entity.images,
-                        timestamp = entity.timestamp
-                    )
+            } catch (e: Exception) {
+                // Catch any unexpected errors
+                android.util.Log.e("ChatViewModel", "Unexpected error in observeMessages", e)
+                // Don't show database-related errors to users
+                if (e !is android.database.sqlite.SQLiteBlobTooBigException) {
+                    _error.value = "Failed to load messages: ${e.message}"
                 }
             }
-                .collect { messageList ->
-                    _messages.value = messageList
-                }
         }
     }
     
     fun sendMessage(content: String, images: List<String>? = null) {
         val currentThreadId = _threadId.value
         val model = _selectedModel.value
+        
+        android.util.Log.d("ChatViewModel", "sendMessage called: content='$content', images=${images?.size ?: 0}, isLoading=${_isLoading.value}, threadId=$currentThreadId, model=$model")
         
         if (currentThreadId == null) {
             _error.value = "No thread selected"
@@ -201,8 +254,27 @@ class ChatViewModel @Inject constructor(
         }
         
         if (content.isBlank() && (images == null || images.isEmpty())) {
+            android.util.Log.w("ChatViewModel", "sendMessage: Both content and images are empty, ignoring")
             return
         }
+        
+        // Don't block if already loading - allow queuing or at least log it
+        if (_isLoading.value) {
+            android.util.Log.w("ChatViewModel", "sendMessage: Already loading, but proceeding anyway")
+        }
+        
+        // Optimistically add user message to UI immediately
+        val optimisticUserMessage = ChatMessage(
+            id = -System.currentTimeMillis(), // Negative ID to mark as temporary/optimistic
+            threadId = currentThreadId,
+            role = "user",
+            content = content,
+            thinking = null,
+            images = images,
+            timestamp = System.currentTimeMillis()
+        )
+        _messages.value = _messages.value + optimisticUserMessage
+        android.util.Log.d("ChatViewModel", "Added optimistic message with ${images?.size ?: 0} images")
         
         viewModelScope.launch {
             val thread = chatRepository.getThreadById(currentThreadId).first()
@@ -247,28 +319,26 @@ class ChatViewModel @Inject constructor(
                     // Log final content length for debugging
                     android.util.Log.d("ChatViewModel", "Streaming completed. Final content length: ${fullContent.length}, Final thinking length: ${fullThinking.length}")
                     
-                    // Keep streaming content visible briefly to ensure UI updates
-                    // The database should have the complete message by now
-                    kotlinx.coroutines.delay(100)
-                    
-                    _streamingContent.value = null
-                    _streamingThinking.value = null
-                    
                     // Update thread timestamp
                     thread?.let {
                         chatRepository.updateThread(it)
                     }
+                    
+                    // Wait for database polling to detect the content change before clearing streaming content
+                    // Polling now detects content changes (not just count), so wait 1.2 seconds to ensure it's detected
+                    // This prevents the UI from showing a gap where neither streaming nor database content is visible
+                    kotlinx.coroutines.delay(1200)
+                    
+                    _streamingContent.value = null
+                    _streamingThinking.value = null
                 } catch (e: Exception) {
                     android.util.Log.e("ChatViewModel", "Error streaming message", e)
-                    _error.value = e.message ?: "Failed to stream message"
+                    // Don't show database-related errors to users
+                    if (e !is android.database.sqlite.SQLiteBlobTooBigException) {
+                        _error.value = e.message ?: "Failed to stream message"
+                    }
                 } finally {
                     _isLoading.value = false
-                    // Don't clear streaming content immediately - let database update first
-                    viewModelScope.launch {
-                        kotlinx.coroutines.delay(200)
-                        _streamingContent.value = null
-                        _streamingThinking.value = null
-                    }
                 }
             } else {
                 // Non-streaming
@@ -278,7 +348,10 @@ class ChatViewModel @Inject constructor(
                 val result = sendChatMessageUseCase(currentThreadId, content, model, false, systemPrompt, images)
                 
                 result.onFailure { exception ->
-                    _error.value = exception.message ?: "Failed to send message"
+                    // Don't show database-related errors to users
+                    if (exception !is android.database.sqlite.SQLiteBlobTooBigException) {
+                        _error.value = exception.message ?: "Failed to send message"
+                    }
                 }
                 
                 _isLoading.value = false
@@ -354,6 +427,50 @@ class ChatViewModel @Inject constructor(
     
     fun setShowThinking(show: Boolean) {
         _showThinking.value = show
+    }
+    
+    // Try to load images for a message on-demand (when they couldn't be loaded initially)
+    fun loadMessageImages(messageId: Long) {
+        viewModelScope.launch {
+            try {
+                val messageEntity = chatRepository.getMessageById(messageId)
+                if (messageEntity != null && messageEntity.images != null) {
+                    // Update the message in the list with images
+                    val currentMessages = _messages.value
+                    val updatedMessages = currentMessages.map { msg ->
+                        if (msg.id == messageId && msg.images == null) {
+                            android.util.Log.d("ChatViewModel", "Loading images on-demand for message $messageId: ${messageEntity.images?.size ?: 0} images")
+                            msg.copy(images = messageEntity.images)
+                        } else {
+                            msg
+                        }
+                    }
+                    _messages.value = updatedMessages
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("ChatViewModel", "Could not load images on-demand for message $messageId", e)
+            }
+        }
+    }
+    
+    suspend fun getMessageById(messageId: Long): ChatMessage? {
+        return try {
+            val entity = chatRepository.getMessageById(messageId)
+            entity?.let {
+                ChatMessage(
+                    id = it.id,
+                    threadId = it.threadId,
+                    role = it.role,
+                    content = it.content,
+                    thinking = it.thinking,
+                    images = it.images,
+                    timestamp = it.timestamp
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("ChatViewModel", "Could not get message $messageId", e)
+            null
+        }
     }
 }
 

@@ -41,6 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.InputStream
 import android.util.Base64
+import com.charles.ollama.client.util.ImageCompressionHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,7 +78,16 @@ fun ChatScreen(
                     val inputStream: InputStream? = context.contentResolver.openInputStream(it)
                     inputStream?.use { stream ->
                         val bytes = stream.readBytes()
-                        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                        // Compress image before encoding to prevent SQLite CursorWindow overflow
+                        val base64 = withContext(Dispatchers.Default) {
+                            try {
+                                ImageCompressionHelper.compressAndEncodeImage(bytes)
+                            } catch (e: Exception) {
+                                android.util.Log.e("ChatScreen", "Error compressing image, using original", e)
+                                // Fallback to original if compression fails
+                                Base64.encodeToString(bytes, Base64.NO_WRAP)
+                            }
+                        }
                         selectedImages = selectedImages + base64
                     }
                 } catch (e: Exception) {
@@ -158,7 +168,8 @@ fun ChatScreen(
                     val showThinking by viewModel.showThinking.collectAsState()
                     MessageBubble(
                         message = message,
-                        showThinking = showThinking
+                        showThinking = showThinking,
+                        onLoadImages = { messageId -> viewModel.loadMessageImages(messageId) }
                     )
                 }
                 
@@ -232,7 +243,7 @@ fun ChatScreen(
                 if (isVisionModel) {
                     IconButton(
                         onClick = { imagePickerLauncher.launch("image/*") },
-                        enabled = !isLoading && selectedModel != null
+                        enabled = selectedModel != null // Allow selecting images even while loading
                     ) {
                         Icon(Icons.Default.Image, contentDescription = "Add image")
                     }
@@ -242,19 +253,32 @@ fun ChatScreen(
                     onValueChange = { messageText = it },
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Type a message...") },
-                    enabled = !isLoading && selectedModel != null,
+                    enabled = selectedModel != null, // Allow typing even while loading
                     singleLine = false,
                     maxLines = 4
                 )
+                val canSend = (messageText.isNotBlank() || selectedImages.isNotEmpty()) && selectedModel != null
                 FloatingActionButton(
                     onClick = {
-                        if ((messageText.isNotBlank() || selectedImages.isNotEmpty()) && !isLoading && selectedModel != null) {
-                            viewModel.sendMessage(messageText, if (selectedImages.isNotEmpty()) selectedImages else null)
+                        if (canSend) {
+                            val imagesToSend = if (selectedImages.isNotEmpty()) selectedImages else null
+                            android.util.Log.d("ChatScreen", "Send button clicked: text='$messageText', images=${imagesToSend?.size ?: 0}")
+                            viewModel.sendMessage(messageText, imagesToSend)
                             messageText = ""
                             selectedImages = emptyList()
+                        } else {
+                            android.util.Log.w("ChatScreen", "Send button clicked but canSend=false: text='$messageText', images=${selectedImages.size}, isLoading=$isLoading, model=$selectedModel")
                         }
                     },
-                    modifier = Modifier.size(56.dp)
+                    modifier = Modifier.size(56.dp),
+                    containerColor = if (canSend) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (canSend)
+                        MaterialTheme.colorScheme.onPrimary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 ) {
                     Icon(Icons.Default.Send, contentDescription = "Send")
                 }

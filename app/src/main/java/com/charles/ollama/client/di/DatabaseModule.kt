@@ -26,6 +26,8 @@ object DatabaseModule {
             "ollama_database"
         )
         .fallbackToDestructiveMigration()
+        // Set query executor to handle large queries better
+        .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
         .build()
     }
     
