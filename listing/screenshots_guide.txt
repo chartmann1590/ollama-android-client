@@ -1,0 +1,67 @@
+SCREENSHOT RECOMMENDATIONS FOR PLAY STORE LISTING
+
+Required Screenshots:
+- Phone: At least 2 screenshots (up to 8 recommended)
+- Tablet: Optional but recommended (up to 8)
+
+Suggested Screenshot Sequence:
+
+1. HERO SCREENSHOT (First screenshot - most important)
+   - Show the main chat interface with an active conversation
+   - Display a question and AI response to demonstrate functionality
+   - Highlight the clean, modern UI design
+   - Include dark theme if possible (eye-catching)
+
+2. FEATURE HIGHLIGHT - Image Support
+   - Show a conversation with an image attachment
+   - Demonstrate vision model capabilities
+   - Show image preview in chat
+
+3. FEATURE HIGHLIGHT - Multiple Models
+   - Show model selection screen
+   - Display available models list
+   - Show model switching capability
+
+4. FEATURE HIGHLIGHT - Settings/Configuration
+   - Show server configuration screen
+   - Display settings options
+   - Highlight customization features
+
+5. FEATURE HIGHLIGHT - Chat History
+   - Show list of previous conversations
+   - Display thread management
+   - Highlight persistent storage
+
+6. DARK THEME SHOWCASE
+   - Beautiful dark mode interface
+   - Show how it looks in dark theme
+   - Emphasize modern design
+
+7. REAL-TIME STREAMING
+   - Show a conversation in progress
+   - Highlight streaming response feature
+   - Show typing indicator or partial response
+
+8. FEATURE OVERVIEW
+   - Collage or feature list screen
+   - Highlight key features with icons
+   - Summary of app capabilities
+
+SCREENSHOT TIPS:
+- Use real conversations, not placeholder text
+- Show actual AI responses (not "Lorem ipsum")
+- Include diverse conversation topics
+- Use high-quality, clear screenshots
+- Ensure text is readable at thumbnail size
+- Use consistent theme (light or dark) across screenshots
+- Add text overlays to highlight features (optional)
+- Show the app in use, not just static screens
+
+TEXT OVERLAYS (Optional):
+- "Chat with AI Models"
+- "Real-time Streaming"
+- "Image Support"
+- "Private & Secure"
+- "Multiple Models"
+- "Offline History"
+

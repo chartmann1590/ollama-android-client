@@ -1,0 +1,15 @@
+🎉 Welcome to Ollama AI Chat v1.0!
+
+✨ Initial Release Features:
+• Chat with AI models in real-time
+• Stream responses as they're generated
+• Attach images to conversations
+• Persistent chat history
+• Multiple server support
+• Model selection and management
+• Beautiful Material Design 3 UI
+• Full dark theme support
+• Secure local storage
+
+Start chatting with your AI models today!
+

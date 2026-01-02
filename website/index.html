@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Ollama AI Chat - Your Personal AI Assistant on Android. Chat with AI models on your Ollama server with real-time streaming and image support.">
+    <title>Ollama AI Chat - Android App</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="assets/images/icon.png">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <div class="logo">
+                    <img src="assets/images/icon.png" alt="Ollama AI Chat" class="logo-icon">
+                    <span class="logo-text">Ollama AI Chat</span>
+                </div>
+                <div class="nav-links">
+                    <a href="#features">Features</a>
+                    <a href="#screenshots">Screenshots</a>
+                    <a href="#faq">FAQ</a>
+                    <a href="#download" class="btn-download-nav">Download</a>
+                </div>
+                <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-background"></div>
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1 class="hero-title">
+                        Chat with AI Models<br>
+                        <span class="gradient-text">On Your Android Device</span>
+                    </h1>
+                    <p class="hero-description">
+                        Transform your Android device into a powerful AI chat interface. Connect to your Ollama server and experience seamless conversations with cutting-edge AI models.
+                    </p>
+                    <div class="hero-buttons">
+                        <a href="#download" class="btn btn-primary">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download on Play Store
+                        </a>
+                        <a href="https://github.com/chartmann1590/ollama-android-client" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                            </svg>
+                            View on GitHub
+                        </a>
+                    </div>
+                </div>
+                <div class="hero-media">
+                    <div class="phone-mockup">
+                        <div class="phone-frame">
+                            <video autoplay loop muted playsinline class="promo-video">
+                                <source src="assets/video/promo_video.mp4" type="video/mp4">
+                            </video>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="hero-scroll-indicator">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Powerful Features</h2>
+                <p class="section-subtitle">Everything you need for seamless AI conversations</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <h3 class="feature-title">Intuitive Chat Interface</h3>
+                    <p class="feature-description">Experience smooth, real-time conversations with AI models through our beautifully designed Material Design 3 interface.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🖼️</div>
+                    <h3 class="feature-title">Image Support</h3>
+                    <p class="feature-description">Share images with vision-capable AI models! Smart compression automatically optimizes images for fast, efficient conversations.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3 class="feature-title">Persistent Chat History</h3>
+                    <p class="feature-description">Never lose a conversation! All your chats are automatically saved locally using our secure Room database.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚙️</div>
+                    <h3 class="feature-title">Flexible Configuration</h3>
+                    <p class="feature-description">Connect to multiple Ollama servers, switch between AI models, and customize model parameters to your needs.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h3 class="feature-title">Modern & Beautiful UI</h3>
+                    <p class="feature-description">Built with Jetpack Compose and Material Design 3, featuring smooth animations and full dark theme support.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3 class="feature-title">Privacy-First</h3>
+                    <p class="feature-description">Your conversations stay on your device. We use local database storage, so your chat history never leaves your phone.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshots Section -->
+    <section id="screenshots" class="screenshots">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">See It In Action</h2>
+                <p class="section-subtitle">Beautiful screenshots from the app</p>
+            </div>
+            <div class="screenshots-grid">
+                <div class="screenshot-item">
+                    <img src="assets/screenshots/chat_threads_screen.png" alt="Chat Threads">
+                    <div class="screenshot-overlay">
+                        <p>Chat Threads</p>
+                    </div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="assets/screenshots/chat_text_only.png" alt="Text Chat">
+                    <div class="screenshot-overlay">
+                        <p>Text Chat</p>
+                    </div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="assets/screenshots/chat_image_thread.png" alt="Image Chat">
+                    <div class="screenshot-overlay">
+                        <p>Image Chat</p>
+                    </div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="assets/screenshots/chat_model_selection.png" alt="Model Selection">
+                    <div class="screenshot-overlay">
+                        <p>Model Selection</p>
+                    </div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="assets/screenshots/server_screen.png" alt="Server Management">
+                    <div class="screenshot-overlay">
+                        <p>Server Management</p>
+                    </div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="assets/screenshots/chat_thread_settings.png" alt="Thread Settings">
+                    <div class="screenshot-overlay">
+                        <p>Thread Settings</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="faq">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Frequently Asked Questions</h2>
+                <p class="section-subtitle">Everything you need to know</p>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>What is Ollama AI Chat?</span>
+                        <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Ollama AI Chat is an Android application that connects to your Ollama server, enabling you to chat with various AI models like Llama, Mistral, and more directly from your Android device. It features a modern Material Design 3 interface with real-time streaming responses.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Do I need an Ollama server to use this app?</span>
+                        <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes, this app requires an Ollama server to function. Ollama is a free, open-source tool for running large language models locally. You'll need to install Ollama on your computer or server and ensure it's accessible on your network. Visit <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer">ollama.ai</a> to learn more.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>What Android version do I need?</span>
+                        <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>The app requires Android 13 (API Level 33) or higher. Make sure your device is running a compatible Android version before installing.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Is my data private and secure?</span>
+                        <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Absolutely! Your conversations stay on your device. We use local database storage (Room database), so your chat history never leaves your phone unless you choose to share it. The app supports both HTTP and HTTPS connections for secure networking.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Can I use multiple AI models?</span>
+                        <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes! You can connect to multiple Ollama servers and switch between different AI models instantly. The app allows you to manage models, pull new ones, and delete models you no longer need.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Does the app support images?</span>
+                        <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes! You can attach and send images in conversations with vision-capable AI models. The app automatically compresses images to optimize performance while maintaining quality, ensuring fast and efficient conversations.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Is the app open source?</span>
+                        <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes! The app is open source and licensed under the MIT License. You can view the source code, contribute, and report issues on <a href="https://github.com/chartmann1590/ollama-android-client" target="_blank" rel="noopener noreferrer">GitHub</a>. We welcome contributions!</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>How do I configure my Ollama server?</span>
+                        <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Simply enter your Ollama server URL (e.g., http://192.168.1.100:11434) in the app settings. The app supports both HTTP and HTTPS connections. You can add multiple servers and switch between them as needed.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section id="download" class="download">
+        <div class="container">
+            <div class="download-content">
+                <h2 class="download-title">Ready to Get Started?</h2>
+                <p class="download-description">Download Ollama AI Chat and start chatting with AI models on your Android device today!</p>
+                <div class="download-buttons">
+                    <a href="#" class="btn btn-primary btn-large" id="play-store-link">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Download on Play Store
+                    </a>
+                    <a href="https://github.com/chartmann1590/ollama-android-client" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-large">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                        </svg>
+                        View Source on GitHub
+                    </a>
+                </div>
+                <p class="download-note">Requires Android 13 (API 33) or higher</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img src="assets/images/icon.png" alt="Ollama AI Chat" class="footer-logo">
+                    <p class="footer-description">Your Personal AI Assistant on Android</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Resources</h4>
+                        <a href="https://github.com/chartmann1590/ollama-android-client" target="_blank" rel="noopener noreferrer">GitHub</a>
+                        <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer">Ollama</a>
+                        <a href="https://github.com/chartmann1590/ollama-android-client/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">License</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Support</h4>
+                        <a href="https://github.com/chartmann1590/ollama-android-client/issues" target="_blank" rel="noopener noreferrer">Report Issue</a>
+                        <a href="https://github.com/chartmann1590/ollama-android-client/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contribute</a>
+                        <a href="https://github.com/chartmann1590/ollama-android-client/blob/master/PRIVACY_POLICY.md" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Ollama AI Chat. Made with ❤️ using Kotlin and Jetpack Compose.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Screenshot Modal -->
+    <div class="modal" id="screenshot-modal">
+        <div class="modal-content">
+            <button class="modal-close" aria-label="Close modal">&times;</button>
+            <img src="" alt="" id="modal-image">
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+

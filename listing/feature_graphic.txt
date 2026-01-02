@@ -1,0 +1,67 @@
+FEATURE GRAPHIC GUIDELINES
+(1024 x 500 pixels)
+
+DESIGN SUGGESTIONS:
+
+1. LEFT SIDE (Text Area):
+   - App Name: "Ollama AI Chat" (Large, bold, modern font)
+   - Tagline: "Your Personal AI Assistant" or "Chat with AI Models"
+   - Key Features (3-4 bullet points):
+     • Real-time AI Conversations
+     • Image Support
+     • Private & Secure
+     • Multiple Models
+
+2. RIGHT SIDE (Visual Area):
+   - Phone mockup showing chat interface
+   - Chat bubbles with AI conversation
+   - Modern, clean design
+   - Use app's color scheme (Material Design 3)
+
+3. COLOR SCHEME:
+   - Primary: Use Material Design 3 colors
+   - Background: Gradient or solid color matching app theme
+   - Text: High contrast, readable
+   - Accent: Highlight key features
+
+4. STYLE:
+   - Clean, modern, professional
+   - Minimal text (most important info only)
+   - Visual-first approach
+   - Consistent with app's Material Design 3 aesthetic
+
+5. ELEMENTS TO INCLUDE:
+   - App icon (top left corner, optional)
+   - Chat interface preview
+   - AI/robot icon or illustration (subtle)
+   - "Ollama" branding (if permitted)
+
+6. TEXT HIERARCHY:
+   - App Name: Largest, most prominent
+   - Tagline: Medium size, supporting text
+   - Features: Smaller, bullet points or icons
+
+7. AVOID:
+   - Too much text
+   - Cluttered design
+   - Low resolution images
+   - Inconsistent branding
+   - Copyrighted material without permission
+
+ALTERNATIVE CONCEPTS:
+
+Concept 1: Minimalist
+- Clean background with phone mockup
+- Simple text overlay
+- Focus on app interface
+
+Concept 2: Feature-Focused
+- Split design showing multiple features
+- Icons for each feature
+- Clear value proposition
+
+Concept 3: Conversation-Focused
+- Large chat bubble preview
+- Show actual conversation
+- Emphasize AI interaction
+

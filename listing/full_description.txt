@@ -1,0 +1,89 @@
+🤖 **Ollama AI Chat - Your Personal AI Assistant on Android**
+
+Transform your Android device into a powerful AI chat interface! Ollama AI Chat connects to your Ollama server, enabling seamless conversations with cutting-edge AI models like Llama, Mistral, and more.
+
+**✨ Key Features:**
+
+💬 **Intuitive Chat Interface**
+Experience smooth, real-time conversations with AI models through our beautifully designed Material Design 3 interface. Chat naturally and watch responses stream in real-time.
+
+🖼️ **Image Support**
+Share images with vision-capable AI models! Our smart compression automatically optimizes images for fast, efficient conversations while maintaining quality.
+
+📚 **Persistent Chat History**
+Never lose a conversation! All your chats are automatically saved locally using our secure Room database. Access your message history anytime, even offline.
+
+⚙️ **Flexible Configuration**
+• Connect to multiple Ollama servers
+• Switch between different AI models instantly
+• Customize model parameters (temperature, top-p, etc.)
+• Support for both HTTP and HTTPS connections
+
+🎨 **Modern & Beautiful UI**
+Built with Jetpack Compose and Material Design 3, featuring:
+• Smooth animations and transitions
+• Full dark theme support
+• Responsive design that adapts to your device
+• Intuitive navigation
+
+🔒 **Privacy-First**
+Your conversations stay on your device. We use local database storage, so your chat history never leaves your phone unless you choose to share it.
+
+🚀 **Performance Optimized**
+• Lightning-fast message loading
+• Efficient image compression
+• Optimized database queries
+• Real-time streaming responses
+
+**📋 Requirements:**
+• Android 13 (API 33) or higher
+• An Ollama server running and accessible on your network
+• Network connection to your Ollama server
+
+**🔧 Perfect For:**
+• Developers testing AI models
+• Researchers experimenting with LLMs
+• Anyone wanting to chat with AI on their phone
+• Users who want privacy-focused AI interactions
+
+**💡 Getting Started:**
+1. Install Ollama on your computer or server
+2. Download and install Ollama AI Chat
+3. Configure your server URL in settings
+4. Start chatting with AI models!
+
+**🛠️ Technical Highlights:**
+• Built with Kotlin and Jetpack Compose
+• MVVM architecture for clean, maintainable code
+• Room database for reliable local storage
+• Retrofit for efficient networking
+• Firebase Analytics for app insights (optional)
+
+**📱 What's New in v1.0:**
+• Initial release with full chat functionality
+• Real-time streaming responses
+• Image attachment support
+• Multiple server management
+• Model selection and management
+• Persistent chat history
+• Dark theme support
+
+**🔗 Connect Your Ollama Server:**
+Simply enter your Ollama server URL (e.g., http://192.168.1.100:11434) in the app settings, and you're ready to start chatting!
+
+**📝 Note:**
+This app requires an Ollama server to function. Ollama is a free, open-source tool for running large language models locally. Visit ollama.ai to learn more.
+
+**🌟 Open Source:**
+Built with ❤️ using Kotlin and Jetpack Compose. This project is open source and welcomes contributions!
+
+---
+
+**Privacy & Security:**
+• No data collection without your consent
+• Local-first architecture
+• Secure network connections
+• Your conversations stay private
+
+Download now and experience the future of AI conversations on Android!
+

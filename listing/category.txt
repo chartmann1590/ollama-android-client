@@ -1,0 +1,5 @@
+Primary Category: Productivity
+Secondary Category: Tools
+
+Reasoning: The app is a productivity tool that helps users interact with AI models for various tasks including research, development, and general assistance.
+
