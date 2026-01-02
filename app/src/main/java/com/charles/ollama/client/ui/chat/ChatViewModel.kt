@@ -12,6 +12,7 @@ import com.charles.ollama.client.domain.model.Model
 import com.charles.ollama.client.domain.usecase.SendChatMessageUseCase
 import com.charles.ollama.client.util.VibrationHelper
 import com.charles.ollama.client.util.ThinkingParser
+import com.charles.ollama.client.util.PerformanceMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -86,6 +87,7 @@ class ChatViewModel @Inject constructor(
             thread?.let {
                 _selectedModel.value = it.model
                 updateVisionModelStatus(it.model)
+                _showThinking.value = it.showThinking
             }
             // Load available models from server
             loadAvailableModels()
@@ -103,12 +105,15 @@ class ChatViewModel @Inject constructor(
     
     fun loadAvailableModels() {
         viewModelScope.launch {
+            val trace = PerformanceMonitor.startViewModelTrace("loadAvailableModels")
             try {
                 _isLoadingModels.value = true
                 val defaultServer = serverRepository.getDefaultServerSync()
                 if (defaultServer != null) {
+                    PerformanceMonitor.addAttribute(trace, "server_url", defaultServer.baseUrl.take(100))
                     val result = modelRepository.getModels(defaultServer.baseUrl)
                     result.onSuccess { models ->
+                        PerformanceMonitor.addMetric(trace, "models_count", models.size.toLong())
                         _availableModels.value = models.map { modelInfo ->
                             Model(
                                 name = modelInfo.name,
@@ -122,13 +127,16 @@ class ChatViewModel @Inject constructor(
                         // Update vision model status if a model is selected
                         _selectedModel.value?.let { updateVisionModelStatus(it) }
                     }.onFailure { exception ->
+                        PerformanceMonitor.addAttribute(trace, "error", exception.javaClass.simpleName)
                         _error.value = "Failed to load models: ${exception.message}"
                     }
                 }
             } catch (e: Exception) {
+                PerformanceMonitor.addAttribute(trace, "error", e.javaClass.simpleName)
                 _error.value = "Failed to load models: ${e.message}"
             } finally {
                 _isLoadingModels.value = false
+                PerformanceMonitor.stopTrace(trace)
             }
         }
     }
@@ -277,12 +285,18 @@ class ChatViewModel @Inject constructor(
         android.util.Log.d("ChatViewModel", "Added optimistic message with ${images?.size ?: 0} images")
         
         viewModelScope.launch {
+            val trace = PerformanceMonitor.startViewModelTrace("sendMessage")
+            PerformanceMonitor.addAttribute(trace, "has_images", (images?.isNotEmpty() == true).toString())
+            PerformanceMonitor.addAttribute(trace, "content_length", content.length.toString())
+            PerformanceMonitor.addAttribute(trace, "model", model ?: "unknown")
+            
             val thread = chatRepository.getThreadById(currentThreadId).first()
             val streamEnabled = thread?.streamEnabled == true
             val systemPrompt = thread?.systemPrompt
             
             if (streamEnabled) {
                 // Handle streaming
+                PerformanceMonitor.addAttribute(trace, "streaming", "true")
                 _isLoading.value = true
                 _error.value = null
                 _streamingContent.value = ""
@@ -292,8 +306,10 @@ class ChatViewModel @Inject constructor(
                 try {
                     var fullContent = ""
                     var fullThinking = ""
+                    var deltaCount = 0L
                     sendChatMessageUseCase.streamMessage(currentThreadId, content, model, systemPrompt, images)
                         .collect { streamDelta ->
+                            deltaCount++
                             fullContent += streamDelta.content
                             streamDelta.thinking?.let { thinkingDelta ->
                                 fullThinking += thinkingDelta
@@ -319,6 +335,10 @@ class ChatViewModel @Inject constructor(
                     // Log final content length for debugging
                     android.util.Log.d("ChatViewModel", "Streaming completed. Final content length: ${fullContent.length}, Final thinking length: ${fullThinking.length}")
                     
+                    PerformanceMonitor.addMetric(trace, "stream_deltas", deltaCount)
+                    PerformanceMonitor.addMetric(trace, "final_content_length", fullContent.length.toLong())
+                    PerformanceMonitor.addMetric(trace, "final_thinking_length", fullThinking.length.toLong())
+                    
                     // Update thread timestamp
                     thread?.let {
                         chatRepository.updateThread(it)
@@ -333,6 +353,7 @@ class ChatViewModel @Inject constructor(
                     _streamingThinking.value = null
                 } catch (e: Exception) {
                     android.util.Log.e("ChatViewModel", "Error streaming message", e)
+                    PerformanceMonitor.addAttribute(trace, "error", e.javaClass.simpleName)
                     // Don't show database-related errors to users
                     if (e !is android.database.sqlite.SQLiteBlobTooBigException) {
                         _error.value = e.message ?: "Failed to stream message"
@@ -342,12 +363,14 @@ class ChatViewModel @Inject constructor(
                 }
             } else {
                 // Non-streaming
+                PerformanceMonitor.addAttribute(trace, "streaming", "false")
                 _isLoading.value = true
                 _error.value = null
                 
                 val result = sendChatMessageUseCase(currentThreadId, content, model, false, systemPrompt, images)
                 
                 result.onFailure { exception ->
+                    PerformanceMonitor.addAttribute(trace, "error", exception.javaClass.simpleName)
                     // Don't show database-related errors to users
                     if (exception !is android.database.sqlite.SQLiteBlobTooBigException) {
                         _error.value = exception.message ?: "Failed to send message"
@@ -356,6 +379,7 @@ class ChatViewModel @Inject constructor(
                 
                 _isLoading.value = false
             }
+            PerformanceMonitor.stopTrace(trace)
         }
     }
     
@@ -427,6 +451,15 @@ class ChatViewModel @Inject constructor(
     
     fun setShowThinking(show: Boolean) {
         _showThinking.value = show
+        _threadId.value?.let { threadId ->
+            viewModelScope.launch {
+                val thread = chatRepository.getThreadById(threadId).first()
+                thread?.let {
+                    val updated = it.copy(showThinking = show)
+                    chatRepository.updateThread(updated)
+                }
+            }
+        }
     }
     
     // Try to load images for a message on-demand (when they couldn't be loaded initially)

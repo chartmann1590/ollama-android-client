@@ -17,7 +17,7 @@ import com.charles.ollama.client.data.database.entity.ServerConfigEntity
         ChatMessageEntity::class,
         ServerConfigEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(StringListConverter::class)

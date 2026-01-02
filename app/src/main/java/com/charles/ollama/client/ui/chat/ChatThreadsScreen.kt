@@ -18,8 +18,11 @@ import kotlinx.coroutines.launch
 import com.charles.ollama.client.domain.model.ChatThread
 import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
+import com.charles.ollama.client.ui.components.BannerAd
+import com.charles.ollama.client.util.PerformanceMonitor
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.runtime.DisposableEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +31,14 @@ fun ChatThreadsScreen(
     onNavigateToServers: () -> Unit,
     viewModel: ChatThreadsViewModel = hiltViewModel()
 ) {
+    // Performance monitoring for screen rendering
+    val screenTrace = remember { PerformanceMonitor.startScreenTrace("ChatThreadsScreen") }
+    DisposableEffect(Unit) {
+        onDispose {
+            PerformanceMonitor.stopTrace(screenTrace)
+        }
+    }
+    
     val scope = rememberCoroutineScope()
     val threads by viewModel.threads.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -36,8 +47,22 @@ fun ChatThreadsScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     
     var showCreateDialog by remember { mutableStateOf(false) }
+    var hasWaitedForServer by remember { mutableStateOf(false) }
     
+    // Wait for hasServer to be determined before navigating
+    // This prevents navigating to Servers when hasServer is just loading (initialValue=false)
+    LaunchedEffect(hasServer) {
+        // If hasServer becomes true, we're good - mark as waited
+        if (hasServer) {
+            hasWaitedForServer = true
+        }
+    }
+    
+    // Wait a bit to see if hasServer loads, then check
     LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(300) // Give hasServer time to load from database
+        hasWaitedForServer = true
+        // After delay, check if we should navigate (only if hasServer is still false)
         if (!hasServer) {
             onNavigateToServers()
         }
@@ -58,6 +83,9 @@ fun ChatThreadsScreen(
             FloatingActionButton(onClick = { showCreateDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "New Thread")
             }
+        },
+        bottomBar = {
+            BannerAd()
         }
     ) { padding ->
         if (isLoading && threads.isEmpty()) {

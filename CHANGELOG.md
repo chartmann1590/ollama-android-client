@@ -41,8 +41,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved
 - Enhanced chat message handling and database operations
 - Optimized image storage to prevent SQLite CursorWindow overflow
+  - Added `ImageCompressionHelper` utility for automatic image compression before database storage
+  - Images are now compressed to max 800x800 pixels and 200KB before base64 encoding
+  - Prevents SQLite CursorWindow overflow errors when storing large images
+- Improved database query performance with paginated loading
+  - Added paginated message loading in `ChatRepository` to handle very large messages
+  - Implemented fallback mechanisms for messages that exceed SQLite limits
+  - Added metadata-only queries as fallback when full message content is too large
+- Enhanced error handling in `ChatViewModel` for database operations
+  - Added graceful error handling for `SQLiteBlobTooBigException`
+  - Improved error recovery when loading messages with large content
 - Improved UI components and message display
 - Better error handling and user feedback
+
+### Fixed
+- Fixed SQLite CursorWindow overflow errors when loading messages with large images
+- Fixed database crashes when storing uncompressed images in chat messages
+- Improved handling of oversized messages that exceed SQLite blob size limits
 
 ### Technical Details
 - Minimum SDK: 33 (Android 13)

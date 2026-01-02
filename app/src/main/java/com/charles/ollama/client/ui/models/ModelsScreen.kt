@@ -14,6 +14,9 @@ import com.charles.ollama.client.domain.model.Model
 import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
 import com.charles.ollama.client.ui.components.ModelCard
+import com.charles.ollama.client.ui.components.BannerAd
+import com.charles.ollama.client.util.PerformanceMonitor
+import androidx.compose.runtime.DisposableEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,6 +24,14 @@ fun ModelsScreen(
     onNavigateBack: () -> Unit,
     viewModel: ModelsViewModel = hiltViewModel()
 ) {
+    // Performance monitoring for screen rendering
+    val screenTrace = remember { PerformanceMonitor.startScreenTrace("ModelsScreen") }
+    DisposableEffect(Unit) {
+        onDispose {
+            PerformanceMonitor.stopTrace(screenTrace)
+        }
+    }
+    
     val models by viewModel.models.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -48,6 +59,9 @@ fun ModelsScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            BannerAd()
         }
     ) { padding ->
         if (isLoading && models.isEmpty()) {

@@ -7,6 +7,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import com.charles.ollama.client.data.api.PerformanceInterceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -33,7 +34,11 @@ object NetworkModule {
             level = HttpLoggingInterceptor.Level.BODY
         }
         
+        // Add Firebase Performance interceptor first to capture all network metrics
+        val performanceInterceptor = PerformanceInterceptor()
+        
         return OkHttpClient.Builder()
+            .addInterceptor(performanceInterceptor)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(90, TimeUnit.SECONDS)
             .readTimeout(90, TimeUnit.SECONDS)

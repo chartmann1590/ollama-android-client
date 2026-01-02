@@ -1,0 +1,24 @@
+Ollama Android Client - Voiceover Script
+============================================================
+
+Welcome to Ollama Android Client.
+
+An intuitive Android app for interacting with Ollama AI models.
+
+Manage all your chat conversations in one place.
+
+Experience real-time AI responses with streaming support.
+
+Customize your chat experience with flexible settings.
+
+Choose from multiple AI models to suit your needs.
+
+Enjoy a clean and intuitive chat interface.
+
+Send images and get AI insights instantly.
+
+Connect easily to your Ollama server.
+
+Configure servers with just a few taps.
+
+Download Ollama Android Client today!

@@ -10,12 +10,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
+import android.widget.EditText
+import androidx.core.view.ViewCompat
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.charles.ollama.client.domain.model.Server
 import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
 import com.charles.ollama.client.ui.components.ServerCard
+import com.charles.ollama.client.ui.components.BannerAd
+import com.charles.ollama.client.util.PerformanceMonitor
+import androidx.compose.runtime.DisposableEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,6 +31,14 @@ fun ServerListScreen(
     onNavigateBack: () -> Unit,
     viewModel: ServersViewModel = hiltViewModel()
 ) {
+    // Performance monitoring for screen rendering
+    val screenTrace = remember { PerformanceMonitor.startScreenTrace("ServerListScreen") }
+    DisposableEffect(Unit) {
+        onDispose {
+            PerformanceMonitor.stopTrace(screenTrace)
+        }
+    }
+    
     val servers by viewModel.servers.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -45,6 +61,9 @@ fun ServerListScreen(
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Server")
             }
+        },
+        bottomBar = {
+            BannerAd()
         }
     ) { padding ->
         if (isLoading && servers.isEmpty()) {
@@ -148,12 +167,42 @@ fun ServerDialog(
                     label = { Text("Server Name") },
                     singleLine = true
                 )
-                OutlinedTextField(
-                    value = baseUrl,
-                    onValueChange = { baseUrl = it },
-                    label = { Text("Base URL") },
-                    placeholder = { Text("http://localhost:11434") },
-                    singleLine = true
+                // Native EditText for Firebase Robo Test compatibility
+                AndroidView(
+                    factory = { context ->
+                        EditText(context).apply {
+                            id = ViewCompat.generateViewId()
+                            hint = "http://localhost:11434"
+                            setSingleLine(true)
+                            // Set accessibility properties for Firebase Robo Test
+                            ViewCompat.setAccessibilityDelegate(this, object : androidx.core.view.AccessibilityDelegateCompat() {
+                                override fun onInitializeAccessibilityNodeInfo(host: android.view.View, info: AccessibilityNodeInfoCompat) {
+                                    super.onInitializeAccessibilityNodeInfo(host, info)
+                                    info.viewIdResourceName = "base_url"
+                                }
+                            })
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("baseURL"),
+                    update = { view ->
+                        if (view.text.toString() != baseUrl) {
+                            view.setText(baseUrl)
+                        }
+                        view.setOnFocusChangeListener { _, hasFocus ->
+                            if (!hasFocus) {
+                                baseUrl = view.text.toString()
+                            }
+                        }
+                        view.addTextChangedListener(object : android.text.TextWatcher {
+                            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                                baseUrl = s?.toString() ?: ""
+                            }
+                            override fun afterTextChanged(s: android.text.Editable?) {}
+                        })
+                    }
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),

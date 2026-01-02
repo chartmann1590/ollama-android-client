@@ -10,6 +10,7 @@ import com.charles.ollama.client.data.database.dao.ChatThreadDao
 import com.charles.ollama.client.data.database.entity.ChatMessageEntity
 import com.charles.ollama.client.data.database.entity.ChatThreadEntity
 import com.charles.ollama.client.util.ThinkingParser
+import com.charles.ollama.client.util.PerformanceMonitor
 import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -35,23 +36,29 @@ class ChatRepository @Inject constructor(
         chatThreadDao.searchThreads("%$query%")
     
     suspend fun createThread(title: String, model: String?, serverId: Long?): Long {
-        val thread = ChatThreadEntity(
-            title = title,
-            model = model,
-            serverId = serverId,
-            streamEnabled = true // Default to enabled
-        )
-        return chatThreadDao.insertThread(thread)
+        return PerformanceMonitor.measureSuspend("database_create_thread") {
+            val thread = ChatThreadEntity(
+                title = title,
+                model = model,
+                serverId = serverId,
+                streamEnabled = true // Default to enabled
+            )
+            chatThreadDao.insertThread(thread)
+        }
     }
     
     suspend fun updateThread(thread: ChatThreadEntity) {
-        val updated = thread.copy(updatedAt = System.currentTimeMillis())
-        chatThreadDao.updateThread(updated)
+        PerformanceMonitor.measureSuspend("database_update_thread") {
+            val updated = thread.copy(updatedAt = System.currentTimeMillis())
+            chatThreadDao.updateThread(updated)
+        }
     }
     
     suspend fun deleteThread(threadId: Long) {
-        chatThreadDao.deleteThreadById(threadId)
-        chatMessageDao.deleteMessagesByThreadId(threadId)
+        PerformanceMonitor.measureSuspend("database_delete_thread") {
+            chatThreadDao.deleteThreadById(threadId)
+            chatMessageDao.deleteMessagesByThreadId(threadId)
+        }
     }
     
     fun getMessagesByThreadId(threadId: Long): Flow<List<ChatMessageEntity>> = flow {
@@ -266,7 +273,9 @@ class ChatRepository @Inject constructor(
                 content = content,
                 images = images
             )
-            chatMessageDao.insertMessage(userMessageEntity)
+            PerformanceMonitor.measureSuspend("database_insert_user_message") {
+                chatMessageDao.insertMessage(userMessageEntity)
+            }
             
             if (shouldStream) {
                 // For streaming, we'll handle it differently
@@ -294,7 +303,9 @@ class ChatRepository @Inject constructor(
                     content = responseContent,
                     thinking = thinking
                 )
-                chatMessageDao.insertMessage(assistantMessage)
+                PerformanceMonitor.measureSuspend("database_insert_assistant_message") {
+                    chatMessageDao.insertMessage(assistantMessage)
+                }
                 
                 // Update thread timestamp
                 thread?.let {
@@ -371,7 +382,9 @@ class ChatRepository @Inject constructor(
                 content = content,
                 images = images
             )
-            chatMessageDao.insertMessage(userMessageEntity)
+            PerformanceMonitor.measureSuspend("database_insert_user_message") {
+                chatMessageDao.insertMessage(userMessageEntity)
+            }
             
             // Create placeholder assistant message for streaming
             val assistantMessageEntity = ChatMessageEntity(
@@ -379,7 +392,9 @@ class ChatRepository @Inject constructor(
                 role = "assistant",
                 content = ""
             )
-            val assistantMessageId = chatMessageDao.insertMessage(assistantMessageEntity)
+            val assistantMessageId = PerformanceMonitor.measureSuspend("database_insert_placeholder_message") {
+                chatMessageDao.insertMessage(assistantMessageEntity)
+            }
             
             // Create streaming request
             val request = ChatRequest(
@@ -410,7 +425,9 @@ class ChatRepository @Inject constructor(
                             content = fullContent,
                             thinking = fullThinking.takeIf { it.isNotEmpty() }
                         )
-                        chatMessageDao.insertMessage(updatedMessage)
+                        PerformanceMonitor.measureSuspend("database_update_streaming_message") {
+                            chatMessageDao.insertMessage(updatedMessage)
+                        }
                     }
                     // Emit both content and thinking
                     emit(StreamDelta(content = streamDelta.content, thinking = streamDelta.thinking))
@@ -436,7 +453,9 @@ class ChatRepository @Inject constructor(
                 thinking = fullThinking.takeIf { it.isNotEmpty() },
                 timestamp = System.currentTimeMillis()
             )
-            chatMessageDao.insertMessage(finalMessage)
+            PerformanceMonitor.measureSuspend("database_save_final_message") {
+                chatMessageDao.insertMessage(finalMessage)
+            }
             android.util.Log.d("ChatRepository", "Final message saved to database with ${finalMessage.content.length} chars")
             
             // Update thread timestamp
@@ -451,7 +470,9 @@ class ChatRepository @Inject constructor(
     }
     
     suspend fun insertMessage(message: ChatMessageEntity) {
-        chatMessageDao.insertMessage(message)
+        PerformanceMonitor.measureSuspend("database_insert_message") {
+            chatMessageDao.insertMessage(message)
+        }
     }
     
     suspend fun getMessageById(messageId: Long): ChatMessageEntity? {

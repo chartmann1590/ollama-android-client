@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,12 +37,14 @@ import com.charles.ollama.client.domain.model.ChatMessage
 import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
 import com.charles.ollama.client.ui.components.MessageBubble
+import com.charles.ollama.client.ui.components.BannerAd
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.InputStream
 import android.util.Base64
 import com.charles.ollama.client.util.ImageCompressionHelper
+import com.charles.ollama.client.util.PerformanceMonitor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +53,17 @@ fun ChatScreen(
     onNavigateBack: () -> Unit,
     viewModel: ChatViewModel = hiltViewModel()
 ) {
+    // Performance monitoring for screen rendering
+    val screenTrace = remember { PerformanceMonitor.startScreenTrace("ChatScreen") }
+    LaunchedEffect(Unit) {
+        PerformanceMonitor.addAttribute(screenTrace, "thread_id", threadId.toString())
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            PerformanceMonitor.stopTrace(screenTrace)
+        }
+    }
+    
     val messages by viewModel.messages.collectAsState()
     val thread by viewModel.thread.collectAsState()
     val selectedModel by viewModel.selectedModel.collectAsState()
@@ -80,12 +94,14 @@ fun ChatScreen(
                         val bytes = stream.readBytes()
                         // Compress image before encoding to prevent SQLite CursorWindow overflow
                         val base64 = withContext(Dispatchers.Default) {
-                            try {
-                                ImageCompressionHelper.compressAndEncodeImage(bytes)
-                            } catch (e: Exception) {
-                                android.util.Log.e("ChatScreen", "Error compressing image, using original", e)
-                                // Fallback to original if compression fails
-                                Base64.encodeToString(bytes, Base64.NO_WRAP)
+                            PerformanceMonitor.measureSuspend("image_compress_and_encode") {
+                                try {
+                                    ImageCompressionHelper.compressAndEncodeImage(bytes)
+                                } catch (e: Exception) {
+                                    android.util.Log.e("ChatScreen", "Error compressing image, using original", e)
+                                    // Fallback to original if compression fails
+                                    Base64.encodeToString(bytes, Base64.NO_WRAP)
+                                }
                             }
                         }
                         selectedImages = selectedImages + base64
@@ -149,6 +165,9 @@ fun ChatScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            BannerAd()
         }
     ) { padding ->
         Column(

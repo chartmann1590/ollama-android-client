@@ -43,3 +43,26 @@
 -keep class com.google.firebase.crashlytics.** { *; }
 -dontwarn com.google.firebase.crashlytics.**
 
+# Firebase Analytics
+-keep class com.google.firebase.analytics.** { *; }
+-keep class com.google.android.gms.measurement.** { *; }
+-keep class com.google.android.gms.internal.measurement.** { *; }
+-dontwarn com.google.firebase.analytics.**
+-dontwarn com.google.android.gms.measurement.**
+
+# Firebase Performance Monitoring
+-keep class com.google.firebase.perf.** { *; }
+-dontwarn com.google.firebase.perf.**
+
+# Firebase Messaging
+-keep class com.google.firebase.messaging.** { *; }
+-dontwarn com.google.firebase.messaging.**
+
+# Firebase Config
+-keep class com.google.firebase.remoteconfig.** { *; }
+-dontwarn com.google.firebase.remoteconfig.**
+
+# AdMob
+-keep class com.google.android.gms.ads.** { *; }
+-dontwarn com.google.android.gms.ads.**
+
