@@ -66,3 +66,8 @@
 -keep class com.google.android.gms.ads.** { *; }
 -dontwarn com.google.android.gms.ads.**
 
+
+# Java Reflection - Required by Gson for generic type serialization/deserialization
+-keep class java.lang.reflect.** { *; }
+-keep class java.lang.** { *; }
+-keep interface java.lang.reflect.** { *; }
