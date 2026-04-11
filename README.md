@@ -1,6 +1,10 @@
 # Ollama Android Client
 
 [![Android CI](https://github.com/chartmann1590/ollama-android-client/actions/workflows/android-ci.yml/badge.svg)](https://github.com/chartmann1590/ollama-android-client/actions/workflows/android-ci.yml)
+[![Get it on Google Play](https://img.shields.io/badge/Google%20Play-Download-34A853?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.charles.ollama.client&pcampaignid=web_share)
+[![Website](https://img.shields.io/badge/Website-ollama--android-6366f1?logo=firebase&logoColor=white)](https://ollama-android-7525f.web.app/)
+
+> 📲 **Available on Google Play**: [Install Ollama AI Chat](https://play.google.com/store/apps/details?id=com.charles.ollama.client&pcampaignid=web_share)
 
 An Android application for interacting with Ollama AI models — remote or fully on-device. Built with Jetpack Compose, this app provides a modern and intuitive interface for chatting with AI models running on your Ollama server **or on your phone itself** via Google's LiteRT-LM runtime.
 

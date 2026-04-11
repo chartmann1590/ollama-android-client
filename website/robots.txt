@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ollama-android-7525f.web.app/sitemap.xml

@@ -3,13 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Ollama AI Chat - Your Personal AI Assistant on Android. Chat with AI models on your Ollama server or run Gemma 4, Qwen 3, DeepSeek R1 and Phi-4 Mini fully on-device with Google LiteRT-LM.">
-    <title>Ollama AI Chat - Android App</title>
+    <meta name="description" content="Ollama AI Chat for Android — connect to your Ollama server or run Gemma 4, Qwen 3, DeepSeek R1 Distill and Phi-4 Mini fully on-device with Google LiteRT-LM. Real-time streaming, private, offline-capable.">
+    <meta name="keywords" content="Ollama, Android, AI chat, LiteRT, LiteRT-LM, on-device AI, Gemma, Qwen, DeepSeek, Phi-4, local LLM, private AI, offline AI, LLM client, Ollama client">
+    <meta name="author" content="Charles Hartmann">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#6366f1">
+    <title>Ollama AI Chat for Android — Run LLMs Locally or via Ollama</title>
+    <link rel="canonical" href="https://ollama-android-7525f.web.app/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ollama-android-7525f.web.app/">
+    <meta property="og:title" content="Ollama AI Chat for Android — Run LLMs Locally or via Ollama">
+    <meta property="og:description" content="Chat with AI on your Android device. Connect to an Ollama server or run Gemma 4, Qwen 3, DeepSeek R1 Distill and Phi-4 Mini fully on-device with Google LiteRT-LM.">
+    <meta property="og:image" content="https://ollama-android-7525f.web.app/assets/images/icon.png">
+    <meta property="og:image:alt" content="Ollama AI Chat app icon">
+    <meta property="og:site_name" content="Ollama AI Chat">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://ollama-android-7525f.web.app/">
+    <meta name="twitter:title" content="Ollama AI Chat for Android — Run LLMs Locally or via Ollama">
+    <meta name="twitter:description" content="Chat with AI on your Android device. Connect to an Ollama server or run Gemma 4, Qwen 3, DeepSeek R1 Distill and Phi-4 Mini fully on-device with Google LiteRT-LM.">
+    <meta name="twitter:image" content="https://ollama-android-7525f.web.app/assets/images/icon.png">
+
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+
+    <!-- JSON-LD structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Ollama AI Chat",
+      "operatingSystem": "ANDROID",
+      "applicationCategory": "CommunicationApplication",
+      "description": "Ollama AI Chat for Android — connect to an Ollama server or run Gemma 4, Qwen 3, DeepSeek R1 Distill and Phi-4 Mini fully on-device with Google LiteRT-LM.",
+      "url": "https://ollama-android-7525f.web.app/",
+      "downloadUrl": "https://play.google.com/store/apps/details?id=com.charles.ollama.client",
+      "installUrl": "https://play.google.com/store/apps/details?id=com.charles.ollama.client",
+      "image": "https://ollama-android-7525f.web.app/assets/images/icon.png",
+      "author": {
+        "@type": "Person",
+        "name": "Charles Hartmann",
+        "url": "https://github.com/chartmann1590"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "5",
+        "ratingCount": "1"
+      }
+    }
+    </script>
 </head>
 <body>
     <!-- Navigation -->
@@ -49,7 +104,7 @@
                         Connect to your Ollama server <strong>or run models fully on-device</strong> — Gemma 4, Qwen 3, DeepSeek R1 Distill and Phi-4 Mini all powered by Google LiteRT-LM. Real-time streaming, no data leaves your phone when you go local.
                     </p>
                     <div class="hero-buttons">
-                        <a href="#download" class="btn btn-primary">
+                        <a href="https://play.google.com/store/apps/details?id=com.charles.ollama.client&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="7 10 12 15 17 10"></polyline>
@@ -296,7 +351,7 @@
                 <h2 class="download-title">Ready to Get Started?</h2>
                 <p class="download-description">Download Ollama AI Chat and start chatting with AI models on your Android device today!</p>
                 <div class="download-buttons">
-                    <a href="#" class="btn btn-primary btn-large" id="play-store-link">
+                    <a href="https://play.google.com/store/apps/details?id=com.charles.ollama.client&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-large" id="play-store-link">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="7 10 12 15 17 10"></polyline>
