@@ -14,6 +14,15 @@
     ],
     "headers": [
       {
+        "source": "/app-ads.txt",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "text/plain; charset=utf-8"
+          }
+        ]
+      },
+      {
         "source": "**/*.@(jpg|jpeg|gif|png|svg|webp|mp4|webm)",
         "headers": [
           {

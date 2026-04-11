@@ -58,6 +58,23 @@ class ServersViewModel @Inject constructor(
             }
         }
     }
+
+    fun addLitertLocalServer(isDefault: Boolean) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _error.value = null
+                val result = manageServerUseCase.addLitertLocalServer(isDefault)
+                result.onFailure { exception ->
+                    _error.value = exception.message ?: "Failed to add on-device server"
+                }
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to add on-device server"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
     
     fun updateServer(server: Server) {
         viewModelScope.launch {
@@ -116,7 +133,12 @@ class ServersViewModel @Inject constructor(
                 _isTestingConnection.value = true
                 _connectionTestResult.value = null
                 _error.value = null
-                
+                if (com.charles.ollama.client.data.litert.LitertConstants.isLitertLocalBaseUrl(baseUrl)) {
+                    _connectionTestResult.value =
+                        "On-device LiteRT does not use a network URL. Download models from the Models screen."
+                    return@launch
+                }
+
                 val result = modelRepository.getModels(baseUrl)
                 result.onSuccess { models ->
                     _connectionTestResult.value = "Connection successful! Found ${models.size} model(s)."

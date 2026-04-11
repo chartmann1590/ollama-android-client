@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import com.charles.ollama.client.ads.InterstitialAdManager
 import com.charles.ollama.client.ui.navigation.NavGraph
 import com.charles.ollama.client.ui.theme.OllamaAndroidTheme
+import com.charles.ollama.client.ui.update.UpdateAvailablePrompt
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.analytics.ktx.logEvent
@@ -70,6 +71,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     NavGraph()
+                    UpdateAvailablePrompt()
                 }
             }
         }

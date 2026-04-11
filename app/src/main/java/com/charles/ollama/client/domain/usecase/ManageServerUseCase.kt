@@ -3,6 +3,8 @@ package com.charles.ollama.client.domain.usecase
 import com.charles.ollama.client.data.repository.ServerRepository
 import com.charles.ollama.client.domain.model.Server
 import com.charles.ollama.client.data.database.entity.ServerConfigEntity
+import com.charles.ollama.client.data.litert.LitertConstants
+import com.charles.ollama.client.data.litert.ServerBackend
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -25,10 +27,25 @@ class ManageServerUseCase @Inject constructor(
             val server = ServerConfigEntity(
                 name = name,
                 baseUrl = baseUrl,
+                backendType = ServerBackend.OLLAMA.name,
                 isDefault = isDefault
             )
             val id = serverRepository.insertServer(server)
             Result.success(id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun addLitertLocalServer(isDefault: Boolean): Result<Long> {
+        return try {
+            val server = ServerConfigEntity(
+                name = "On-device (LiteRT / Gemma)",
+                baseUrl = LitertConstants.LOCAL_BASE_URL,
+                backendType = ServerBackend.LITERT_LOCAL.name,
+                isDefault = isDefault
+            )
+            Result.success(serverRepository.insertServer(server))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -69,6 +86,7 @@ private fun ServerConfigEntity.toDomain(): Server {
         id = id,
         name = name,
         baseUrl = baseUrl,
+        backendType = backendType,
         isDefault = isDefault,
         createdAt = createdAt
     )
@@ -79,6 +97,7 @@ private fun Server.toEntity(): ServerConfigEntity {
         id = id,
         name = name,
         baseUrl = baseUrl,
+        backendType = backendType,
         isDefault = isDefault,
         createdAt = createdAt
     )

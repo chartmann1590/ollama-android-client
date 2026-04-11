@@ -1,5 +1,6 @@
 package com.charles.ollama.client.domain.usecase
 
+import com.charles.ollama.client.data.litert.ServerBackend
 import com.charles.ollama.client.data.repository.ModelRepository
 import com.charles.ollama.client.data.repository.ServerRepository
 import com.charles.ollama.client.domain.model.Model
@@ -13,8 +14,8 @@ class GetModelsUseCase @Inject constructor(
     suspend operator fun invoke(): Result<List<Model>> {
         val defaultServer = serverRepository.getDefaultServerSync()
             ?: return Result.failure(Exception("No server configured"))
-        
-        val result = modelRepository.getModels(defaultServer.baseUrl)
+        val backend = ServerBackend.fromStored(defaultServer.backendType)
+        val result = modelRepository.getModelsForBackend(defaultServer.baseUrl, backend)
         return result.map { models ->
             models.map { it.toDomain() }
         }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Ollama AI Chat - Your Personal AI Assistant on Android. Chat with AI models on your Ollama server with real-time streaming and image support.">
+    <meta name="description" content="Ollama AI Chat - Your Personal AI Assistant on Android. Chat with AI models on your Ollama server or run Gemma 4, Qwen 3, DeepSeek R1 and Phi-4 Mini fully on-device with Google LiteRT-LM.">
     <title>Ollama AI Chat - Android App</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -46,7 +46,7 @@
                         <span class="gradient-text">On Your Android Device</span>
                     </h1>
                     <p class="hero-description">
-                        Transform your Android device into a powerful AI chat interface. Connect to your Ollama server and experience seamless conversations with cutting-edge AI models.
+                        Connect to your Ollama server <strong>or run models fully on-device</strong> — Gemma 4, Qwen 3, DeepSeek R1 Distill and Phi-4 Mini all powered by Google LiteRT-LM. Real-time streaming, no data leaves your phone when you go local.
                     </p>
                     <div class="hero-buttons">
                         <a href="#download" class="btn btn-primary">
@@ -91,6 +91,11 @@
                 <p class="section-subtitle">Everything you need for seamless AI conversations</p>
             </div>
             <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📲</div>
+                    <h3 class="feature-title">On-device AI with LiteRT-LM</h3>
+                    <p class="feature-description">Download and run Gemma 4, Gemma 3, Qwen 3, DeepSeek R1 Distill, and Phi-4 Mini directly on your phone via Google's LiteRT-LM runtime. No server, no network, no data leaving the device.</p>
+                </div>
                 <div class="feature-card">
                     <div class="feature-icon">💬</div>
                     <h3 class="feature-title">Intuitive Chat Interface</h3>
@@ -200,7 +205,18 @@
                         </svg>
                     </button>
                     <div class="faq-answer">
-                        <p>Yes, this app requires an Ollama server to function. Ollama is a free, open-source tool for running large language models locally. You'll need to install Ollama on your computer or server and ensure it's accessible on your network. Visit <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer">ollama.ai</a> to learn more.</p>
+                        <p>No — as of the latest release you can also run models fully on-device using Google's LiteRT-LM runtime, no Ollama server required. Just add a LiteRT (on-device) backend from the Servers screen, download one of the built-in bundles, and chat. If you prefer remote inference, Ollama is still fully supported — visit <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer">ollama.ai</a> to learn more.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Which on-device models can I run?</span>
+                        <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>The Models screen ships with a curated catalog of <code>.litertlm</code> bundles pulled from the public <a href="https://huggingface.co/litert-community" target="_blank" rel="noopener noreferrer">litert-community</a> Hugging Face organization: Gemma 3 270M (~304 MB), Gemma 3 1B (~584 MB), Qwen 3 0.6B (~614 MB), Qwen 2.5 1.5B Instruct (~1.6 GB), DeepSeek R1 Distill Qwen 1.5B (~1.83 GB), Gemma 4 E2B (~2.58 GB), Gemma 4 E4B (~3.65 GB), and Phi-4 Mini Instruct (~3.91 GB). Downloads resume after network drops and a free-space check runs before each pull.</p>
                     </div>
                 </div>
                 <div class="faq-item">

@@ -9,6 +9,8 @@ data class ServerConfigEntity(
     val id: Long = 0,
     val name: String,
     val baseUrl: String,
+    /** [com.charles.ollama.client.data.litert.ServerBackend] name */
+    val backendType: String = com.charles.ollama.client.data.litert.ServerBackend.OLLAMA.name,
     val isDefault: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )

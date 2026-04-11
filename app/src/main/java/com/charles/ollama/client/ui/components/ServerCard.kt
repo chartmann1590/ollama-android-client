@@ -6,7 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.charles.ollama.client.R
+import com.charles.ollama.client.data.litert.ServerBackend
 import com.charles.ollama.client.domain.model.Server
 
 @Composable
@@ -50,7 +53,11 @@ fun ServerCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = server.baseUrl,
+                        text = if (server.backendType == ServerBackend.LITERT_LOCAL.name) {
+                            stringResource(R.string.server_litert_description)
+                        } else {
+                            server.baseUrl
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

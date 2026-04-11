@@ -8,6 +8,12 @@ data class Model(
     val parameterSize: String? = null,
     val quantizationLevel: String? = null
 ) {
+    /** Thread model id for on-device LiteRT catalog entries (e.g. `litert/gemma4_e2b`). */
+    fun isOnDeviceLitert(): Boolean = name.startsWith("litert/")
+
+    /** Matches [com.charles.ollama.client.data.repository.ModelRepository.getLitertModels] `modifiedAt` when the bundle exists on disk. */
+    fun isLitertDownloaded(): Boolean = modifiedAt == "installed"
+
     /**
      * Detects if this model supports vision capabilities.
      * Vision models typically have "vision" in their name or are known vision models.

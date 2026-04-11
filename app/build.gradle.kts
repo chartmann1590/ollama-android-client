@@ -1,10 +1,47 @@
 import java.util.Properties
 import java.io.FileInputStream
+import java.io.ByteArrayOutputStream
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
+// Git commit epoch seconds, used to drive the in-app "new release available"
+// check against the GitHub release `published_at` field. Using the commit
+// timestamp (not `System.currentTimeMillis()`) keeps `buildConfigField` values
+// stable across incremental builds so Gradle's up-to-date checks still work.
+fun gitCommitEpochSeconds(): Long {
+    return try {
+        val out = ByteArrayOutputStream()
+        exec {
+            commandLine("git", "log", "-1", "--format=%ct")
+            standardOutput = out
+            isIgnoreExitValue = true
+        }
+        out.toString(Charsets.UTF_8.name()).trim().toLongOrNull() ?: 0L
+    } catch (_: Exception) {
+        0L
+    }
+}
+
+fun gitShortSha(): String {
+    return try {
+        val out = ByteArrayOutputStream()
+        exec {
+            commandLine("git", "rev-parse", "--short", "HEAD")
+            standardOutput = out
+            isIgnoreExitValue = true
+        }
+        out.toString(Charsets.UTF_8.name()).trim()
+    } catch (_: Exception) {
+        ""
+    }
+}
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-kapt")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.kapt")
+    id("com.google.devtools.ksp")
     id("dagger.hilt.android.plugin")
     id("kotlin-parcelize")
     id("com.google.gms.google-services")
@@ -28,6 +65,11 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        buildConfigField("String", "GITHUB_OWNER", "\"chartmann1590\"")
+        buildConfigField("String", "GITHUB_REPO", "\"ollama-android-client\"")
+        buildConfigField("long", "BUILD_COMMIT_EPOCH_SECONDS", "${gitCommitEpochSeconds()}L")
+        buildConfigField("String", "BUILD_GIT_SHA", "\"${gitShortSha()}\"")
     }
 
     signingConfigs {
@@ -66,27 +108,48 @@ android {
     }
     
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "21"
     }
     
     buildFeatures {
         compose = true
+        buildConfig = true
     }
-    
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
+
+    testOptions {
+        unitTests {
+            // Let JVM unit tests call android.util.Log / TextUtils without
+            // exploding — they return defaults instead of throwing.
+            isReturnDefaultValues = true
+        }
     }
-    
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+kotlin {
+    jvmToolchain(21)
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    javaCompiler.set(
+        javaToolchains.compilerFor {
+            languageVersion.set(JavaLanguageVersion.of(21))
+        }
+    )
+}
+
+kapt {
+    correctErrorTypes = true
 }
 
 dependencies {
@@ -112,8 +175,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
     
     // Hilt
-    implementation("com.google.dagger:hilt-android:2.48")
-    kapt("com.google.dagger:hilt-android-compiler:2.48")
+    implementation("com.google.dagger:hilt-android:2.56.2")
+    kapt("com.google.dagger:hilt-android-compiler:2.56.2")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     
     // Networking
@@ -123,12 +186,15 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     
     // Room
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.8.0")
+    implementation("androidx.room:room-ktx:2.8.0")
+    ksp("androidx.room:room-compiler:2.8.0")
     
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // LiteRT-LM (on-device Gemma / .litertlm)
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
     
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))

@@ -6,10 +6,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import com.charles.ollama.client.R
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
@@ -17,6 +19,8 @@ import android.widget.EditText
 import androidx.core.view.ViewCompat
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.charles.ollama.client.data.litert.LitertConstants
+import com.charles.ollama.client.data.litert.ServerBackend
 import com.charles.ollama.client.domain.model.Server
 import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
@@ -29,6 +33,7 @@ import androidx.compose.runtime.DisposableEffect
 @Composable
 fun ServerListScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToModels: () -> Unit,
     viewModel: ServersViewModel = hiltViewModel()
 ) {
     // Performance monitoring for screen rendering
@@ -53,6 +58,14 @@ fun ServerListScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    TextButton(onClick = onNavigateToModels) {
+                        Text("Models")
+                    }
+                    TextButton(onClick = { viewModel.addLitertLocalServer(isDefault = true) }) {
+                        Text(stringResource(R.string.servers_add_litert))
                     }
                 }
             )
@@ -149,6 +162,8 @@ fun ServerDialog(
     var name by remember { mutableStateOf(server?.name ?: "") }
     var baseUrl by remember { mutableStateOf(server?.baseUrl ?: "http://localhost:11434") }
     var isDefault by remember { mutableStateOf(server?.isDefault ?: false) }
+    val isLitert = server?.backendType == ServerBackend.LITERT_LOCAL.name ||
+        LitertConstants.isLitertLocalBaseUrl(baseUrl)
     
     val isTestingConnection by viewModel.isTestingConnection.collectAsState()
     val connectionTestResult by viewModel.connectionTestResult.collectAsState()
@@ -167,8 +182,15 @@ fun ServerDialog(
                     label = { Text("Server Name") },
                     singleLine = true
                 )
+                if (isLitert) {
+                    Text(
+                        text = stringResource(R.string.server_litert_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 // Native EditText for Firebase Robo Test compatibility
-                AndroidView(
+                if (!isLitert) AndroidView(
                     factory = { context ->
                         EditText(context).apply {
                             id = ViewCompat.generateViewId()
@@ -204,7 +226,7 @@ fun ServerDialog(
                         })
                     }
                 )
-                Row(
+                if (!isLitert) Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -232,6 +254,15 @@ fun ServerDialog(
                         }
                     }
                 }
+                if (isLitert) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = isDefault,
+                            onCheckedChange = { isDefault = it }
+                        )
+                        Text("Set as default")
+                    }
+                }
                 connectionTestResult?.let { result ->
                     Spacer(modifier = Modifier.height(8.dp))
                     Card(
@@ -253,8 +284,11 @@ fun ServerDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(name, baseUrl, isDefault) },
-                enabled = name.isNotBlank() && baseUrl.isNotBlank()
+                onClick = {
+                    val url = if (isLitert) LitertConstants.LOCAL_BASE_URL else baseUrl
+                    onSave(name, url, isDefault)
+                },
+                enabled = name.isNotBlank() && (isLitert || baseUrl.isNotBlank())
             ) {
                 Text("Save")
             }

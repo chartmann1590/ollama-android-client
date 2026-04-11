@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.charles.ollama.client.data.repository.PullProgress
 import com.charles.ollama.client.domain.model.Model
+import com.charles.ollama.client.data.litert.ServerBackend
+import com.charles.ollama.client.data.repository.ServerRepository
 import com.charles.ollama.client.domain.usecase.DeleteModelUseCase
 import com.charles.ollama.client.domain.usecase.GetModelsUseCase
 import com.charles.ollama.client.domain.usecase.PullModelUseCase
@@ -17,7 +19,8 @@ import javax.inject.Inject
 class ModelsViewModel @Inject constructor(
     private val getModelsUseCase: GetModelsUseCase,
     private val pullModelUseCase: PullModelUseCase,
-    private val deleteModelUseCase: DeleteModelUseCase
+    private val deleteModelUseCase: DeleteModelUseCase,
+    private val serverRepository: ServerRepository
 ) : ViewModel() {
     
     private val _models = MutableStateFlow<List<Model>>(emptyList())
@@ -34,12 +37,19 @@ class ModelsViewModel @Inject constructor(
     
     private val _isPulling = MutableStateFlow(false)
     val isPulling: StateFlow<Boolean> = _isPulling.asStateFlow()
+
+    private val _isLitertBackend = MutableStateFlow(false)
+    val isLitertBackend: StateFlow<Boolean> = _isLitertBackend.asStateFlow()
     
     fun loadModels() {
         viewModelScope.launch {
             try {
                 _isLoading.value = true
                 _error.value = null
+                val server = serverRepository.getDefaultServerSync()
+                _isLitertBackend.value =
+                    server?.let { ServerBackend.fromStored(it.backendType) == ServerBackend.LITERT_LOCAL }
+                        ?: false
                 val result = getModelsUseCase()
                 result.onSuccess { modelList ->
                     _models.value = modelList

@@ -5,10 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.charles.ollama.client.data.database.entity.ChatThreadEntity
 import com.charles.ollama.client.data.database.entity.ChatMessageEntity
 import com.charles.ollama.client.data.repository.ChatRepository
-import com.charles.ollama.client.data.repository.ModelRepository
 import com.charles.ollama.client.data.repository.ServerRepository
 import com.charles.ollama.client.domain.model.ChatMessage
 import com.charles.ollama.client.domain.model.Model
+import com.charles.ollama.client.domain.usecase.GetModelsUseCase
 import com.charles.ollama.client.domain.usecase.SendChatMessageUseCase
 import com.charles.ollama.client.util.VibrationHelper
 import com.charles.ollama.client.util.ThinkingParser
@@ -25,7 +25,7 @@ class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val sendChatMessageUseCase: SendChatMessageUseCase,
     private val serverRepository: ServerRepository,
-    private val modelRepository: ModelRepository,
+    private val getModelsUseCase: GetModelsUseCase,
     private val vibrationHelper: VibrationHelper
 ) : ViewModel() {
     
@@ -109,27 +109,19 @@ class ChatViewModel @Inject constructor(
             try {
                 _isLoadingModels.value = true
                 val defaultServer = serverRepository.getDefaultServerSync()
-                if (defaultServer != null) {
-                    PerformanceMonitor.addAttribute(trace, "server_url", defaultServer.baseUrl.take(100))
-                    val result = modelRepository.getModels(defaultServer.baseUrl)
-                    result.onSuccess { models ->
-                        PerformanceMonitor.addMetric(trace, "models_count", models.size.toLong())
-                        _availableModels.value = models.map { modelInfo ->
-                            Model(
-                                name = modelInfo.name,
-                                modifiedAt = modelInfo.modifiedAt,
-                                size = modelInfo.size,
-                                digest = modelInfo.digest,
-                                parameterSize = modelInfo.details?.parameterSize,
-                                quantizationLevel = modelInfo.details?.quantizationLevel
-                            )
-                        }
-                        // Update vision model status if a model is selected
-                        _selectedModel.value?.let { updateVisionModelStatus(it) }
-                    }.onFailure { exception ->
-                        PerformanceMonitor.addAttribute(trace, "error", exception.javaClass.simpleName)
-                        _error.value = "Failed to load models: ${exception.message}"
-                    }
+                PerformanceMonitor.addAttribute(
+                    trace,
+                    "server_url",
+                    defaultServer?.baseUrl?.take(100) ?: "none"
+                )
+                val result = getModelsUseCase()
+                result.onSuccess { models ->
+                    PerformanceMonitor.addMetric(trace, "models_count", models.size.toLong())
+                    _availableModels.value = models
+                    _selectedModel.value?.let { updateVisionModelStatus(it) }
+                }.onFailure { exception ->
+                    PerformanceMonitor.addAttribute(trace, "error", exception.javaClass.simpleName)
+                    _error.value = "Failed to load models: ${exception.message}"
                 }
             } catch (e: Exception) {
                 PerformanceMonitor.addAttribute(trace, "error", e.javaClass.simpleName)

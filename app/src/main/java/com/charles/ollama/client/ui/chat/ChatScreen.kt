@@ -38,6 +38,7 @@ import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
 import com.charles.ollama.client.ui.components.MessageBubble
 import com.charles.ollama.client.ui.components.BannerAd
+import com.charles.ollama.client.ui.models.displayTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -564,8 +565,11 @@ fun ModelSelectorDialog(
                         .heightIn(max = 400.dp)
                 ) {
                     items(availableModels, key = { it.name }) { model ->
+                        val canSelect =
+                            !model.isOnDeviceLitert() || model.isLitertDownloaded()
                         Card(
-                            onClick = { onSelect(model.name) },
+                            onClick = { if (canSelect) onSelect(model.name) },
+                            enabled = canSelect,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
@@ -580,7 +584,7 @@ fun ModelSelectorDialog(
                                 modifier = Modifier.padding(12.dp)
                             ) {
                                 Text(
-                                    text = model.name,
+                                    text = model.displayTitle(),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = if (currentModel == model.name) FontWeight.Bold else FontWeight.Normal
                                 )
@@ -590,6 +594,14 @@ fun ModelSelectorDialog(
                                         text = "Parameters: ${model.parameterSize}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (!canSelect) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Download this bundle on the Models screen first",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
                                     )
                                 }
                             }

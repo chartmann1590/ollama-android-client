@@ -1,14 +1,17 @@
 # Ollama Android Client
 
-An Android application for interacting with Ollama AI models. Built with Jetpack Compose, this app provides a modern and intuitive interface for chatting with AI models running on your Ollama server.
+[![Android CI](https://github.com/chartmann1590/ollama-android-client/actions/workflows/android-ci.yml/badge.svg)](https://github.com/chartmann1590/ollama-android-client/actions/workflows/android-ci.yml)
+
+An Android application for interacting with Ollama AI models — remote or fully on-device. Built with Jetpack Compose, this app provides a modern and intuitive interface for chatting with AI models running on your Ollama server **or on your phone itself** via Google's LiteRT-LM runtime.
 
 ## Features
 
 - 🤖 **Chat with AI Models**: Interact with various Ollama AI models through a clean chat interface
+- 📲 **On-device inference (LiteRT-LM)**: Download and run Gemma 4, Gemma 3, Qwen 3, DeepSeek R1 Distill, and Phi-4 Mini directly on your phone — no server, no network, no data leaving the device
 - 💬 **Message History**: Persistent chat history using Room database
 - 🎨 **Modern UI**: Built with Jetpack Compose and Material Design 3
-- 🔄 **Real-time Streaming**: Receive AI responses streamed in real-time
-- 📱 **Image Support**: Attach and send images in conversations
+- 🔄 **Real-time Streaming**: Receive AI responses streamed in real-time (remote *and* on-device)
+- 📱 **Image Support**: Attach and send images in conversations with vision-capable remote models
 - ⚙️ **Configurable Settings**: Customize model parameters and server settings
 - 🔐 **Secure Networking**: Support for both HTTP and HTTPS connections
 
@@ -69,6 +72,27 @@ An Android application for interacting with Ollama AI models. Built with Jetpack
 The app needs to be configured to connect to your Ollama server. You can configure the server URL in the app settings.
 
 Default server URL: `http://localhost:11434`
+
+### On-device models (LiteRT-LM)
+
+No Ollama server? You can also run models fully on-device using Google's [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) runtime:
+
+1. Open the **Servers** screen and tap **Add LiteRT (on-device)** — this creates a local backend using the `litert-local://` sentinel URL.
+2. Open the **Models** screen (Download icon in the top bar) and pick any bundle from the built-in catalog:
+
+   | Model | Approx. size |
+   |---|---|
+   | Gemma 3 270M IT (q8) | ~304 MB |
+   | Gemma 3 1B IT (int4) | ~584 MB |
+   | Qwen 3 0.6B | ~614 MB |
+   | Qwen 2.5 1.5B Instruct (q8) | ~1.6 GB |
+   | DeepSeek R1 Distill Qwen 1.5B (q8) | ~1.83 GB |
+   | Gemma 4 E2B (LiteRT) | ~2.58 GB |
+   | Gemma 4 E4B (LiteRT) | ~3.65 GB |
+   | Phi-4 Mini Instruct (q8) | ~3.91 GB |
+
+   All bundles are pulled from the public [`litert-community`](https://huggingface.co/litert-community) Hugging Face organization as `.litertlm` files. Downloads support resume (`Range` requests with a `.part` file), free-space pre-checks, and optional Hugging Face tokens for gated repos via **Settings → Hugging Face token**.
+3. Start a new chat thread and pick the downloaded model. Inference runs via `com.google.ai.edge.litertlm.Engine` on the CPU backend — no traffic leaves the device.
 
 ### Network Security
 

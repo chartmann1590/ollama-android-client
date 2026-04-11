@@ -9,15 +9,18 @@ import com.charles.ollama.client.data.database.dao.ChatThreadDao
 import com.charles.ollama.client.data.database.dao.ServerConfigDao
 import com.charles.ollama.client.data.database.entity.ChatMessageEntity
 import com.charles.ollama.client.data.database.entity.ChatThreadEntity
+import com.charles.ollama.client.data.database.entity.InstalledLitertModelEntity
 import com.charles.ollama.client.data.database.entity.ServerConfigEntity
+import com.charles.ollama.client.data.database.dao.InstalledLitertModelDao
 
 @Database(
     entities = [
         ChatThreadEntity::class,
         ChatMessageEntity::class,
-        ServerConfigEntity::class
+        ServerConfigEntity::class,
+        InstalledLitertModelEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(StringListConverter::class)
@@ -25,5 +28,6 @@ abstract class OllamaDatabase : RoomDatabase() {
     abstract fun chatThreadDao(): ChatThreadDao
     abstract fun chatMessageDao(): ChatMessageDao
     abstract fun serverConfigDao(): ServerConfigDao
+    abstract fun installedLitertModelDao(): InstalledLitertModelDao
 }
 

@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.charles.ollama.client.data.litert.LocalModelCatalog
 import com.charles.ollama.client.domain.model.Model
 import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
@@ -37,6 +38,7 @@ fun ModelsScreen(
     val error by viewModel.error.collectAsState()
     val pullProgress by viewModel.pullProgress.collectAsState()
     val isPulling by viewModel.isPulling.collectAsState()
+    val isLitertBackend by viewModel.isLitertBackend.collectAsState()
     
     var showPullDialog by remember { mutableStateOf(false) }
     
@@ -55,7 +57,7 @@ fun ModelsScreen(
                 },
                 actions = {
                     TextButton(onClick = { showPullDialog = true }) {
-                        Text("Pull Model")
+                        Text(if (isLitertBackend) "Download model" else "Pull Model")
                     }
                 }
             )
@@ -78,18 +80,22 @@ fun ModelsScreen(
         } else {
             Column(modifier = Modifier.padding(padding)) {
                 if (isPulling && pullProgress != null) {
+                    val progress = pullProgress!!
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Pulling model...")
+                            Text(if (isLitertBackend) "Downloading model…" else "Pulling model…")
                             Spacer(modifier = Modifier.height(8.dp))
-                            LinearProgressIndicator(progress = pullProgress!!.progress)
+                            LinearProgressIndicator(
+                                progress = progress.progress,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = pullProgress!!.status,
+                                text = formatProgressLine(progress.status, progress.completed, progress.total),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -100,7 +106,10 @@ fun ModelsScreen(
                     items(models, key = { it.name }) { model ->
                         ModelCard(
                             model = model,
-                            onDelete = { viewModel.deleteModel(model.name) }
+                            onDelete = { viewModel.deleteModel(model.name) },
+                            onDownload = if (isLitertBackend) {
+                                { viewModel.pullModel(model.name) }
+                            } else null
                         )
                     }
                 }
@@ -110,6 +119,7 @@ fun ModelsScreen(
     
     if (showPullDialog) {
         PullModelDialog(
+            litertMode = isLitertBackend,
             onDismiss = { showPullDialog = false },
             onPull = { modelName ->
                 viewModel.pullModel(modelName)
@@ -129,28 +139,75 @@ fun ModelsScreen(
 @Composable
 fun PullModelDialog(
     onDismiss: () -> Unit,
-    onPull: (String) -> Unit
+    onPull: (String) -> Unit,
+    litertMode: Boolean = false
 ) {
     var modelName by remember { mutableStateOf("") }
-    
+    var selectedCatalogId by remember {
+        mutableStateOf(LocalModelCatalog.entries.firstOrNull()?.id ?: "")
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Pull Model") },
+        title = {
+            Text(if (litertMode) "Download Gemma 4 (LiteRT)" else "Pull Model")
+        },
         text = {
-            OutlinedTextField(
-                value = modelName,
-                onValueChange = { modelName = it },
-                label = { Text("Model Name") },
-                placeholder = { Text("e.g., llama3.2") },
-                singleLine = true
-            )
+            if (litertMode) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Choose a Gemma 4 bundle. Large downloads use Wi‑Fi when possible.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    LocalModelCatalog.entries.forEach { entry ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedCatalogId == entry.id,
+                                onClick = { selectedCatalogId = entry.id }
+                            )
+                            Column(modifier = Modifier.padding(start = 4.dp)) {
+                                Text(
+                                    text = entry.displayName,
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Text(
+                                    text = formatApproxBytes(entry.approximateSizeBytes),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                OutlinedTextField(
+                    value = modelName,
+                    onValueChange = { modelName = it },
+                    label = { Text("Model Name") },
+                    placeholder = { Text("e.g., llama3.2") },
+                    singleLine = true
+                )
+            }
         },
         confirmButton = {
             TextButton(
-                onClick = { onPull(modelName) },
-                enabled = modelName.isNotBlank()
+                onClick = {
+                    if (litertMode) {
+                        onPull("litert/$selectedCatalogId")
+                    } else {
+                        onPull(modelName)
+                    }
+                },
+                enabled = if (litertMode) selectedCatalogId.isNotBlank() else modelName.isNotBlank()
             ) {
-                Text("Pull")
+                Text(if (litertMode) "Download" else "Pull")
             }
         },
         dismissButton = {
@@ -159,5 +216,31 @@ fun PullModelDialog(
             }
         }
     )
+}
+
+private fun formatProgressLine(status: String, completed: Long, total: Long): String {
+    if (total <= 1L) return status
+    val pct = (completed.toDouble() / total.toDouble() * 100.0).coerceIn(0.0, 100.0)
+    return "$status — ${formatBytes(completed)} / ${formatBytes(total)} (%.0f%%)".format(pct)
+}
+
+private fun formatBytes(bytes: Long): String {
+    val gb = bytes / (1024.0 * 1024.0 * 1024.0)
+    val mb = bytes / (1024.0 * 1024.0)
+    return when {
+        gb >= 1 -> "%.2f GB".format(gb)
+        mb >= 1 -> "%.0f MB".format(mb)
+        else -> "${bytes / 1024} KB"
+    }
+}
+
+private fun formatApproxBytes(bytes: Long): String {
+    val gb = bytes / (1024.0 * 1024.0 * 1024.0)
+    val mb = bytes / (1024.0 * 1024.0)
+    return when {
+        gb >= 1 -> String.format("~%.1f GB", gb)
+        mb >= 1 -> String.format("~%.0f MB", mb)
+        else -> "~${bytes / 1024} KB"
+    }
 }
 

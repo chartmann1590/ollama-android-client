@@ -152,6 +152,9 @@ fun NavGraph(
                 },
                 onNavigateToServers = {
                     navController.navigate(Screen.Servers.route)
+                },
+                onNavigateToModels = {
+                    navController.navigate(Screen.Models.route)
                 }
             )
         }
@@ -179,6 +182,9 @@ fun NavGraph(
         
         composable(Screen.Servers.route) {
             ServerListScreen(
+                onNavigateToModels = {
+                    navController.navigate(Screen.Models.route)
+                },
                 onNavigateBack = {
                     // If there's a default server, navigate to ChatThreads
                     // Otherwise, try to pop back stack (which may do nothing if we're at root)

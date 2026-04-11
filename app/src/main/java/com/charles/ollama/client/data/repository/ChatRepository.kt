@@ -7,8 +7,12 @@ import com.charles.ollama.client.data.api.dto.ChatMessageDto
 import com.charles.ollama.client.data.api.dto.ChatRequest
 import com.charles.ollama.client.data.database.dao.ChatMessageDao
 import com.charles.ollama.client.data.database.dao.ChatThreadDao
+import com.charles.ollama.client.data.database.dao.InstalledLitertModelDao
 import com.charles.ollama.client.data.database.entity.ChatMessageEntity
 import com.charles.ollama.client.data.database.entity.ChatThreadEntity
+import com.charles.ollama.client.data.litert.LocalModelCatalog
+import com.charles.ollama.client.data.litert.LiteRtChatService
+import com.charles.ollama.client.data.litert.ServerBackend
 import com.charles.ollama.client.util.ThinkingParser
 import com.charles.ollama.client.util.PerformanceMonitor
 import android.util.Log
@@ -25,7 +29,10 @@ class ChatRepository @Inject constructor(
     private val chatThreadDao: ChatThreadDao,
     private val chatMessageDao: ChatMessageDao,
     private val apiFactory: OllamaApiFactory,
-    private val streamingService: OllamaStreamingService
+    private val streamingService: OllamaStreamingService,
+    private val serverRepository: ServerRepository,
+    private val installedLitertModelDao: InstalledLitertModelDao,
+    private val liteRtChatService: LiteRtChatService
 ) {
     fun getAllThreads(): Flow<List<ChatThreadEntity>> = chatThreadDao.getAllThreads()
     
@@ -282,7 +289,38 @@ class ChatRepository @Inject constructor(
                 // Return a placeholder - actual streaming will be handled by streamMessage
                 return Result.failure(Exception("Use streamMessage for streaming"))
             }
-            
+
+            val defaultServerNs = serverRepository.getDefaultServerSync()
+            val backendNs = defaultServerNs?.let { ServerBackend.fromStored(it.backendType) } ?: ServerBackend.OLLAMA
+            if (backendNs == ServerBackend.LITERT_LOCAL) {
+                if (!images.isNullOrEmpty()) {
+                    return Result.failure(UnsupportedOperationException("Images are not supported for on-device LiteRT in this build."))
+                }
+                val catalogNs = LocalModelCatalog.fromThreadModelName(model)
+                    ?: return Result.failure(IllegalStateException("Select a LiteRT model from the catalog."))
+                val installedNs = installedLitertModelDao.getById(catalogNs.id)
+                    ?: return Result.failure(IllegalStateException("Download this model from the Models screen first."))
+                val full = StringBuilder()
+                liteRtChatService.streamChat(
+                    modelPath = installedNs.localFilePath,
+                    systemPrompt = effectiveSystemPrompt,
+                    historyBeforeUser = existingMessages,
+                    userMessage = content
+                ).collect { chunk -> full.append(chunk) }
+                val (thinkingNs, responseContentNs) = ThinkingParser.parseThinking(full.toString())
+                val assistantMessageNs = ChatMessageEntity(
+                    threadId = threadId,
+                    role = "assistant",
+                    content = responseContentNs,
+                    thinking = thinkingNs
+                )
+                PerformanceMonitor.measureSuspend("database_insert_assistant_message") {
+                    chatMessageDao.insertMessage(assistantMessageNs)
+                }
+                thread?.let { updateThread(it) }
+                return Result.success(assistantMessageNs)
+            }
+
             // Send to API (non-streaming)
             val request = ChatRequest(
                 model = model,
@@ -395,7 +433,62 @@ class ChatRepository @Inject constructor(
             val assistantMessageId = PerformanceMonitor.measureSuspend("database_insert_placeholder_message") {
                 chatMessageDao.insertMessage(assistantMessageEntity)
             }
-            
+
+            val defaultServer = serverRepository.getDefaultServerSync()
+            val backend = defaultServer?.let { ServerBackend.fromStored(it.backendType) } ?: ServerBackend.OLLAMA
+            if (backend == ServerBackend.LITERT_LOCAL) {
+                if (!images.isNullOrEmpty()) {
+                    throw UnsupportedOperationException("Images are not supported for on-device LiteRT in this build.")
+                }
+                val catalog = LocalModelCatalog.fromThreadModelName(model)
+                    ?: throw IllegalStateException("Select a LiteRT model (Gemma) from the model list.")
+                val installed = installedLitertModelDao.getById(catalog.id)
+                    ?: throw IllegalStateException("Download this model from the Models screen first (can be several GB).")
+                val threadRow = chatThreadDao.getThreadById(threadId)
+                val effectiveSystem = systemPrompt ?: threadRow?.systemPrompt
+
+                var fullContent = ""
+                var deltaCount = 0
+                try {
+                    liteRtChatService.streamChat(
+                        modelPath = installed.localFilePath,
+                        systemPrompt = effectiveSystem,
+                        historyBeforeUser = existingMessages,
+                        userMessage = content
+                    ).collect { chunk ->
+                        deltaCount++
+                        fullContent += chunk
+                        if (deltaCount % 5 == 0 || chunk.length > 80) {
+                            val updatedMessage = assistantMessageEntity.copy(
+                                id = assistantMessageId,
+                                content = fullContent,
+                                thinking = null
+                            )
+                            PerformanceMonitor.measureSuspend("database_update_streaming_message") {
+                                chatMessageDao.insertMessage(updatedMessage)
+                            }
+                        }
+                        emit(StreamDelta(content = chunk, thinking = null))
+                    }
+                } catch (e: Exception) {
+                    Log.e("ChatRepository", "LiteRT stream error: ${e.message}", e)
+                    throw e
+                }
+                val finalMessage = ChatMessageEntity(
+                    id = assistantMessageId,
+                    threadId = threadId,
+                    role = "assistant",
+                    content = fullContent,
+                    thinking = null,
+                    timestamp = System.currentTimeMillis()
+                )
+                PerformanceMonitor.measureSuspend("database_save_final_message") {
+                    chatMessageDao.insertMessage(finalMessage)
+                }
+                threadRow?.let { updateThread(it) }
+                return@flow
+            }
+
             // Create streaming request
             val request = ChatRequest(
                 model = model,

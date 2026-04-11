@@ -10,11 +10,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import com.charles.ollama.client.domain.model.Model
+import com.charles.ollama.client.ui.models.displayTitle
 
 @Composable
 fun ModelCard(
     model: Model,
     onDelete: () -> Unit,
+    onDownload: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -35,7 +37,7 @@ fun ModelCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = model.name,
+                        text = model.displayTitle(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -53,12 +55,29 @@ fun ModelCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    if (model.isOnDeviceLitert() && !model.isLitertDownloaded()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Not downloaded — tap Download to add this bundle",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete model"
-                    )
+                Column(horizontalAlignment = Alignment.End) {
+                    if (model.isOnDeviceLitert() && !model.isLitertDownloaded() && onDownload != null) {
+                        FilledTonalButton(onClick = onDownload) {
+                            Text("Download")
+                        }
+                    }
+                    if (!model.isOnDeviceLitert() || model.isLitertDownloaded()) {
+                        IconButton(onClick = onDelete) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete model"
+                            )
+                        }
+                    }
                 }
             }
         }

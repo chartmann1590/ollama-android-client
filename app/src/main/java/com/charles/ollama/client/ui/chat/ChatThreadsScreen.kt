@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
@@ -29,6 +30,7 @@ import androidx.compose.runtime.DisposableEffect
 fun ChatThreadsScreen(
     onNavigateToChat: (Long) -> Unit,
     onNavigateToServers: () -> Unit,
+    onNavigateToModels: () -> Unit,
     viewModel: ChatThreadsViewModel = hiltViewModel()
 ) {
     // Performance monitoring for screen rendering
@@ -73,7 +75,10 @@ fun ChatThreadsScreen(
             TopAppBar(
                 title = { Text("Chat Threads") },
                 actions = {
-                    IconButton(onClick = { onNavigateToServers() }) {
+                    IconButton(onClick = onNavigateToModels) {
+                        Icon(Icons.Default.Download, contentDescription = "Models")
+                    }
+                    IconButton(onClick = onNavigateToServers) {
                         Icon(Icons.Default.Settings, contentDescription = "Servers")
                     }
                 }
