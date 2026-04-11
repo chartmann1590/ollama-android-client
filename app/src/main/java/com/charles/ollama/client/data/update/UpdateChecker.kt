@@ -7,8 +7,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.time.Instant
-import java.time.format.DateTimeParseException
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -114,13 +115,26 @@ class UpdateChecker @Inject constructor(
         preferences.dismissedTag = tag
     }
 
+    /**
+     * Parse GitHub's `published_at` ISO-8601 UTC timestamp (e.g.
+     * `2026-04-11T21:11:51Z`) without using `java.time.Instant`, which
+     * requires API 26 and minSdk here is 24.
+     */
     private fun parseEpochSeconds(iso: String): Long? = try {
-        Instant.parse(iso).epochSecond
-    } catch (_: DateTimeParseException) {
+        isoFormatter.get()!!.parse(iso)?.time?.let { it / 1000L }
+    } catch (_: Throwable) {
         null
     }
 
     companion object {
         private const val TAG = "UpdateChecker"
+
+        private val isoFormatter: ThreadLocal<SimpleDateFormat> =
+            object : ThreadLocal<SimpleDateFormat>() {
+                override fun initialValue(): SimpleDateFormat =
+                    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                        timeZone = TimeZone.getTimeZone("UTC")
+                    }
+            }
     }
 }

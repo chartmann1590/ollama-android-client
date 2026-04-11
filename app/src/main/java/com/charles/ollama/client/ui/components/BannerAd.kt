@@ -25,15 +25,15 @@ fun BannerAd(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     
-    val adView = remember {
-        AdView(context).apply {
-            setAdSize(AdSize.BANNER)
-            this.adUnitId = adUnitId
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
+    val adView: AdView = remember {
+        val view = AdView(context)
+        view.setAdSize(AdSize.BANNER)
+        view.adUnitId = adUnitId
+        view.layoutParams = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        view
     }
     
     // Handle lifecycle events

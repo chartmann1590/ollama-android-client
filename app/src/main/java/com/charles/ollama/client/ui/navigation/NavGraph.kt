@@ -186,25 +186,14 @@ fun NavGraph(
                     navController.navigate(Screen.Models.route)
                 },
                 onNavigateBack = {
-                    // If there's a default server, navigate to ChatThreads
-                    // Otherwise, try to pop back stack (which may do nothing if we're at root)
                     if (defaultServer != null) {
-                        // Try to pop back to ChatThreads if it exists in the stack
-                        // Otherwise navigate to it
-                        val backStack = navController.currentBackStack.value
-                        val chatThreadsInStack = backStack.any { it.destination.route == Screen.ChatThreads.route }
-                        
-                        if (chatThreadsInStack) {
-                            // Pop back to ChatThreads
-                            navController.popBackStack(Screen.ChatThreads.route, inclusive = false)
-                        } else {
-                            // Navigate to ChatThreads
+                        val popped = navController.popBackStack(Screen.ChatThreads.route, inclusive = false)
+                        if (!popped) {
                             navController.navigate(Screen.ChatThreads.route) {
                                 launchSingleTop = true
                             }
                         }
                     } else {
-                        // Try to pop, but if we're at root, it will do nothing
                         navController.popBackStack()
                     }
                 }
