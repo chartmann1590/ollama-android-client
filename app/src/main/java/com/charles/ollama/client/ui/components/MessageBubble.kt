@@ -1,7 +1,12 @@
 package com.charles.ollama.client.ui.components
 
+import android.content.Context
 import android.graphics.BitmapFactory
+import android.util.Base64
+import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,18 +19,44 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import android.util.Base64
+import com.charles.ollama.client.R
 import com.charles.ollama.client.domain.model.ChatMessage
 
+private fun copyMessageToClipboard(
+    clipboardManager: ClipboardManager,
+    context: Context,
+    text: String,
+    successMessage: String,
+    emptyMessage: String
+) {
+    val trimmedText = text.trim()
+    if (trimmedText.isBlank()) {
+        Toast.makeText(context, emptyMessage, Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    clipboardManager.setText(AnnotatedString(trimmedText))
+    Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
+}
+
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun MessageBubble(
     message: ChatMessage,
     showThinking: Boolean = false,
     modifier: Modifier = Modifier,
     onLoadImages: ((Long) -> Unit)? = null
 ) {
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+    val copySuccessMessage = stringResource(id = R.string.message_copy_success)
+    val nothingToCopyMessage = stringResource(id = R.string.message_copy_nothing)
     val isUser = message.role == "user"
     val hasThinking = message.thinking != null && message.thinking.isNotBlank()
     var isThinkingExpanded by remember { mutableStateOf(showThinking && hasThinking) }
@@ -63,7 +94,20 @@ fun MessageBubble(
             val shouldShowThinkingSection = !isUser && (hasThinking || showThinking)
             if (shouldShowThinkingSection) {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            onClick = {},
+                            onLongClick = {
+                                copyMessageToClipboard(
+                                    clipboardManager = clipboardManager,
+                                    context = context,
+                                    text = message.thinking.orEmpty(),
+                                    successMessage = copySuccessMessage,
+                                    emptyMessage = nothingToCopyMessage
+                                )
+                            }
+                        ),
                     shape = RoundedCornerShape(
                         topStart = 16.dp,
                         topEnd = 16.dp,
@@ -130,7 +174,20 @@ fun MessageBubble(
             
             // Main message content
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = {},
+                        onLongClick = {
+                            copyMessageToClipboard(
+                                clipboardManager = clipboardManager,
+                                context = context,
+                                text = message.content,
+                                successMessage = copySuccessMessage,
+                                emptyMessage = nothingToCopyMessage
+                            )
+                        }
+                    ),
                 shape = RoundedCornerShape(
                     topStart = if (shouldShowThinkingSection && isThinkingExpanded) 4.dp else 16.dp,
                     topEnd = if (shouldShowThinkingSection && isThinkingExpanded) 4.dp else 16.dp,
