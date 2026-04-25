@@ -18,11 +18,21 @@
 # from retrofit when introspecting the suspend function's return type.
 -keep,allowobfuscation,allowshrinking interface retrofit2.Call
 -keep,allowobfuscation,allowshrinking class retrofit2.Response
+# Required by Retrofit's official ProGuard recipe — suspend fun support uses
+# kotlin.coroutines.Continuation reflectively, and R8 full-mode will otherwise
+# rewrite the Continuation parameter such that Retrofit's generic-type extraction
+# returns a raw Class instead of a ParameterizedType.
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
 -dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
 -dontwarn javax.annotation.**
 -dontwarn kotlin.Unit
 -dontwarn retrofit2.KotlinExtensions
 -dontwarn retrofit2.KotlinExtensions$*
+
+# Explicit keep on our Retrofit interface — R8 full-mode is aggressive about
+# proxying interfaces and the @retrofit2.http.* match alone doesn't reliably
+# preserve suspend-fun generics on the Continuation parameter.
+-keep interface com.charles.ollama.client.data.api.OllamaApi { *; }
 
 # OkHttp
 -dontwarn okhttp3.**
