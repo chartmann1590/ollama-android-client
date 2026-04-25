@@ -2,6 +2,7 @@ package com.charles.ollama.client.ads
 
 import android.app.Activity
 import android.util.Log
+import com.charles.ollama.client.BuildConfig
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
@@ -15,10 +16,10 @@ import javax.inject.Singleton
 
 @Singleton
 class InterstitialAdManager @Inject constructor() {
-    
+
     private var interstitialAd: InterstitialAd? = null
     private var isLoading = false
-    private val adUnitId = "ca-app-pub-8382831211800454/6664403620"
+    private val adUnitId = BuildConfig.ADMOB_INTERSTITIAL_AD_UNIT_ID
     
     // Probability of showing an ad (30% chance)
     private val showAdProbability = 0.3f
@@ -31,6 +32,7 @@ class InterstitialAdManager @Inject constructor() {
      * Load an interstitial ad
      */
     fun loadAd(activity: Activity) {
+        if (!BuildConfig.ADS_ENABLED) return
         if (isLoading || interstitialAd != null) {
             return
         }
@@ -89,6 +91,7 @@ class InterstitialAdManager @Inject constructor() {
      * Returns true if ad was shown, false otherwise
      */
     fun showAdIfAvailable(activity: Activity): Boolean {
+        if (!BuildConfig.ADS_ENABLED) return false
         val trace = PerformanceMonitor.startAdTrace("show_interstitial")
         val ad = interstitialAd
         

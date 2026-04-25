@@ -4,6 +4,32 @@ import java.io.ByteArrayOutputStream
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 
+// Resolution order for AdMob configuration (and the same precedence works for
+// the ads kill switch): environment variable (CI secrets) → local.properties
+// (developer/fork override) → default. Defaults below are Google's documented
+// AdMob *test* IDs so an unconfigured fork still builds and runs without
+// pulling real ad inventory.
+val localProperties = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) FileInputStream(f).use { load(it) }
+}
+
+fun adProp(envName: String, propName: String, default: String): String {
+    val fromEnv = System.getenv(envName)
+    if (!fromEnv.isNullOrBlank()) return fromEnv
+    val fromLocal = localProperties.getProperty(propName)
+    if (!fromLocal.isNullOrBlank()) return fromLocal
+    return default
+}
+
+fun adsEnabled(): Boolean {
+    val env = System.getenv("ADS_ENABLED")
+    if (!env.isNullOrBlank()) return env.equals("true", ignoreCase = true)
+    val prop = localProperties.getProperty("ads.enabled")
+    if (!prop.isNullOrBlank()) return prop.equals("true", ignoreCase = true)
+    return true
+}
+
 // Git commit epoch seconds, used to drive the in-app "new release available"
 // check against the GitHub release `published_at` field. Using the commit
 // timestamp (not `System.currentTimeMillis()`) keeps `buildConfigField` values
@@ -58,8 +84,8 @@ android {
         applicationId = "com.charles.ollama.client"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -70,6 +96,48 @@ android {
         buildConfigField("String", "GITHUB_REPO", "\"ollama-android-client\"")
         buildConfigField("long", "BUILD_COMMIT_EPOCH_SECONDS", "${gitCommitEpochSeconds()}L")
         buildConfigField("String", "BUILD_GIT_SHA", "\"${gitShortSha()}\"")
+
+        // AdMob — defaults are Google's public test IDs, so a freshly-cloned
+        // fork builds and runs without ad inventory or a real account. Real
+        // IDs come from CI secrets or a developer's local.properties.
+        // See https://developers.google.com/admob/android/test-ads
+        val admobAppId = adProp(
+            envName = "ADMOB_APP_ID",
+            propName = "admob.appId",
+            default = "ca-app-pub-3940256099942544~3347511713"
+        )
+        val admobBannerId = adProp(
+            envName = "ADMOB_BANNER_AD_UNIT_ID",
+            propName = "admob.bannerAdUnitId",
+            default = "ca-app-pub-3940256099942544/6300978111"
+        )
+        val admobInterstitialId = adProp(
+            envName = "ADMOB_INTERSTITIAL_AD_UNIT_ID",
+            propName = "admob.interstitialAdUnitId",
+            default = "ca-app-pub-3940256099942544/1033173712"
+        )
+        val admobNativeId = adProp(
+            envName = "ADMOB_NATIVE_AD_UNIT_ID",
+            propName = "admob.nativeAdUnitId",
+            default = "ca-app-pub-3940256099942544/2247696110"
+        )
+        val admobAppOpenId = adProp(
+            envName = "ADMOB_APP_OPEN_AD_UNIT_ID",
+            propName = "admob.appOpenAdUnitId",
+            default = "ca-app-pub-3940256099942544/9257395921"
+        )
+        val adsEnabled = adsEnabled()
+
+        buildConfigField("boolean", "ADS_ENABLED", adsEnabled.toString())
+        buildConfigField("String", "ADMOB_APP_ID", "\"$admobAppId\"")
+        buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$admobBannerId\"")
+        buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", "\"$admobInterstitialId\"")
+        buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$admobNativeId\"")
+        buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$admobAppOpenId\"")
+
+        // Substituted into AndroidManifest.xml's
+        // <meta-data com.google.android.gms.ads.APPLICATION_ID/> entry.
+        manifestPlaceholders["admobAppId"] = admobAppId
     }
 
     signingConfigs {
@@ -156,6 +224,7 @@ dependencies {
     // Core Android
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-process:2.6.2")
     implementation("androidx.activity:activity-compose:1.8.1")
     
     // Compose
@@ -209,7 +278,10 @@ dependencies {
     
     // Testing
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.mockito:mockito-core:5.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test:core:1.5.0")
+    androidTestImplementation("androidx.test:runner:1.5.2")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

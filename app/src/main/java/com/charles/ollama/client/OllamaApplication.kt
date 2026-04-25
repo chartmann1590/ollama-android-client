@@ -5,8 +5,11 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.charles.ollama.client.R
+import com.charles.ollama.client.ads.AppOpenAdManager
 import com.google.firebase.FirebaseApp
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -16,15 +19,21 @@ import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class OllamaApplication : Application() {
-    
+
+    private val appOpenAdManager = AppOpenAdManager()
+
     override fun onCreate() {
         super.onCreate()
-        
+
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
-        
+
         // Enable Firebase Crashlytics
         FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
+
+        installMainLoopExceptionFilter()
+
+        appOpenAdManager.register(this)
         
         // Initialize Firebase Analytics
         FirebaseAnalytics.getInstance(this)
@@ -86,8 +95,43 @@ class OllamaApplication : Application() {
         }
     }
     
+    // Swallow a known framework race in ViewRootImpl.scrollToRectOrFocus where
+    // the focused view is detached between focus search and the scroll, throwing
+    // IllegalArgumentException("parameter must be a descendant of this view")
+    // from ViewGroup.offsetRectBetweenParentAndChild. Report as non-fatal so we
+    // still see it in Crashlytics, but don't take down the process for a single
+    // dropped frame.
+    private fun installMainLoopExceptionFilter() {
+        Handler(Looper.getMainLooper()).post(object : Runnable {
+            override fun run() {
+                while (true) {
+                    try {
+                        Looper.loop()
+                    } catch (t: Throwable) {
+                        if (isSuppressibleFrameworkBug(t)) {
+                            runCatching { FirebaseCrashlytics.getInstance().recordException(t) }
+                            continue
+                        }
+                        Thread.getDefaultUncaughtExceptionHandler()
+                            ?.uncaughtException(Thread.currentThread(), t)
+                        return
+                    }
+                }
+            }
+        })
+    }
+
     companion object {
         private const val TAG = "OllamaApplication"
+    }
+}
+
+internal fun isSuppressibleFrameworkBug(t: Throwable): Boolean {
+    if (t !is IllegalArgumentException) return false
+    if (t.message?.contains("descendant of this view") != true) return false
+    return t.stackTrace.any { f ->
+        f.className == "android.view.ViewGroup" &&
+            f.methodName == "offsetRectBetweenParentAndChild"
     }
 }
 

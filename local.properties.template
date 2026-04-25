@@ -1,0 +1,27 @@
+# local.properties — developer-local overrides. NEVER commit this file.
+# Copy to local.properties and fill in values you want to override locally.
+#
+# Resolution order for ad configuration is:
+#   1. Environment variables (used by CI from GitHub Secrets)
+#   2. local.properties (this file, for forks / individual developers)
+#   3. Built-in defaults: Google's public AdMob *test* IDs, so an
+#      unconfigured fork still builds and runs without ad inventory.
+#
+# See https://developers.google.com/admob/android/test-ads for the meaning
+# of those defaults — they always return test ads, never production ones.
+
+# --- Android SDK ---
+# sdk.dir=C:\\Users\\you\\AppData\\Local\\Android\\Sdk
+
+# --- Ads kill switch ---
+# Set to "false" to compile a build with no ad loading at runtime. The ads
+# code is still on the classpath, but every entry point short-circuits.
+# Useful for forks that want to ship without monetization.
+# ads.enabled=true
+
+# --- AdMob IDs ---
+# admob.appId=ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX
+# admob.bannerAdUnitId=ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX
+# admob.interstitialAdUnitId=ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX
+# admob.nativeAdUnitId=ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX
+# admob.appOpenAdUnitId=ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX

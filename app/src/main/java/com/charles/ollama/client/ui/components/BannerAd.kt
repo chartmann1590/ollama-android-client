@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.charles.ollama.client.BuildConfig
 import com.charles.ollama.client.util.PerformanceMonitor
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
@@ -20,8 +21,9 @@ import com.google.android.gms.ads.LoadAdError
 @Composable
 fun BannerAd(
     modifier: Modifier = Modifier,
-    adUnitId: String = "ca-app-pub-8382831211800454/4461762174"
+    adUnitId: String = BuildConfig.ADMOB_BANNER_AD_UNIT_ID
 ) {
+    if (!BuildConfig.ADS_ENABLED) return
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     

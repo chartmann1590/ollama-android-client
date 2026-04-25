@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +39,7 @@ import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
 import com.charles.ollama.client.ui.components.MessageBubble
 import com.charles.ollama.client.ui.components.BannerAd
+import com.charles.ollama.client.ui.components.NativeAdCard
 import com.charles.ollama.client.ui.models.displayTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -120,10 +122,17 @@ fun ChatScreen(
         viewModel.setThreadId(threadId)
     }
     
+    // Pick a stable interleaved native-ad slot once per session so the ad
+    // doesn't jump as new messages stream in.
+    val nativeAdAfter = rememberSaveable { (1..3).random() }
+    val chatRows = remember(messages, nativeAdAfter) {
+        buildChatRows(messages, nativeAdAfter)
+    }
+
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             scope.launch {
-                listState.animateScrollToItem(messages.size - 1)
+                listState.animateScrollToItem(chatRows.lastIndex.coerceAtLeast(0))
             }
         }
     }
@@ -184,13 +193,18 @@ fun ChatScreen(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                items(messages, key = { it.id }) { message ->
-                    val showThinking by viewModel.showThinking.collectAsState()
-                    MessageBubble(
-                        message = message,
-                        showThinking = showThinking,
-                        onLoadImages = { messageId -> viewModel.loadMessageImages(messageId) }
-                    )
+                items(chatRows, key = ChatRow::key) { row ->
+                    when (row) {
+                        is ChatRow.Msg -> {
+                            val showThinking by viewModel.showThinking.collectAsState()
+                            MessageBubble(
+                                message = row.message,
+                                showThinking = showThinking,
+                                onLoadImages = { messageId -> viewModel.loadMessageImages(messageId) }
+                            )
+                        }
+                        is ChatRow.Ad -> NativeAdCard()
+                    }
                 }
                 
                 if (isLoading) {
@@ -616,5 +630,25 @@ fun ModelSelectorDialog(
             }
         }
     )
+}
+
+private sealed interface ChatRow {
+    val key: String
+    data class Msg(val message: ChatMessage) : ChatRow {
+        override val key: String get() = "m-${message.id}"
+    }
+    data object Ad : ChatRow {
+        override val key: String get() = "ad-native"
+    }
+}
+
+private fun buildChatRows(messages: List<ChatMessage>, adAfter: Int): List<ChatRow> {
+    if (messages.size <= adAfter) return messages.map(ChatRow::Msg)
+    val out = ArrayList<ChatRow>(messages.size + 1)
+    messages.forEachIndexed { i, m ->
+        out.add(ChatRow.Msg(m))
+        if (i == adAfter - 1) out.add(ChatRow.Ad)
+    }
+    return out
 }
 

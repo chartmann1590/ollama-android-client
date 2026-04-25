@@ -22,9 +22,7 @@ class LiteRtChatService @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
-    init {
-        Engine.setNativeMinLogSeverity(LogSeverity.ERROR)
-    }
+    @Volatile private var nativeLogSeverityApplied = false
 
     /**
      * Streams assistant text deltas for one user turn. Prior history is passed
@@ -43,6 +41,13 @@ class LiteRtChatService @Inject constructor(
         userMessage: String
     ): Flow<String> = flow {
         if (userMessage.isBlank()) return@flow
+        // Touch the JNI lib only when the on-device backend is actually used.
+        // Doing this in init crashed singletons on devices where the .so isn't
+        // packaged for the ABI (UnsatisfiedLinkError on litertlm_jni).
+        if (!nativeLogSeverityApplied) {
+            runCatching { Engine.setNativeMinLogSeverity(LogSeverity.ERROR) }
+            nativeLogSeverityApplied = true
+        }
         val cacheDir = context.cacheDir.absolutePath
         val engineConfig = EngineConfig(
             modelPath = modelPath,

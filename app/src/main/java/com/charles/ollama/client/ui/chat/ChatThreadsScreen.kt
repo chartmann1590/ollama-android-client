@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -20,6 +21,7 @@ import com.charles.ollama.client.domain.model.ChatThread
 import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
 import com.charles.ollama.client.ui.components.BannerAd
+import com.charles.ollama.client.ui.components.NativeAdCard
 import com.charles.ollama.client.util.PerformanceMonitor
 import java.text.SimpleDateFormat
 import java.util.*
@@ -127,13 +129,23 @@ fun ChatThreadsScreen(
                     singleLine = true
                 )
                 
+                // Pick the slot where a native ad is interleaved among threads.
+                // Stable across recompositions/process death so the ad doesn't
+                // jump around mid-scroll. Skipped when the list is too short.
+                val nativeAdAfter = rememberSaveable { (1..3).random() }
+                val rows = remember(threads, nativeAdAfter) {
+                    buildThreadRows(threads, nativeAdAfter)
+                }
                 LazyColumn {
-                    items(threads, key = { it.id }) { thread ->
-                        ThreadItem(
-                            thread = thread,
-                            onClick = { onNavigateToChat(thread.id) },
-                            onDelete = { viewModel.deleteThread(thread.id) }
-                        )
+                    items(rows, key = ThreadRow::key) { row ->
+                        when (row) {
+                            is ThreadRow.Thread -> ThreadItem(
+                                thread = row.thread,
+                                onClick = { onNavigateToChat(row.thread.id) },
+                                onDelete = { viewModel.deleteThread(row.thread.id) }
+                            )
+                            is ThreadRow.Ad -> NativeAdCard()
+                        }
                     }
                 }
             }
@@ -250,5 +262,25 @@ fun CreateThreadDialog(
 private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
+}
+
+private sealed interface ThreadRow {
+    val key: String
+    data class Thread(val thread: ChatThread) : ThreadRow {
+        override val key: String get() = "t-${thread.id}"
+    }
+    data object Ad : ThreadRow {
+        override val key: String get() = "ad-native"
+    }
+}
+
+private fun buildThreadRows(threads: List<ChatThread>, adAfter: Int): List<ThreadRow> {
+    if (threads.size <= adAfter) return threads.map(ThreadRow::Thread)
+    val out = ArrayList<ThreadRow>(threads.size + 1)
+    threads.forEachIndexed { i, t ->
+        out.add(ThreadRow.Thread(t))
+        if (i == adAfter - 1) out.add(ThreadRow.Ad)
+    }
+    return out
 }
 
