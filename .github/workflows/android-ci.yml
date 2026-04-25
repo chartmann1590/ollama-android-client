@@ -17,19 +17,20 @@ permissions:
 # AdMob configuration is sourced from repository secrets. When a secret is
 # unset (e.g. on a fork without the user's account), the build falls back to
 # Google's public AdMob test IDs via app/build.gradle.kts so the build still
-# succeeds without leaking real ad inventory.
-env:
-  ADS_ENABLED: ${{ vars.ADS_ENABLED || 'true' }}
-  ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
-  ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
-  ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
-  ADMOB_NATIVE_AD_UNIT_ID: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
-  ADMOB_APP_OPEN_AD_UNIT_ID: ${{ secrets.ADMOB_APP_OPEN_AD_UNIT_ID }}
+# succeeds without leaking real ad inventory. The env block lives inside each
+# job because the `secrets` context is only valid at job/step scope.
 
 jobs:
   test-and-build:
     name: Test + Build APKs
     runs-on: ubuntu-latest
+    env:
+      ADS_ENABLED: ${{ vars.ADS_ENABLED || 'true' }}
+      ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+      ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+      ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
+      ADMOB_NATIVE_AD_UNIT_ID: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
+      ADMOB_APP_OPEN_AD_UNIT_ID: ${{ secrets.ADMOB_APP_OPEN_AD_UNIT_ID }}
 
     steps:
       - name: Checkout
@@ -64,13 +65,16 @@ jobs:
           fi
 
       - name: Materialize release keystore
-        if: ${{ secrets.RELEASE_KEYSTORE != '' }}
         env:
           RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
+          if [ -z "$RELEASE_KEYSTORE" ]; then
+            echo "RELEASE_KEYSTORE secret not set — release build will fall back to debug signing."
+            exit 0
+          fi
           echo "$RELEASE_KEYSTORE" | base64 -d > app/release.keystore
           {
             echo "storeFile=app/release.keystore"
@@ -135,6 +139,13 @@ jobs:
     name: E2E launch test (emulator)
     needs: test-and-build
     runs-on: ubuntu-latest
+    env:
+      ADS_ENABLED: ${{ vars.ADS_ENABLED || 'true' }}
+      ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+      ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+      ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
+      ADMOB_NATIVE_AD_UNIT_ID: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
+      ADMOB_APP_OPEN_AD_UNIT_ID: ${{ secrets.ADMOB_APP_OPEN_AD_UNIT_ID }}
 
     # Guards two prior Crashlytics regressions that both surfaced at app open:
     #   * UnsatisfiedLinkError: litertlm_jni from LiteRtChatService.<init>
@@ -250,13 +261,13 @@ jobs:
       - name: Compute release metadata
         id: meta
         env:
-          HAS_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE != '' && 'true' || 'false' }}
+          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
         run: |
           SHORT_SHA="$(git rev-parse --short "$GITHUB_SHA")"
           TAG="ci-${GITHUB_RUN_NUMBER}-${SHORT_SHA}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "name=CI build ${GITHUB_RUN_NUMBER} (${SHORT_SHA})" >> "$GITHUB_OUTPUT"
-          if [ "$HAS_KEYSTORE" = "true" ]; then
+          if [ -n "$RELEASE_KEYSTORE" ]; then
             SIGNING_NOTE="signed with the release keystore"
           else
             SIGNING_NOTE="signed with the debug key (no RELEASE_KEYSTORE secret configured)"
