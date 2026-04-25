@@ -265,8 +265,14 @@ jobs:
         run: |
           SHORT_SHA="$(git rev-parse --short "$GITHUB_SHA")"
           TAG="ci-${GITHUB_RUN_NUMBER}-${SHORT_SHA}"
+          # Mirror the formula in app/build.gradle.kts: versionCode = 1000 +
+          # GITHUB_RUN_NUMBER, versionName = "1.2.<run_number>". Surfaced in
+          # the release notes so the Play Console version is obvious from the
+          # GitHub Release page without unzipping the APK.
+          VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))
+          VERSION_NAME="1.2.${GITHUB_RUN_NUMBER}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "name=CI build ${GITHUB_RUN_NUMBER} (${SHORT_SHA})" >> "$GITHUB_OUTPUT"
+          echo "name=v${VERSION_NAME} (build ${VERSION_CODE})" >> "$GITHUB_OUTPUT"
           if [ -n "$RELEASE_KEYSTORE" ]; then
             SIGNING_NOTE="signed with the release keystore"
           else
@@ -275,6 +281,10 @@ jobs:
           {
             echo "body<<EOF"
             echo "Automated release build from \`${GITHUB_REF_NAME}\` at commit \`${SHORT_SHA}\`."
+            echo ""
+            echo "## Play Store metadata"
+            echo "- versionCode: \`${VERSION_CODE}\`"
+            echo "- versionName: \`${VERSION_NAME}\`"
             echo ""
             echo "## What's in this build"
             echo "- Release APK produced by \`:app:assembleRelease\`, ${SIGNING_NOTE}"

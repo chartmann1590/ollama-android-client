@@ -84,8 +84,18 @@ android {
         applicationId = "com.charles.ollama.client"
         minSdk = 24
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.2"
+
+        // Play Store requires versionCode to monotonically increase per upload.
+        // In CI we offset GITHUB_RUN_NUMBER by 1000 so it can never collide
+        // with any manually-uploaded build (the previous manual versionCode
+        // was 3) — the offset gives plenty of headroom even if the workflow
+        // ever resets. Local builds keep a stable baseline so incremental
+        // gradle outputs aren't churned on every commit.
+        val baseVersionCode = 3
+        val baseVersionName = "1.2"
+        val ciRunNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        versionCode = if (ciRunNumber != null) 1000 + ciRunNumber else baseVersionCode
+        versionName = if (ciRunNumber != null) "$baseVersionName.$ciRunNumber" else baseVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
