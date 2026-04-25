@@ -5,9 +5,19 @@
 # Retrofit
 -keepattributes Signature, InnerClasses, EnclosingMethod
 -keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
+-keepattributes AnnotationDefault
 -keepclassmembers,allowshrinking,allowobfuscation interface * {
     @retrofit2.http.* <methods>;
 }
+# Keep retrofit interfaces themselves so the proxy can be created. R8 full-mode
+# otherwise strips the interface even though its methods are kept.
+-if interface * { @retrofit2.http.* <methods>; }
+-keep,allowobfuscation interface <1>
+# Keep generic signatures on Call / Response so suspend fun resolution finds the
+# wrapped type — without these you get "Class cannot be cast to ParameterizedType"
+# from retrofit when introspecting the suspend function's return type.
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
 -dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
 -dontwarn javax.annotation.**
 -dontwarn kotlin.Unit
@@ -27,6 +37,18 @@
 -keep class * implements com.google.gson.TypeAdapterFactory
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
+# Honor @SerializedName on any model class regardless of whether the class
+# itself is otherwise kept.
+-keepclassmembers,allowobfuscation class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# Ollama API DTOs — Gson reflects against these to deserialize /api/tags etc.
+# Without these keeps, R8 strips the List<ModelInfo> generic signature and the
+# response decode fails with "java.lang.Class cannot be cast to
+# java.lang.reflect.ParameterizedType".
+-keep class com.charles.ollama.client.data.api.dto.** { *; }
+-keep class com.charles.ollama.client.domain.model.** { *; }
 
 # Room
 -keep class * extends androidx.room.RoomDatabase
