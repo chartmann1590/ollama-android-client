@@ -79,6 +79,7 @@ plugins {
 android {
     namespace = "com.charles.ollama.client"
     compileSdk = 35
+    flavorDimensions += "distribution"
 
     defaultConfig {
         applicationId = "com.charles.ollama.client"
@@ -148,6 +149,19 @@ android {
         // Substituted into AndroidManifest.xml's
         // <meta-data com.google.android.gms.ads.APPLICATION_ID/> entry.
         manifestPlaceholders["admobAppId"] = admobAppId
+    }
+
+    productFlavors {
+        create("play") {
+            dimension = "distribution"
+            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_PROMPT", "false")
+        }
+        create("github") {
+            dimension = "distribution"
+            applicationIdSuffix = ".github"
+            versionNameSuffix = "-github"
+            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_PROMPT", "true")
+        }
     }
 
     signingConfigs {

@@ -2,7 +2,6 @@ name: Android CI
 
 on:
   push:
-    branches: [master, main]
   pull_request:
     branches: [master, main]
   workflow_dispatch:
@@ -61,7 +60,7 @@ jobs:
             printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
           else
             echo "GOOGLE_SERVICES_JSON secret not set — writing placeholder so the Firebase Gradle plugin can parse the file."
-            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"ollama-android-ci","storage_bucket":"ollama-android-ci.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000000000","android_client_info":{"package_name":"com.charles.ollama.client"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
+            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"ollama-android-ci","storage_bucket":"ollama-android-ci.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000000000","android_client_info":{"package_name":"com.charles.ollama.client"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}},{"client_info":{"mobilesdk_app_id":"1:000000000000:android:1111111111111111111111","android_client_info":{"package_name":"com.charles.ollama.client.github"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
           fi
 
       - name: Materialize release keystore
@@ -92,11 +91,65 @@ jobs:
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
 
-      - name: Assemble release APK
-        run: ./gradlew :app:assembleRelease --stacktrace
+      - name: Assemble release APKs (Play + GitHub)
+        run: ./gradlew :app:assemblePlayRelease :app:assembleGithubRelease --stacktrace
 
-      - name: Bundle release AAB
-        run: ./gradlew :app:bundleRelease --stacktrace
+      - name: Bundle release AABs (Play + GitHub)
+        run: ./gradlew :app:bundlePlayRelease :app:bundleGithubRelease --stacktrace
+
+      - name: Verify flavor separation and version metadata
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          # Source-set guardrail: updater implementation must live only in github flavor.
+          forbidden_main = [
+              Path("app/src/main/java/com/charles/ollama/client/ui/update/UpdateAvailablePrompt.kt"),
+              Path("app/src/main/java/com/charles/ollama/client/ui/update/UpdateViewModel.kt"),
+              Path("app/src/main/java/com/charles/ollama/client/data/update/UpdateChecker.kt"),
+              Path("app/src/main/java/com/charles/ollama/client/data/update/UpdateInfo.kt"),
+              Path("app/src/main/java/com/charles/ollama/client/data/update/UpdatePreferences.kt"),
+          ]
+          missing_github = [
+              Path("app/src/github/java/com/charles/ollama/client/ui/update/UpdateAvailablePrompt.kt"),
+              Path("app/src/github/java/com/charles/ollama/client/ui/update/UpdateViewModel.kt"),
+              Path("app/src/github/java/com/charles/ollama/client/data/update/UpdateChecker.kt"),
+              Path("app/src/github/java/com/charles/ollama/client/data/update/UpdateInfo.kt"),
+              Path("app/src/github/java/com/charles/ollama/client/data/update/UpdatePreferences.kt"),
+          ]
+          missing_play_stub = Path("app/src/play/java/com/charles/ollama/client/ui/update/UpdateAvailablePrompt.kt")
+
+          violations = [str(p) for p in forbidden_main if p.exists()]
+          github_missing = [str(p) for p in missing_github if not p.exists()]
+          play_stub_missing = not missing_play_stub.exists()
+
+          if violations:
+              raise SystemExit("Updater code leaked into main source set: " + ", ".join(violations))
+          if github_missing:
+              raise SystemExit("GitHub updater source files missing: " + ", ".join(github_missing))
+          if play_stub_missing:
+              raise SystemExit("Play no-op updater stub missing: " + str(missing_play_stub))
+
+          run_number = int(os.environ["GITHUB_RUN_NUMBER"])
+          expected_version_code = 1000 + run_number
+          expected_play_version_name = f"1.2.{run_number}"
+          expected_github_version_name = f"1.2.{run_number}-github"
+
+          play_meta = json.loads(Path("app/build/outputs/apk/play/release/output-metadata.json").read_text(encoding="utf-8"))
+          github_meta = json.loads(Path("app/build/outputs/apk/github/release/output-metadata.json").read_text(encoding="utf-8"))
+
+          play = play_meta["elements"][0]
+          github = github_meta["elements"][0]
+
+          assert play_meta["applicationId"] == "com.charles.ollama.client", play_meta["applicationId"]
+          assert github_meta["applicationId"] == "com.charles.ollama.client.github", github_meta["applicationId"]
+          assert play["versionCode"] == expected_version_code, (play["versionCode"], expected_version_code)
+          assert github["versionCode"] == expected_version_code, (github["versionCode"], expected_version_code)
+          assert play["versionName"] == expected_play_version_name, (play["versionName"], expected_play_version_name)
+          assert github["versionName"] == expected_github_version_name, (github["versionName"], expected_github_version_name)
+          PY
 
       - name: Upload unit test report
         if: always()
@@ -121,18 +174,32 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: Upload release APK
+      - name: Upload Play release APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: app/build/outputs/apk/release/*.apk
+          name: app-play-release-apk
+          path: app/build/outputs/apk/play/release/*.apk
           if-no-files-found: error
 
-      - name: Upload release AAB
+      - name: Upload GitHub release APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-bundle
-          path: app/build/outputs/bundle/release/*.aab
+          name: app-github-release-apk
+          path: app/build/outputs/apk/github/release/*.apk
+          if-no-files-found: error
+
+      - name: Upload Play release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-play-release-aab
+          path: app/build/outputs/bundle/playRelease/*.aab
+          if-no-files-found: error
+
+      - name: Upload GitHub release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-github-release-aab
+          path: app/build/outputs/bundle/githubRelease/*.aab
           if-no-files-found: error
 
   e2e:
@@ -181,7 +248,7 @@ jobs:
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
           else
-            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"ollama-android-ci","storage_bucket":"ollama-android-ci.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000000000","android_client_info":{"package_name":"com.charles.ollama.client"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
+            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"ollama-android-ci","storage_bucket":"ollama-android-ci.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000000000","android_client_info":{"package_name":"com.charles.ollama.client"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}},{"client_info":{"mobilesdk_app_id":"1:000000000000:android:1111111111111111111111","android_client_info":{"package_name":"com.charles.ollama.client.github"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
           fi
 
       - name: Enable KVM
@@ -237,7 +304,7 @@ jobs:
     needs:
       - test-and-build
       - e2e
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
@@ -246,17 +313,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download release APK
+      - name: Download Play release APK
         uses: actions/download-artifact@v4
         with:
-          name: app-release
-          path: artifacts/apk
+          name: app-play-release-apk
+          path: artifacts/play-apk
 
-      - name: Download release AAB
+      - name: Download GitHub release APK
         uses: actions/download-artifact@v4
         with:
-          name: app-release-bundle
-          path: artifacts/aab
+          name: app-github-release-apk
+          path: artifacts/github-apk
+
+      - name: Download Play release AAB
+        uses: actions/download-artifact@v4
+        with:
+          name: app-play-release-aab
+          path: artifacts/play-aab
+
+      - name: Download GitHub release AAB
+        uses: actions/download-artifact@v4
+        with:
+          name: app-github-release-aab
+          path: artifacts/github-aab
 
       - name: Compute release metadata
         id: meta
@@ -287,24 +366,28 @@ jobs:
             echo "- versionName: \`${VERSION_NAME}\`"
             echo ""
             echo "## What's in this build"
-            echo "- Release APK produced by \`:app:assembleRelease\`, ${SIGNING_NOTE}"
-            echo "- Release App Bundle (AAB) produced by \`:app:bundleRelease\`, ${SIGNING_NOTE} — upload this to the Play Console"
+            echo "- Play flavor APK produced by \`:app:assemblePlayRelease\`, ${SIGNING_NOTE}"
+            echo "- GitHub flavor APK produced by \`:app:assembleGithubRelease\`, ${SIGNING_NOTE}"
+            echo "- Play flavor App Bundle (AAB) produced by \`:app:bundlePlayRelease\`, ${SIGNING_NOTE} — upload this to the Play Console"
+            echo "- GitHub flavor App Bundle (AAB) produced by \`:app:bundleGithubRelease\`, ${SIGNING_NOTE}"
             echo "- AdMob IDs injected from repository secrets (test IDs in unconfigured forks)"
             echo "- Unit tests, lint, and the on-device launch smoke test passed"
             echo ""
-            echo "Install with \`adb install ollama-android-${TAG}.apk\`."
+            echo "Install with \`adb install ollama-android-play-${TAG}.apk\` or \`adb install ollama-android-github-${TAG}.apk\`."
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
       - name: Stage release assets
         run: |
           mkdir -p release
-          # assembleRelease emits app-release.apk (signed) or app-release-unsigned.apk
-          # depending on whether the keystore was provided. Pick whichever exists.
-          apk_src=$(ls artifacts/apk/*.apk | head -n1)
-          cp "$apk_src" "release/ollama-android-${{ steps.meta.outputs.tag }}.apk"
-          aab_src=$(ls artifacts/aab/*.aab | head -n1)
-          cp "$aab_src" "release/ollama-android-${{ steps.meta.outputs.tag }}.aab"
+          play_apk_src=$(ls artifacts/play-apk/*.apk | head -n1)
+          cp "$play_apk_src" "release/ollama-android-play-${{ steps.meta.outputs.tag }}.apk"
+          github_apk_src=$(ls artifacts/github-apk/*.apk | head -n1)
+          cp "$github_apk_src" "release/ollama-android-github-${{ steps.meta.outputs.tag }}.apk"
+          play_aab_src=$(ls artifacts/play-aab/*.aab | head -n1)
+          cp "$play_aab_src" "release/ollama-android-play-${{ steps.meta.outputs.tag }}.aab"
+          github_aab_src=$(ls artifacts/github-aab/*.aab | head -n1)
+          cp "$github_aab_src" "release/ollama-android-github-${{ steps.meta.outputs.tag }}.aab"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
