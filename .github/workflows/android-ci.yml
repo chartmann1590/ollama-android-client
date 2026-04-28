@@ -83,13 +83,13 @@ jobs:
           } > keystore.properties
 
       - name: Run unit tests
-        run: ./gradlew :app:testDebugUnitTest --stacktrace
+        run: ./gradlew :app:testPlayDebugUnitTest --stacktrace
 
       - name: Run lint
-        run: ./gradlew :app:lintDebug --stacktrace
+        run: ./gradlew :app:lintPlayDebug --stacktrace
 
       - name: Assemble debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: ./gradlew :app:assemblePlayDebug --stacktrace
 
       - name: Assemble release APKs (Play + GitHub)
         run: ./gradlew :app:assemblePlayRelease :app:assembleGithubRelease --stacktrace
@@ -171,7 +171,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/play/debug/app-play-debug.apk
           if-no-files-found: error
 
       - name: Upload Play release APK
@@ -289,7 +289,7 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: ./gradlew :app:connectedDebugAndroidTest --stacktrace
+          script: ./gradlew :app:connectedPlayDebugAndroidTest --stacktrace
 
       - name: Upload instrumented test report
         if: always()
