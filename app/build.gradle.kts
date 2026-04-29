@@ -154,11 +154,13 @@ android {
     productFlavors {
         create("play") {
             dimension = "distribution"
+            applicationId = "com.charles.ollama.client.play"
+            resValue("string", "app_name", "Ollama Chat")
             buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_PROMPT", "false")
         }
         create("github") {
             dimension = "distribution"
-            applicationIdSuffix = ".github"
+            applicationId = "com.charles.ollama.client.github"
             versionNameSuffix = "-github"
             buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_PROMPT", "true")
         }

@@ -60,7 +60,7 @@ jobs:
             printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
           else
             echo "GOOGLE_SERVICES_JSON secret not set — writing placeholder so the Firebase Gradle plugin can parse the file."
-            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"ollama-android-ci","storage_bucket":"ollama-android-ci.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000000000","android_client_info":{"package_name":"com.charles.ollama.client"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}},{"client_info":{"mobilesdk_app_id":"1:000000000000:android:1111111111111111111111","android_client_info":{"package_name":"com.charles.ollama.client.github"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
+            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"ollama-android-ci","storage_bucket":"ollama-android-ci.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000000000","android_client_info":{"package_name":"com.charles.ollama.client.play"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}},{"client_info":{"mobilesdk_app_id":"1:000000000000:android:1111111111111111111111","android_client_info":{"package_name":"com.charles.ollama.client.github"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
           fi
 
       - name: Materialize release keystore
@@ -143,7 +143,7 @@ jobs:
           play = play_meta["elements"][0]
           github = github_meta["elements"][0]
 
-          assert play_meta["applicationId"] == "com.charles.ollama.client", play_meta["applicationId"]
+          assert play_meta["applicationId"] == "com.charles.ollama.client.play", play_meta["applicationId"]
           assert github_meta["applicationId"] == "com.charles.ollama.client.github", github_meta["applicationId"]
           assert play["versionCode"] == expected_version_code, (play["versionCode"], expected_version_code)
           assert github["versionCode"] == expected_version_code, (github["versionCode"], expected_version_code)
@@ -248,7 +248,7 @@ jobs:
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
           else
-            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"ollama-android-ci","storage_bucket":"ollama-android-ci.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000000000","android_client_info":{"package_name":"com.charles.ollama.client"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}},{"client_info":{"mobilesdk_app_id":"1:000000000000:android:1111111111111111111111","android_client_info":{"package_name":"com.charles.ollama.client.github"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
+            printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"ollama-android-ci","storage_bucket":"ollama-android-ci.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000000000","android_client_info":{"package_name":"com.charles.ollama.client.play"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}},{"client_info":{"mobilesdk_app_id":"1:000000000000:android:1111111111111111111111","android_client_info":{"package_name":"com.charles.ollama.client.github"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
           fi
 
       - name: Enable KVM
