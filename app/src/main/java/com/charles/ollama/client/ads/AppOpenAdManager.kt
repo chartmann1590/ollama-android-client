@@ -27,7 +27,9 @@ import com.google.android.gms.ads.appopen.AppOpenAd
  *   * If a full-screen ad is already showing (interstitial or app-open), we
  *     skip rather than stack overlays.
  */
-class AppOpenAdManager : Application.ActivityLifecycleCallbacks, LifecycleEventObserver {
+class AppOpenAdManager(
+    private val adGate: AdGate
+) : Application.ActivityLifecycleCallbacks, LifecycleEventObserver {
 
     private val adUnitId = BuildConfig.ADMOB_APP_OPEN_AD_UNIT_ID
 
@@ -51,6 +53,7 @@ class AppOpenAdManager : Application.ActivityLifecycleCallbacks, LifecycleEventO
     }
 
     private fun loadAd(context: Context) {
+        if (adGate.adsCurrentlyDisabled()) return
         if (isLoading || isAdAvailable()) return
         val trace = PerformanceMonitor.startAdTrace("load_app_open")
         isLoading = true
@@ -81,6 +84,7 @@ class AppOpenAdManager : Application.ActivityLifecycleCallbacks, LifecycleEventO
 
     private fun showAdIfAvailable() {
         if (isShowing) return
+        if (adGate.adsCurrentlyDisabled()) return
         val activity = currentActivity ?: return
         if (!isAdAvailable()) {
             loadAd(activity)

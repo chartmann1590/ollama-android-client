@@ -11,6 +11,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,7 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.charles.ollama.client.BuildConfig
 import com.charles.ollama.client.R
+import com.charles.ollama.client.ui.navigation.InterstitialAdManagerEntryPoint
 import com.charles.ollama.client.util.PerformanceMonitor
+import dagger.hilt.android.EntryPointAccessors
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdLoader
 import com.google.android.gms.ads.AdRequest
@@ -37,6 +40,14 @@ fun NativeAdCard(
 ) {
     if (!BuildConfig.ADS_ENABLED) return
     val context = LocalContext.current
+    val adGate = remember {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            InterstitialAdManagerEntryPoint::class.java
+        ).adGate()
+    }
+    val adFreeUntil by adGate.adFreeUntilMs.collectAsState()
+    if (adFreeUntil > System.currentTimeMillis()) return
     var nativeAd by remember { mutableStateOf<NativeAd?>(null) }
 
     DisposableEffect(adUnitId) {

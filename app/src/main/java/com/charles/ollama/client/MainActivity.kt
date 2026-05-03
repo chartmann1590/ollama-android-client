@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.charles.ollama.client.ads.InterstitialAdManager
+import com.charles.ollama.client.ads.RewardedAdManager
 import com.charles.ollama.client.ui.navigation.NavGraph
 import com.charles.ollama.client.ui.theme.OllamaAndroidTheme
 import com.charles.ollama.client.ui.update.UpdateAvailablePrompt
@@ -30,6 +31,9 @@ class MainActivity : ComponentActivity() {
     
     @Inject
     lateinit var interstitialAdManager: InterstitialAdManager
+
+    @Inject
+    lateinit var rewardedAdManager: RewardedAdManager
     
     private lateinit var firebaseAnalytics: FirebaseAnalytics
     
@@ -63,6 +67,9 @@ class MainActivity : ComponentActivity() {
         
         // Load initial interstitial ad
         interstitialAdManager.loadAd(this)
+
+        // Preload a rewarded ad so the rewards screen feels instant.
+        rewardedAdManager.loadAd(this)
         
         setContent {
             OllamaAndroidTheme {

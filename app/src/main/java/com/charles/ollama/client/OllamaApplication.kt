@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.charles.ollama.client.R
+import com.charles.ollama.client.ads.AdGate
 import com.charles.ollama.client.ads.AppOpenAdManager
 import com.google.firebase.FirebaseApp
 import com.google.firebase.analytics.FirebaseAnalytics
@@ -20,7 +21,10 @@ import dagger.hilt.android.HiltAndroidApp
 @HiltAndroidApp
 class OllamaApplication : Application() {
 
-    private val appOpenAdManager = AppOpenAdManager()
+    @javax.inject.Inject
+    lateinit var adGate: AdGate
+
+    private lateinit var appOpenAdManager: AppOpenAdManager
 
     override fun onCreate() {
         super.onCreate()
@@ -33,6 +37,7 @@ class OllamaApplication : Application() {
 
         installMainLoopExceptionFilter()
 
+        appOpenAdManager = AppOpenAdManager(adGate)
         appOpenAdManager.register(this)
         
         // Initialize Firebase Analytics

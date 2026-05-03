@@ -137,6 +137,11 @@ android {
             propName = "admob.appOpenAdUnitId",
             default = "ca-app-pub-3940256099942544/9257395921"
         )
+        val admobRewardedId = adProp(
+            envName = "ADMOB_REWARDED_AD_UNIT_ID",
+            propName = "admob.rewardedAdUnitId",
+            default = "ca-app-pub-3940256099942544/5224354917"
+        )
         val adsEnabled = adsEnabled()
 
         buildConfigField("boolean", "ADS_ENABLED", adsEnabled.toString())
@@ -145,6 +150,7 @@ android {
         buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", "\"$admobInterstitialId\"")
         buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$admobNativeId\"")
         buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$admobAppOpenId\"")
+        buildConfigField("String", "ADMOB_REWARDED_AD_UNIT_ID", "\"$admobRewardedId\"")
 
         // Substituted into AndroidManifest.xml's
         // <meta-data com.google.android.gms.ads.APPLICATION_ID/> entry.

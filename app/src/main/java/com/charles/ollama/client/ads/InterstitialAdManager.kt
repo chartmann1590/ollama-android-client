@@ -15,7 +15,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class InterstitialAdManager @Inject constructor() {
+class InterstitialAdManager @Inject constructor(
+    private val adGate: AdGate
+) {
 
     private var interstitialAd: InterstitialAd? = null
     private var isLoading = false
@@ -33,6 +35,7 @@ class InterstitialAdManager @Inject constructor() {
      */
     fun loadAd(activity: Activity) {
         if (!BuildConfig.ADS_ENABLED) return
+        if (adGate.adsCurrentlyDisabled()) return
         if (isLoading || interstitialAd != null) {
             return
         }
@@ -92,6 +95,7 @@ class InterstitialAdManager @Inject constructor() {
      */
     fun showAdIfAvailable(activity: Activity): Boolean {
         if (!BuildConfig.ADS_ENABLED) return false
+        if (adGate.adsCurrentlyDisabled()) return false
         val trace = PerformanceMonitor.startAdTrace("show_interstitial")
         val ad = interstitialAd
         
@@ -118,6 +122,7 @@ class InterstitialAdManager @Inject constructor() {
      * Force show ad if available (ignores probability)
      */
     fun showAdIfAvailable(activity: Activity, force: Boolean): Boolean {
+        if (adGate.adsCurrentlyDisabled()) return false
         if (force) {
             val ad = interstitialAd
             if (ad != null) {

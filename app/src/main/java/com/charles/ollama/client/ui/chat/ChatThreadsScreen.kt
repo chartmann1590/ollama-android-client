@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Delete
@@ -33,6 +34,7 @@ fun ChatThreadsScreen(
     onNavigateToChat: (Long) -> Unit,
     onNavigateToServers: () -> Unit,
     onNavigateToModels: () -> Unit,
+    onNavigateToRewards: () -> Unit,
     viewModel: ChatThreadsViewModel = hiltViewModel()
 ) {
     // Performance monitoring for screen rendering
@@ -77,6 +79,9 @@ fun ChatThreadsScreen(
             TopAppBar(
                 title = { Text("Chat Threads") },
                 actions = {
+                    IconButton(onClick = onNavigateToRewards) {
+                        Icon(Icons.Default.CardGiftcard, contentDescription = "Rewards")
+                    }
                     IconButton(onClick = onNavigateToModels) {
                         Icon(Icons.Default.Download, contentDescription = "Models")
                     }

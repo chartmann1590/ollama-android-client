@@ -12,7 +12,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.charles.ollama.client.BuildConfig
+import com.charles.ollama.client.ui.navigation.InterstitialAdManagerEntryPoint
 import com.charles.ollama.client.util.PerformanceMonitor
+import dagger.hilt.android.EntryPointAccessors
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
@@ -25,6 +27,14 @@ fun BannerAd(
 ) {
     if (!BuildConfig.ADS_ENABLED) return
     val context = LocalContext.current
+    val adGate = remember {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            InterstitialAdManagerEntryPoint::class.java
+        ).adGate()
+    }
+    val adFreeUntil by adGate.adFreeUntilMs.collectAsState()
+    if (adFreeUntil > System.currentTimeMillis()) return
     val lifecycleOwner = LocalLifecycleOwner.current
     
     val adView: AdView = remember {

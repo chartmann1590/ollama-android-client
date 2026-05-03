@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CardGiftcard
 import com.charles.ollama.client.R
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +35,7 @@ import androidx.compose.runtime.DisposableEffect
 fun ServerListScreen(
     onNavigateBack: () -> Unit,
     onNavigateToModels: () -> Unit,
+    onNavigateToRewards: () -> Unit = {},
     viewModel: ServersViewModel = hiltViewModel()
 ) {
     // Performance monitoring for screen rendering
@@ -61,6 +63,9 @@ fun ServerListScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToRewards) {
+                        Icon(Icons.Default.CardGiftcard, contentDescription = "Rewards")
+                    }
                     TextButton(onClick = onNavigateToModels) {
                         Text("Models")
                     }

@@ -24,6 +24,8 @@ import com.charles.ollama.client.ads.InterstitialAdManager
 import com.charles.ollama.client.ui.chat.ChatScreen
 import com.charles.ollama.client.ui.chat.ChatThreadsScreen
 import com.charles.ollama.client.ui.models.ModelsScreen
+import com.charles.ollama.client.ui.rewards.RewardsScreen
+import com.charles.ollama.client.ui.rewards.WhatsNewRewardsSheet
 import com.charles.ollama.client.ui.servers.ServerListScreen
 import com.charles.ollama.client.ui.servers.ServersViewModel
 import com.charles.ollama.client.ui.settings.SettingsScreen
@@ -155,7 +157,16 @@ fun NavGraph(
                 },
                 onNavigateToModels = {
                     navController.navigate(Screen.Models.route)
+                },
+                onNavigateToRewards = {
+                    navController.navigate(Screen.Rewards.route)
                 }
+            )
+        }
+
+        composable(Screen.Rewards.route) {
+            RewardsScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         
@@ -185,6 +196,9 @@ fun NavGraph(
                 onNavigateToModels = {
                     navController.navigate(Screen.Models.route)
                 },
+                onNavigateToRewards = {
+                    navController.navigate(Screen.Rewards.route)
+                },
                 onNavigateBack = {
                     if (defaultServer != null) {
                         val popped = navController.popBackStack(Screen.ChatThreads.route, inclusive = false)
@@ -208,6 +222,11 @@ fun NavGraph(
             )
         }
     }
+        WhatsNewRewardsSheet(
+            onNavigateToRewards = {
+                navController.navigate(Screen.Rewards.route)
+            }
+        )
     } else {
         // Show loading indicator while waiting for defaultServer to load
         // This prevents the flash of Servers screen
