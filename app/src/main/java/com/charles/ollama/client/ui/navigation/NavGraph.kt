@@ -29,6 +29,7 @@ import com.charles.ollama.client.ui.rewards.RewardsScreen
 import com.charles.ollama.client.ui.rewards.WhatsNewRewardsSheet
 import com.charles.ollama.client.ui.servers.ServerListScreen
 import com.charles.ollama.client.ui.servers.ServersViewModel
+import com.charles.ollama.client.ui.settings.AboutScreen
 import com.charles.ollama.client.ui.settings.SettingsScreen
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.delay
@@ -226,7 +227,16 @@ fun NavGraph(
             SettingsScreen(
                 onNavigateBack = {
                     navController.popBackStack()
-                }
+                },
+                onNavigateToAbout = {
+                    navController.navigate(Screen.About.route)
+                },
+            )
+        }
+
+        composable(Screen.About.route) {
+            AboutScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
     }

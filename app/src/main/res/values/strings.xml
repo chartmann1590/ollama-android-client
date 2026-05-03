@@ -14,5 +14,20 @@
     <string name="setup_tutorial_ondevice_body">Tap \"%1$s\" in the top toolbar, then open Models to download an on-device model. Set a server as default on its card if needed, then use Back to return to chats.</string>
     <string name="setup_tutorial_got_it">Got it</string>
     <string name="settings_show_setup_tutorial_again">Show getting started tips again</string>
+
+    <string name="about_top_bar_title">About</string>
+    <string name="about_version">Version %1$s (%2$d)</string>
+    <string name="about_body">Chat with AI on your Android device: connect to your own Ollama server for remote models, or run supported models fully on-device with LiteRT-LM. Your conversations are stored locally on this device.</string>
+    <string name="about_links_heading">Links</string>
+    <string name="about_links_subtitle">Product site, FAQ, and ways to support development.</string>
+    <string name="about_open_website">Visit project website</string>
+    <string name="about_website_subtitle">Features, screenshots, FAQ, and Play Store link</string>
+    <string name="about_open_sponsor">Buy Me a Coffee</string>
+    <string name="about_sponsor_subtitle">Thank you for supporting the app</string>
+    <string name="about_could_not_open_link">Could not open link</string>
+
+    <string name="settings_about_title">About this app</string>
+    <string name="settings_about_subtitle">Version, website, and sponsor link</string>
+    <string name="settings_about_open_button">See details</string>
 </resources>
 

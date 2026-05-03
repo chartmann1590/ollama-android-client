@@ -135,16 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Play Store link placeholder
-const playStoreLink = document.getElementById('play-store-link');
-if (playStoreLink) {
-    playStoreLink.addEventListener('click', (e) => {
-        // Replace with actual Play Store link when available
-        e.preventDefault();
-        alert('Play Store link will be available soon! In the meantime, you can download the APK from the GitHub releases page.');
-    });
-}
-
 // Add loading animation for images
 const images = document.querySelectorAll('img');
 images.forEach(img => {
