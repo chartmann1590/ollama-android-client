@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,6 +36,7 @@ fun ChatThreadsScreen(
     onNavigateToServers: () -> Unit,
     onNavigateToModels: () -> Unit,
     onNavigateToRewards: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     viewModel: ChatThreadsViewModel = hiltViewModel()
 ) {
     // Performance monitoring for screen rendering
@@ -84,6 +86,9 @@ fun ChatThreadsScreen(
                     }
                     IconButton(onClick = onNavigateToModels) {
                         Icon(Icons.Default.Download, contentDescription = "Models")
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Outlined.Tune, contentDescription = "App settings")
                     }
                     IconButton(onClick = onNavigateToServers) {
                         Icon(Icons.Default.Settings, contentDescription = "Servers")

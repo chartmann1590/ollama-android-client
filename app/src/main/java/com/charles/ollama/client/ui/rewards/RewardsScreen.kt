@@ -150,9 +150,7 @@ private fun CreditsHeroCard(
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val tertiary = MaterialTheme.colorScheme.tertiary
-    val gradient = remember(primary, tertiary) {
-        Brush.linearGradient(listOf(primary, tertiary))
-    }
+    val gradient = Brush.linearGradient(listOf(primary, tertiary))
 
     Card(
         shape = RoundedCornerShape(24.dp),

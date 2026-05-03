@@ -3,8 +3,12 @@ package com.charles.ollama.client.ads
 import android.content.Context
 import android.content.SharedPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,6 +26,12 @@ class AdGate @Inject constructor(
 ) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    private val _setupTutorialReplayRequests = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val setupTutorialReplayRequests: SharedFlow<Unit> = _setupTutorialReplayRequests.asSharedFlow()
 
     private val _credits = MutableStateFlow(prefs.getInt(KEY_CREDITS, 0))
     val credits: StateFlow<Int> = _credits.asStateFlow()
@@ -159,11 +169,24 @@ class AdGate @Inject constructor(
         prefs.edit().putBoolean(KEY_WHATS_NEW_SEEN, true).apply()
     }
 
+    fun hasSeenSetupTutorial(): Boolean =
+        prefs.getBoolean(KEY_SETUP_TUTORIAL_SEEN, false)
+
+    fun markSetupTutorialSeen() {
+        prefs.edit().putBoolean(KEY_SETUP_TUTORIAL_SEEN, true).apply()
+    }
+
+    /** Show the getting-started sheet again (e.g. from Settings). */
+    fun requestSetupTutorialReplay() {
+        _setupTutorialReplayRequests.tryEmit(Unit)
+    }
+
     companion object {
         private const val PREFS_NAME = "ad_gate_prefs"
         private const val KEY_CREDITS = "credits"
         private const val KEY_AD_FREE_UNTIL = "ad_free_until_ms"
         private const val KEY_WHATS_NEW_SEEN = "whats_new_rewards_v1_seen"
+        private const val KEY_SETUP_TUTORIAL_SEEN = "setup_tutorial_v1_seen"
         private const val KEY_CREDIT_DAY = "credit_day_local"
         private const val KEY_SPENT_TODAY = "credits_spent_today"
         private const val KEY_EARNED_TODAY = "credits_earned_today"

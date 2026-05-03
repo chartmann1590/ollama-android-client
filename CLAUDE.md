@@ -8,7 +8,8 @@ Gradle wrapper commands (run from repo root; `gradlew.bat` on Windows, `./gradle
 
 - `./gradlew assembleDebug` — build debug APK (output under `app/build/outputs/apk/debug/`)
 - `./gradlew assembleRelease` — release build; requires `keystore.properties` at repo root or it falls back to debug signing
-- `./gradlew installDebug` — install on a connected device/emulator
+- `./gradlew installDebug` — install debug on a connected device/emulator
+- `./gradlew :app:installPlayRelease` / `:app:installGithubRelease` — install release on a device (flavor-specific; uses `keystore.properties` when present, else debug signing)
 - `./gradlew lint` / `./gradlew lintDebug` — Android lint
 - `./gradlew test` — unit tests (`testDebugUnitTest`, `testReleaseUnitTest`)
 - `./gradlew :app:testDebugUnitTest --tests "com.charles.ollama.client.SomeTest"` — run a single unit test

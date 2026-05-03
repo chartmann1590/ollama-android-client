@@ -24,6 +24,7 @@ import com.charles.ollama.client.ads.InterstitialAdManager
 import com.charles.ollama.client.ui.chat.ChatScreen
 import com.charles.ollama.client.ui.chat.ChatThreadsScreen
 import com.charles.ollama.client.ui.models.ModelsScreen
+import com.charles.ollama.client.ui.onboarding.FirstRunSetupTutorialSheet
 import com.charles.ollama.client.ui.rewards.RewardsScreen
 import com.charles.ollama.client.ui.rewards.WhatsNewRewardsSheet
 import com.charles.ollama.client.ui.servers.ServerListScreen
@@ -54,6 +55,7 @@ fun NavGraph(
     
     val serversViewModel: ServersViewModel = hiltViewModel()
     val defaultServer by serversViewModel.defaultServer.collectAsState()
+    var setupTutorialFinishedSignal by remember { mutableStateOf(0) }
     
     // Compute the start destination based on defaultServer
     // IMPORTANT: Only compute this when we're ready to create NavHost
@@ -160,7 +162,10 @@ fun NavGraph(
                 },
                 onNavigateToRewards = {
                     navController.navigate(Screen.Rewards.route)
-                }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
+                },
             )
         }
 
@@ -196,6 +201,9 @@ fun NavGraph(
                 onNavigateToModels = {
                     navController.navigate(Screen.Models.route)
                 },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
+                },
                 onNavigateToRewards = {
                     navController.navigate(Screen.Rewards.route)
                 },
@@ -222,10 +230,16 @@ fun NavGraph(
             )
         }
     }
+        FirstRunSetupTutorialSheet(
+            defaultServer = defaultServer,
+            onFirstRunTutorialFinished = { setupTutorialFinishedSignal++ },
+        )
         WhatsNewRewardsSheet(
+            defaultServer = defaultServer,
+            setupTutorialFinishedSignal = setupTutorialFinishedSignal,
             onNavigateToRewards = {
                 navController.navigate(Screen.Rewards.route)
-            }
+            },
         )
     } else {
         // Show loading indicator while waiting for defaultServer to load

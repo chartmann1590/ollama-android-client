@@ -1,6 +1,7 @@
 package com.charles.ollama.client.ui.settings
 
 import androidx.lifecycle.ViewModel
+import com.charles.ollama.client.ads.AdGate
 import com.charles.ollama.client.data.litert.LitertPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,7 +11,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val litertPreferences: LitertPreferences
+    private val litertPreferences: LitertPreferences,
+    private val adGate: AdGate,
 ) : ViewModel() {
 
     private val _huggingFaceToken = MutableStateFlow(litertPreferences.getHuggingFaceToken().orEmpty())
@@ -24,5 +26,9 @@ class SettingsViewModel @Inject constructor(
     fun clearHuggingFaceToken() {
         _huggingFaceToken.value = ""
         litertPreferences.setHuggingFaceToken(null)
+    }
+
+    fun requestSetupTutorialAgain() {
+        adGate.requestSetupTutorialReplay()
     }
 }

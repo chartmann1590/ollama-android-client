@@ -19,6 +19,10 @@ fun adProp(envName: String, propName: String, default: String): String {
     if (!fromEnv.isNullOrBlank()) return fromEnv
     val fromLocal = localProperties.getProperty(propName)
     if (!fromLocal.isNullOrBlank()) return fromLocal
+    // Some developers put `ADMOB_APP_ID=...` etc. in local.properties (same
+    // names as CI env vars) instead of `admob.appId` — accept both.
+    val fromLocalEnvStyle = localProperties.getProperty(envName)
+    if (!fromLocalEnvStyle.isNullOrBlank()) return fromLocalEnvStyle
     return default
 }
 

@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.charles.ollama.client.domain.model.Server
 import com.charles.ollama.client.ui.navigation.InterstitialAdManagerEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.delay
@@ -52,7 +53,11 @@ import kotlinx.coroutines.delay
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WhatsNewRewardsSheet(onNavigateToRewards: () -> Unit) {
+fun WhatsNewRewardsSheet(
+    defaultServer: Server?,
+    setupTutorialFinishedSignal: Int,
+    onNavigateToRewards: () -> Unit,
+) {
     val context = LocalContext.current
     val adGate = remember {
         EntryPointAccessors.fromApplication(
@@ -63,9 +68,11 @@ fun WhatsNewRewardsSheet(onNavigateToRewards: () -> Unit) {
 
     var visible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(defaultServer, setupTutorialFinishedSignal) {
+        if (adGate.hasSeenWhatsNew()) return@LaunchedEffect
+        if (!adGate.hasSeenSetupTutorial() && defaultServer == null) return@LaunchedEffect
+        delay(900)
         if (!adGate.hasSeenWhatsNew()) {
-            delay(900)
             visible = true
         }
     }

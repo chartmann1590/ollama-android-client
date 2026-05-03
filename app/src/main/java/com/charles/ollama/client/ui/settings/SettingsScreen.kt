@@ -12,10 +12,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.charles.ollama.client.R
 import com.charles.ollama.client.ui.components.BannerAd
 import com.charles.ollama.client.util.PerformanceMonitor
 
@@ -88,6 +90,23 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "Help",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = "Open the same tips you see on first launch: remote Ollama vs on-device LiteRT.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedButton(
+                onClick = viewModel::requestSetupTutorialAgain,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.settings_show_setup_tutorial_again))
+            }
         }
     }
 }

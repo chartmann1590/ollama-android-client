@@ -7,5 +7,12 @@
     <string name="litert_first_load_hint">First reply after picking a model may take a while while the engine loads.</string>
     <string name="message_copy_success">Message copied</string>
     <string name="message_copy_nothing">Nothing to copy</string>
+    <string name="setup_tutorial_title">Get started</string>
+    <string name="setup_tutorial_remote_heading">Remote Ollama</string>
+    <string name="setup_tutorial_remote_body">Run Ollama where your network can reach it. Tap the + button to add a name and base URL (for example http://192.168.1.10:11434). Set a server as default from its card, then tap Back to open your chats.</string>
+    <string name="setup_tutorial_ondevice_heading">On-device</string>
+    <string name="setup_tutorial_ondevice_body">Tap \"%1$s\" in the top toolbar, then open Models to download an on-device model. Set a server as default on its card if needed, then use Back to return to chats.</string>
+    <string name="setup_tutorial_got_it">Got it</string>
+    <string name="settings_show_setup_tutorial_again">Show getting started tips again</string>
 </resources>
 
