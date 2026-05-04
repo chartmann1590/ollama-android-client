@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Backing storage for ThreadExporter spillover when shared markdown is too
+         large to send as EXTRA_TEXT inline. -->
+    <cache-path name="exports" path="exports/" />
+</paths>

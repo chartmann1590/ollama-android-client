@@ -35,12 +35,27 @@ class ChatRepository @Inject constructor(
     private val liteRtChatService: LiteRtChatService
 ) {
     fun getAllThreads(): Flow<List<ChatThreadEntity>> = chatThreadDao.getAllThreads()
-    
+
+    fun getThreads(archived: Boolean): Flow<List<ChatThreadEntity>> =
+        chatThreadDao.getThreads(archived)
+
     fun getThreadById(threadId: Long): Flow<ChatThreadEntity?> = 
         chatThreadDao.getThreadByIdFlow(threadId)
     
-    fun searchThreads(query: String): Flow<List<ChatThreadEntity>> = 
-        chatThreadDao.searchThreads("%$query%")
+    fun searchThreads(query: String, archived: Boolean = false): Flow<List<ChatThreadEntity>> =
+        chatThreadDao.searchThreads("%$query%", archived)
+
+    suspend fun setThreadPinned(threadId: Long, pinned: Boolean) {
+        PerformanceMonitor.measureSuspend("database_set_thread_pinned") {
+            chatThreadDao.setPinned(threadId, pinned)
+        }
+    }
+
+    suspend fun setThreadArchived(threadId: Long, archived: Boolean) {
+        PerformanceMonitor.measureSuspend("database_set_thread_archived") {
+            chatThreadDao.setArchived(threadId, archived)
+        }
+    }
     
     suspend fun createThread(title: String, model: String?, serverId: Long?): Long {
         return PerformanceMonitor.measureSuspend("database_create_thread") {
@@ -574,6 +589,46 @@ class ChatRepository @Inject constructor(
         } catch (e: Exception) {
             android.util.Log.w("ChatRepository", "Could not get message $messageId", e)
             null
+        }
+    }
+
+    suspend fun deleteMessage(messageId: Long) {
+        PerformanceMonitor.measureSuspend("database_delete_message") {
+            chatMessageDao.deleteMessageById(messageId)
+        }
+    }
+
+    /**
+     * Drop all messages whose timestamp is >= [fromTimestamp] for the given thread.
+     * Used by edit-and-resend (pass the user message's timestamp) and regenerate
+     * (pass the assistant message's timestamp).
+     */
+    suspend fun truncateThreadFrom(threadId: Long, fromTimestamp: Long) {
+        PerformanceMonitor.measureSuspend("database_truncate_thread") {
+            chatMessageDao.deleteMessagesFrom(threadId, fromTimestamp)
+        }
+    }
+
+    suspend fun getMessagesForExport(threadId: Long): List<ChatMessageEntity> {
+        return try {
+            chatMessageDao.getMessagesByThreadIdSync(threadId)
+        } catch (e: Exception) {
+            android.util.Log.w("ChatRepository", "Falling back to paginated load for export", e)
+            val out = mutableListOf<ChatMessageEntity>()
+            var offset = 0
+            val batchSize = 25
+            while (true) {
+                val batch = try {
+                    chatMessageDao.getMessagesByThreadIdPaged(threadId, batchSize, offset)
+                } catch (e2: Exception) {
+                    android.util.Log.w("ChatRepository", "Stopping export load at offset=$offset", e2)
+                    break
+                }
+                if (batch.isEmpty()) break
+                out.addAll(batch)
+                offset += batchSize
+            }
+            out
         }
     }
 }

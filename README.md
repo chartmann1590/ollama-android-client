@@ -1,10 +1,10 @@
 # Ollama Android Client
 
 [![Android CI](https://github.com/chartmann1590/ollama-android-client/actions/workflows/android-ci.yml/badge.svg)](https://github.com/chartmann1590/ollama-android-client/actions/workflows/android-ci.yml)
-[![Get it on Google Play](https://img.shields.io/badge/Google%20Play-Download-34A853?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.charles.ollama.client&pcampaignid=web_share)
+[![Get it on Google Play](https://img.shields.io/badge/Google%20Play-Download-34A853?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.charles.ollama.client.play&pcampaignid=web_share)
 [![Website](https://img.shields.io/badge/Website-ollama--android-6366f1?logo=firebase&logoColor=white)](https://ollama-android-7525f.web.app/)
 
-> 📲 **Available on Google Play**: [Install Ollama AI Chat](https://play.google.com/store/apps/details?id=com.charles.ollama.client&pcampaignid=web_share)
+> 📲 **Available on Google Play**: [Install Ollama AI Chat](https://play.google.com/store/apps/details?id=com.charles.ollama.client.play&pcampaignid=web_share)
 
 An Android application for interacting with Ollama AI models — remote or fully on-device. Built with Jetpack Compose, this app provides a modern and intuitive interface for chatting with AI models running on your Ollama server **or on your phone itself** via Google's LiteRT-LM runtime.
 
@@ -13,6 +13,13 @@ An Android application for interacting with Ollama AI models — remote or fully
 - 🤖 **Chat with AI Models**: Interact with various Ollama AI models through a clean chat interface
 - 📲 **On-device inference (LiteRT-LM)**: Download and run Gemma 4, Gemma 3, Qwen 3, DeepSeek R1 Distill, and Phi-4 Mini directly on your phone — no server, no network, no data leaving the device
 - 💬 **Message History**: Persistent chat history using Room database
+- 🎙️ **Voice input**: Use Android system speech-to-text to dictate directly into the composer
+- 🔊 **Read aloud replies**: Play assistant responses using Android Text-to-Speech for accessibility
+- 📤 **Export / share chats**: Share threads (or individual messages) as Markdown/text logs
+- 🔎 **In-thread search**: Search inside the current conversation with next/previous match navigation
+- 📌 **Pin and archive threads**: Keep active chats focused without deleting older conversations
+- 💬 **Per-message actions**: Copy, share, delete, edit-and-resend, and regenerate directly from message menus
+- 📱 **Launcher shortcut**: Resume your most recent thread via a dynamic home launcher shortcut
 - 🎨 **Modern UI**: Built with Jetpack Compose and Material Design 3
 - 🔄 **Real-time Streaming**: Receive AI responses streamed in real-time (remote *and* on-device)
 - 📱 **Image Support**: Attach and send images in conversations with vision-capable remote models
@@ -34,9 +41,9 @@ An Android application for interacting with Ollama AI models — remote or fully
 ## Prerequisites
 
 - Android Studio Hedgehog (2023.1.1) or later
-- JDK 17 or later
-- Android SDK 33 (API Level 33) or higher
-- Gradle 8.0 or later
+- JDK 21 or later
+- Android SDK 35 (API Level 35) or higher
+- Gradle 8.7 or later
 - An Ollama server running and accessible
 
 ## Setup
@@ -65,7 +72,7 @@ An Android application for interacting with Ollama AI models — remote or fully
 
 5. **Run the app**
    ```bash
-   ./gradlew installDebug
+   ./gradlew :app:installPlayDebug
    ```
    Or use Android Studio to build and run the app.
 
@@ -123,15 +130,15 @@ app/
 
 ### Debug Build
 ```bash
-./gradlew assembleDebug
+./gradlew :app:assemblePlayDebug
 ```
 
 ### Release Build
 ```bash
-./gradlew assembleRelease
+./gradlew :app:assemblePlayRelease
 ```
 
-The APK will be generated in `app/build/outputs/apk/`
+The APK will be generated in `app/build/outputs/apk/play/`
 
 ## Documentation
 

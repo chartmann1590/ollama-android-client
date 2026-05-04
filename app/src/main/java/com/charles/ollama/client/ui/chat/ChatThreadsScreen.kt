@@ -5,11 +5,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Unarchive
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,7 +45,6 @@ fun ChatThreadsScreen(
     onNavigateToSettings: () -> Unit,
     viewModel: ChatThreadsViewModel = hiltViewModel()
 ) {
-    // Performance monitoring for screen rendering
     val screenTrace = remember { PerformanceMonitor.startScreenTrace("ChatThreadsScreen") }
     DisposableEffect(Unit) {
         onDispose {
@@ -53,24 +58,21 @@ fun ChatThreadsScreen(
     val error by viewModel.error.collectAsState()
     val hasServer by viewModel.hasServer.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
-    
+    val showArchived by viewModel.showArchived.collectAsState()
+    val archivedCount by viewModel.archivedCount.collectAsState()
+
     var showCreateDialog by remember { mutableStateOf(false) }
     var hasWaitedForServer by remember { mutableStateOf(false) }
     
-    // Wait for hasServer to be determined before navigating
-    // This prevents navigating to Servers when hasServer is just loading (initialValue=false)
     LaunchedEffect(hasServer) {
-        // If hasServer becomes true, we're good - mark as waited
         if (hasServer) {
             hasWaitedForServer = true
         }
     }
     
-    // Wait a bit to see if hasServer loads, then check
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(300) // Give hasServer time to load from database
+        kotlinx.coroutines.delay(300)
         hasWaitedForServer = true
-        // After delay, check if we should navigate (only if hasServer is still false)
         if (!hasServer) {
             onNavigateToServers()
         }
@@ -79,7 +81,7 @@ fun ChatThreadsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat Threads") },
+                title = { Text(if (showArchived) "Archived" else "Chat Threads") },
                 actions = {
                     IconButton(onClick = onNavigateToRewards) {
                         Icon(Icons.Default.CardGiftcard, contentDescription = "Rewards")
@@ -107,7 +109,7 @@ fun ChatThreadsScreen(
     ) { padding ->
         if (isLoading && threads.isEmpty()) {
             LoadingIndicator()
-        } else if (threads.isEmpty() && !isLoading) {
+        } else if (threads.isEmpty() && !isLoading && searchQuery.isBlank() && !showArchived) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -140,22 +142,43 @@ fun ChatThreadsScreen(
                 )
                 
                 // Pick the slot where a native ad is interleaved among threads.
-                // Stable across recompositions/process death so the ad doesn't
-                // jump around mid-scroll. Skipped when the list is too short.
                 val nativeAdAfter = rememberSaveable { (1..3).random() }
-                val rows = remember(threads, nativeAdAfter) {
-                    buildThreadRows(threads, nativeAdAfter)
+                val rows = remember(threads, nativeAdAfter, showArchived) {
+                    buildThreadRows(threads, nativeAdAfter, showArchived)
                 }
-                LazyColumn {
+                LazyColumn(modifier = Modifier.weight(1f)) {
                     items(rows, key = ThreadRow::key) { row ->
                         when (row) {
+                            is ThreadRow.SectionHeader -> SectionHeader(row.title)
                             is ThreadRow.Thread -> ThreadItem(
                                 thread = row.thread,
                                 onClick = { onNavigateToChat(row.thread.id) },
+                                onTogglePinned = {
+                                    viewModel.setPinned(row.thread.id, !row.thread.isPinned)
+                                },
+                                onToggleArchived = {
+                                    viewModel.setArchived(row.thread.id, !row.thread.isArchived)
+                                },
+                                onShare = { viewModel.shareThread(row.thread.id) },
                                 onDelete = { viewModel.deleteThread(row.thread.id) }
                             )
                             is ThreadRow.Ad -> NativeAdCard()
                         }
+                    }
+                }
+
+                if (archivedCount > 0 || showArchived) {
+                    HorizontalDivider()
+                    TextButton(
+                        onClick = { viewModel.toggleShowArchived() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                    ) {
+                        Text(
+                            text = if (showArchived) "Show active threads"
+                            else "Show archived ($archivedCount)"
+                        )
                     }
                 }
             }
@@ -185,13 +208,28 @@ fun ChatThreadsScreen(
     }
 }
 
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThreadItem(
     thread: ChatThread,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onTogglePinned: () -> Unit,
+    onToggleArchived: () -> Unit,
+    onShare: () -> Unit,
+    onDelete: () -> Unit,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
     Card(
         onClick = onClick,
         modifier = Modifier
@@ -202,14 +240,26 @@ fun ThreadItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = thread.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (thread.isPinned) {
+                        Icon(
+                            imageVector = Icons.Filled.PushPin,
+                            contentDescription = "Pinned",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = thread.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 thread.model?.let {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -225,13 +275,89 @@ fun ThreadItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete"
-                )
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "More actions"
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (thread.isPinned) "Unpin" else "Pin") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (thread.isPinned) Icons.Outlined.PushPin
+                                else Icons.Filled.PushPin,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onTogglePinned()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (thread.isArchived) "Unarchive" else "Archive") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (thread.isArchived) Icons.Filled.Unarchive
+                                else Icons.Filled.Archive,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onToggleArchived()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Share") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Share, contentDescription = null)
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onShare()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Delete, contentDescription = null)
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            confirmDelete = true
+                        }
+                    )
+                }
             }
         }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete thread?") },
+            text = { Text("This will permanently delete \"${thread.title}\" and all its messages.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    onDelete()
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -276,6 +402,9 @@ private fun formatDate(timestamp: Long): String {
 
 private sealed interface ThreadRow {
     val key: String
+    data class SectionHeader(val title: String) : ThreadRow {
+        override val key: String get() = "h-$title"
+    }
     data class Thread(val thread: ChatThread) : ThreadRow {
         override val key: String get() = "t-${thread.id}"
     }
@@ -284,13 +413,30 @@ private sealed interface ThreadRow {
     }
 }
 
-private fun buildThreadRows(threads: List<ChatThread>, adAfter: Int): List<ThreadRow> {
-    if (threads.size <= adAfter) return threads.map(ThreadRow::Thread)
-    val out = ArrayList<ThreadRow>(threads.size + 1)
-    threads.forEachIndexed { i, t ->
+private fun buildThreadRows(
+    threads: List<ChatThread>,
+    adAfter: Int,
+    showArchived: Boolean,
+): List<ThreadRow> {
+    if (threads.isEmpty()) return emptyList()
+    val out = ArrayList<ThreadRow>(threads.size + 3)
+    if (showArchived) {
+        threads.forEachIndexed { i, t ->
+            out.add(ThreadRow.Thread(t))
+            if (i == adAfter - 1 && threads.size > adAfter) out.add(ThreadRow.Ad)
+        }
+        return out
+    }
+    val pinned = threads.filter { it.isPinned }
+    val unpinned = threads.filter { !it.isPinned }
+    if (pinned.isNotEmpty()) {
+        out.add(ThreadRow.SectionHeader("Pinned"))
+        pinned.forEach { out.add(ThreadRow.Thread(it)) }
+        if (unpinned.isNotEmpty()) out.add(ThreadRow.SectionHeader("Threads"))
+    }
+    unpinned.forEachIndexed { i, t ->
         out.add(ThreadRow.Thread(t))
-        if (i == adAfter - 1) out.add(ThreadRow.Ad)
+        if (i == adAfter - 1 && unpinned.size > adAfter) out.add(ThreadRow.Ad)
     }
     return out
 }
-

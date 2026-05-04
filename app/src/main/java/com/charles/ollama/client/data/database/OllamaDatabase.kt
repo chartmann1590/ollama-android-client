@@ -20,7 +20,7 @@ import com.charles.ollama.client.data.database.dao.InstalledLitertModelDao
         ServerConfigEntity::class,
         InstalledLitertModelEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(StringListConverter::class)

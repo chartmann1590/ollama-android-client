@@ -10,14 +10,14 @@ import javax.inject.Inject
 class GetChatThreadsUseCase @Inject constructor(
     private val chatRepository: ChatRepository
 ) {
-    operator fun invoke(): Flow<List<ChatThread>> {
-        return chatRepository.getAllThreads().map { entities ->
+    operator fun invoke(archived: Boolean = false): Flow<List<ChatThread>> {
+        return chatRepository.getThreads(archived).map { entities ->
             entities.map { it.toDomain() }
         }
     }
-    
-    fun search(query: String): Flow<List<ChatThread>> {
-        return chatRepository.searchThreads(query).map { entities ->
+
+    fun search(query: String, archived: Boolean = false): Flow<List<ChatThread>> {
+        return chatRepository.searchThreads(query, archived).map { entities ->
             entities.map { it.toDomain() }
         }
     }
@@ -29,6 +29,8 @@ private fun ChatThreadEntity.toDomain(): ChatThread {
         title = title,
         model = model,
         serverId = serverId,
+        isPinned = isPinned,
+        isArchived = isArchived,
         createdAt = createdAt,
         updatedAt = updatedAt
     )

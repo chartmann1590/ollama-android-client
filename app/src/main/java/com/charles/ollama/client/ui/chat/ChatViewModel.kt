@@ -10,10 +10,14 @@ import com.charles.ollama.client.domain.model.ChatMessage
 import com.charles.ollama.client.domain.model.Model
 import com.charles.ollama.client.domain.usecase.GetModelsUseCase
 import com.charles.ollama.client.domain.usecase.SendChatMessageUseCase
+import android.content.Context
 import com.charles.ollama.client.util.VibrationHelper
 import com.charles.ollama.client.util.ThinkingParser
 import com.charles.ollama.client.util.PerformanceMonitor
+import com.charles.ollama.client.util.RecentThreadShortcut
+import com.charles.ollama.client.util.ThreadExporter
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
@@ -26,7 +30,8 @@ class ChatViewModel @Inject constructor(
     private val sendChatMessageUseCase: SendChatMessageUseCase,
     private val serverRepository: ServerRepository,
     private val getModelsUseCase: GetModelsUseCase,
-    private val vibrationHelper: VibrationHelper
+    private val vibrationHelper: VibrationHelper,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
     
     private val _threadId = MutableStateFlow<Long?>(null)
@@ -61,6 +66,26 @@ class ChatViewModel @Inject constructor(
     
     private val _showThinking = MutableStateFlow<Boolean>(false)
     val showThinking: StateFlow<Boolean> = _showThinking.asStateFlow()
+
+    // In-thread search state
+    private val _searchActive = MutableStateFlow(false)
+    val searchActive: StateFlow<Boolean> = _searchActive.asStateFlow()
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _currentMatchIndex = MutableStateFlow(0)
+    val currentMatchIndex: StateFlow<Int> = _currentMatchIndex.asStateFlow()
+
+    /** Indices into [messages] of bubbles whose content contains [searchQuery] (case-insensitive). */
+    val matchMessageIndices: StateFlow<List<Int>> =
+        combine(_messages, _searchQuery) { msgs, query ->
+            val q = query.trim()
+            if (q.isEmpty()) emptyList()
+            else msgs.mapIndexedNotNull { idx, m ->
+                if (m.content.contains(q, ignoreCase = true)) idx else null
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     
     val thread: StateFlow<ChatThreadEntity?> = _threadId
         .flatMapLatest { id ->
@@ -88,6 +113,9 @@ class ChatViewModel @Inject constructor(
                 _selectedModel.value = it.model
                 updateVisionModelStatus(it.model)
                 _showThinking.value = it.showThinking
+                // Refresh the "Resume last chat" launcher shortcut so a long-press
+                // on the launcher icon jumps straight back into this thread.
+                RecentThreadShortcut.update(appContext, it.id, it.title)
             }
             // Load available models from server
             loadAvailableModels()
@@ -478,6 +506,137 @@ class ChatViewModel @Inject constructor(
         }
     }
     
+    fun setSearchActive(active: Boolean) {
+        _searchActive.value = active
+        if (!active) {
+            _searchQuery.value = ""
+            _currentMatchIndex.value = 0
+        }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+        _currentMatchIndex.value = 0
+    }
+
+    fun nextMatch() {
+        val matches = matchMessageIndices.value
+        if (matches.isEmpty()) return
+        _currentMatchIndex.value = (_currentMatchIndex.value + 1) % matches.size
+    }
+
+    fun previousMatch() {
+        val matches = matchMessageIndices.value
+        if (matches.isEmpty()) return
+        val cur = _currentMatchIndex.value
+        _currentMatchIndex.value = if (cur <= 0) matches.size - 1 else cur - 1
+    }
+
+    fun shareCurrentThread() {
+        val id = _threadId.value ?: return
+        viewModelScope.launch {
+            try {
+                val threadEntity = chatRepository.getThreadById(id).first() ?: return@launch
+                val messages = chatRepository.getMessagesForExport(id)
+                ThreadExporter.shareThread(appContext, threadEntity, messages)
+            } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "Failed to share thread", e)
+                _error.value = "Failed to share chat: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Drop a single message. If the user deletes a user message, all the assistant
+     * messages that came after also fall away — they are no longer well-grounded.
+     * For an assistant message, only that message is removed.
+     */
+    fun deleteSingleMessage(messageId: Long) {
+        val id = _threadId.value ?: return
+        viewModelScope.launch {
+            try {
+                val msg = chatRepository.getMessageById(messageId) ?: return@launch
+                if (msg.role == "user") {
+                    chatRepository.truncateThreadFrom(id, msg.timestamp)
+                } else {
+                    chatRepository.deleteMessage(messageId)
+                }
+                // Optimistically drop from in-memory list so UI updates immediately.
+                _messages.value = _messages.value.filterNot {
+                    if (msg.role == "user") it.timestamp >= msg.timestamp
+                    else it.id == messageId
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "Failed to delete message", e)
+                _error.value = "Failed to delete message: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Re-ask the model the same question that produced [assistantMessageId].
+     * Drops the assistant turn (and anything after it) and resends the prior
+     * user message.
+     */
+    fun regenerateAssistant(assistantMessageId: Long) {
+        val id = _threadId.value ?: return
+        viewModelScope.launch {
+            try {
+                val assistant = chatRepository.getMessageById(assistantMessageId) ?: return@launch
+                if (assistant.role != "assistant") return@launch
+                // Find the last user message at or before the assistant's timestamp.
+                val priorUser = _messages.value
+                    .filter { it.role == "user" && it.timestamp <= assistant.timestamp && it.id > 0 }
+                    .maxByOrNull { it.timestamp }
+                    ?: return@launch
+                // Drop the assistant message + everything after the prior user turn.
+                chatRepository.truncateThreadFrom(id, priorUser.timestamp + 1)
+                _messages.value = _messages.value.filter { it.timestamp <= priorUser.timestamp }
+                sendMessage(priorUser.content, priorUser.images)
+            } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "Failed to regenerate", e)
+                _error.value = "Failed to regenerate: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Edit a previously sent user message and resend. Truncates the thread at
+     * (and including) the original message, then issues a fresh send with
+     * [newContent] (and [newImages] if provided, otherwise reuses the original).
+     */
+    fun editAndResend(userMessageId: Long, newContent: String, newImages: List<String>? = null) {
+        val id = _threadId.value ?: return
+        viewModelScope.launch {
+            try {
+                val msg = chatRepository.getMessageById(userMessageId) ?: return@launch
+                if (msg.role != "user") return@launch
+                val imagesToUse = newImages ?: msg.images
+                chatRepository.truncateThreadFrom(id, msg.timestamp)
+                _messages.value = _messages.value.filter { it.timestamp < msg.timestamp }
+                sendMessage(newContent, imagesToUse)
+            } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "Failed to edit/resend", e)
+                _error.value = "Failed to update message: ${e.message}"
+            }
+        }
+    }
+
+    fun shareMessageById(messageId: Long) {
+        viewModelScope.launch {
+            try {
+                val msg = chatRepository.getMessageById(messageId) ?: return@launch
+                val title = _threadId.value?.let { tid ->
+                    chatRepository.getThreadById(tid).first()?.title
+                }
+                ThreadExporter.shareMessage(appContext, msg, title)
+            } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "Failed to share message", e)
+                _error.value = "Failed to share message: ${e.message}"
+            }
+        }
+    }
+
     suspend fun getMessageById(messageId: Long): ChatMessage? {
         return try {
             val entity = chatRepository.getMessageById(messageId)

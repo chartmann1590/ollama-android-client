@@ -19,4 +19,11 @@ object Migrations {
             )
         }
     }
+
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
+        }
+    }
 }

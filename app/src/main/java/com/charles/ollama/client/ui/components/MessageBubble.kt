@@ -9,9 +9,17 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +32,9 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.charles.ollama.client.R
 import com.charles.ollama.client.domain.model.ChatMessage
@@ -45,13 +56,42 @@ private fun copyMessageToClipboard(
     Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
 }
 
+/**
+ * Highlights [query] inside [text] with a bold span. Used by in-thread search.
+ * Matches are case-insensitive; if [query] is blank, returns [text] unchanged.
+ */
+private fun highlightMatches(text: String, query: String?): AnnotatedString {
+    val q = query?.trim().orEmpty()
+    if (q.isEmpty()) return AnnotatedString(text)
+    return buildAnnotatedString {
+        append(text)
+        val lowerText = text.lowercase()
+        val lowerQuery = q.lowercase()
+        var idx = lowerText.indexOf(lowerQuery)
+        while (idx >= 0) {
+            addStyle(
+                style = SpanStyle(fontWeight = FontWeight.ExtraBold),
+                start = idx,
+                end = idx + lowerQuery.length
+            )
+            idx = lowerText.indexOf(lowerQuery, idx + lowerQuery.length)
+        }
+    }
+}
+
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
 fun MessageBubble(
     message: ChatMessage,
     showThinking: Boolean = false,
     modifier: Modifier = Modifier,
-    onLoadImages: ((Long) -> Unit)? = null
+    onLoadImages: ((Long) -> Unit)? = null,
+    highlightQuery: String? = null,
+    onShare: ((Long) -> Unit)? = null,
+    onDelete: ((Long) -> Unit)? = null,
+    onReadAloud: ((String) -> Unit)? = null,
+    onRegenerate: ((Long) -> Unit)? = null,
+    onEditAndResend: ((Long, String) -> Unit)? = null,
 ) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
@@ -60,22 +100,17 @@ fun MessageBubble(
     val isUser = message.role == "user"
     val hasThinking = message.thinking != null && message.thinking.isNotBlank()
     var isThinkingExpanded by remember { mutableStateOf(showThinking && hasThinking) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     
     // Try to load images on-demand if they're missing for a user message
     LaunchedEffect(message.id, message.images) {
         if (isUser && message.images == null && message.id > 0 && onLoadImages != null) {
-            // Try loading images on-demand for user messages that should have them
             onLoadImages(message.id)
         }
     }
-    
-    // Debug logging
-    LaunchedEffect(message.id, hasThinking, showThinking) {
-        if (!isUser) {
-            android.util.Log.d("MessageBubble", "Message ${message.id}: hasThinking=$hasThinking, showThinking=$showThinking, thinking=${message.thinking?.take(50)}")
-        }
-    }
-    
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -90,7 +125,6 @@ fun MessageBubble(
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
             // Thinking section (only for assistant messages)
-            // Show thinking section if thinking exists OR if showThinking is enabled
             val shouldShowThinkingSection = !isUser && (hasThinking || showThinking)
             if (shouldShowThinkingSection) {
                 Card(
@@ -156,7 +190,6 @@ fun MessageBubble(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                             )
                         } else if (!hasThinking && showThinking) {
-                            // Show a hint that thinking is enabled but no content found
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 12.dp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
@@ -237,16 +270,116 @@ fun MessageBubble(
                         }
                     }
                     
-                    // Display text content if present
+                    // Display text content if present, wrapped so users can drag-select
+                    // and use the system "Share" / "Translate" actions on a snippet.
                     if (message.content.isNotBlank()) {
-                        Text(
-                            text = message.content,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (isUser)
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        SelectionContainer {
+                            Text(
+                                text = highlightMatches(message.content, highlightQuery),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isUser)
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Per-message actions row. Only render the overflow if the host
+            // wired up at least one action callback and the message has been
+            // persisted (id > 0 so id-based actions like delete/regen work).
+            val hasActions = (onShare != null || onDelete != null || onReadAloud != null ||
+                onRegenerate != null || onEditAndResend != null) && message.id > 0
+            if (hasActions) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
+                ) {
+                    Box {
+                        IconButton(
+                            onClick = { menuExpanded = true },
+                            modifier = Modifier.size(28.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Message actions",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Copy") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    copyMessageToClipboard(
+                                        clipboardManager = clipboardManager,
+                                        context = context,
+                                        text = message.content,
+                                        successMessage = copySuccessMessage,
+                                        emptyMessage = nothingToCopyMessage,
+                                    )
+                                },
+                            )
+                            if (onShare != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Share") },
+                                    leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onShare(message.id)
+                                    },
+                                )
+                            }
+                            if (!isUser && onReadAloud != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Read aloud") },
+                                    leadingIcon = { Icon(Icons.Default.VolumeUp, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onReadAloud(message.content)
+                                    },
+                                )
+                            }
+                            if (!isUser && onRegenerate != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Regenerate") },
+                                    leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onRegenerate(message.id)
+                                    },
+                                )
+                            }
+                            if (isUser && onEditAndResend != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Edit and resend") },
+                                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showEditDialog = true
+                                    },
+                                )
+                            }
+                            if (onDelete != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Delete") },
+                                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showDeleteConfirm = true
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -256,5 +389,70 @@ fun MessageBubble(
             Spacer(modifier = Modifier.width(48.dp))
         }
     }
+
+    if (showEditDialog && onEditAndResend != null) {
+        EditMessageDialog(
+            initial = message.content,
+            onDismiss = { showEditDialog = false },
+            onConfirm = { updated ->
+                showEditDialog = false
+                onEditAndResend(message.id, updated)
+            },
+        )
+    }
+
+    if (showDeleteConfirm && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete this message?") },
+            text = {
+                Text(
+                    text = if (isUser)
+                        "Deleting this message will also remove every reply that came after it."
+                    else
+                        "This will remove just this assistant reply."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    onDelete(message.id)
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            },
+        )
+    }
 }
 
+@Composable
+private fun EditMessageDialog(
+    initial: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var text by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit and resend") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                maxLines = 8,
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(text) },
+                enabled = text.isNotBlank() && text != initial,
+            ) { Text("Resend") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}

@@ -1,6 +1,7 @@
 package com.charles.ollama.client
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -12,12 +13,17 @@ import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.charles.ollama.client.ads.InterstitialAdManager
 import com.charles.ollama.client.ads.RewardedAdManager
 import com.charles.ollama.client.ui.navigation.NavGraph
 import com.charles.ollama.client.ui.theme.OllamaAndroidTheme
 import com.charles.ollama.client.ui.update.UpdateAvailablePrompt
+import com.charles.ollama.client.util.RecentThreadShortcut
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.analytics.ktx.logEvent
@@ -71,18 +77,42 @@ class MainActivity : ComponentActivity() {
         // Preload a rewarded ad so the rewards screen feels instant.
         rewardedAdManager.loadAd(this)
         
+        val initialThreadId = readShortcutThreadId(intent)
+
         setContent {
             OllamaAndroidTheme {
+                // Use mutableState so we can re-route when a new shortcut intent
+                // arrives via onNewIntent (singleTask launchMode).
+                var pendingThreadId by remember { mutableStateOf(initialThreadId) }
+                pendingShortcutHandler = { newId ->
+                    if (newId > 0L) pendingThreadId = newId
+                }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NavGraph()
+                    NavGraph(initialThreadId = pendingThreadId)
                     UpdateAvailablePrompt()
                 }
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val newThreadId = readShortcutThreadId(intent)
+        if (newThreadId > 0L) {
+            pendingShortcutHandler?.invoke(newThreadId)
+        }
+    }
+
+    private fun readShortcutThreadId(intent: Intent?): Long {
+        val id = intent?.getLongExtra(RecentThreadShortcut.EXTRA_THREAD_ID, -1L) ?: -1L
+        return if (id > 0L) id else -1L
+    }
+
+    private var pendingShortcutHandler: ((Long) -> Unit)? = null
     
     private fun requestNotificationPermission() {
         // POST_NOTIFICATIONS permission is required on Android 13+ (API 33+)

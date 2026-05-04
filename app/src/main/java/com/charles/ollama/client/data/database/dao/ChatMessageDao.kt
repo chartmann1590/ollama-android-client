@@ -49,5 +49,11 @@ interface ChatMessageDao {
     
     @Query("DELETE FROM chat_messages WHERE threadId = :threadId")
     suspend fun deleteMessagesByThreadId(threadId: Long)
+
+    @Query("DELETE FROM chat_messages WHERE id = :messageId")
+    suspend fun deleteMessageById(messageId: Long)
+
+    @Query("DELETE FROM chat_messages WHERE threadId = :threadId AND timestamp >= :fromTimestamp")
+    suspend fun deleteMessagesFrom(threadId: Long, fromTimestamp: Long)
 }
 

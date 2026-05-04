@@ -15,6 +15,8 @@ data class ChatThreadEntity(
     val systemPrompt: String? = null,
     val vibrationEnabled: Boolean = true,
     val showThinking: Boolean = false,
+    val isPinned: Boolean = false,
+    val isArchived: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

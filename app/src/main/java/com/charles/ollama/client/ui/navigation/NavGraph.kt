@@ -36,7 +36,8 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun NavGraph(
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    initialThreadId: Long = -1L,
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -117,8 +118,11 @@ fun NavGraph(
                 // If default server exists but we started on Servers (because defaultServer was null initially),
                 // navigate to ChatThreads
                 
-                // Only navigate if we're still on Servers (start destination was Servers because defaultServer was null)
-                if (currentRoute == Screen.Servers.route || currentRoute == null) {
+                // Skip this override if we deep-linked into a specific chat via the
+                // "Resume last chat" shortcut — we want to stay on that chat route.
+                if ((currentRoute == Screen.Servers.route || currentRoute == null) &&
+                    initialThreadId <= 0L
+                ) {
                     // Now it's safe to access navController.graph because NavHost has been created
                     navController.navigate(Screen.ChatThreads.route) {
                         // Clear the back stack and set ChatThreads as the new root
@@ -139,11 +143,31 @@ fun NavGraph(
     // Only show NavHost after we've waited for defaultServer to load
     // Compute startDestination at this moment using the current defaultServer value
     if (hasWaitedForDefaultServer) {
-        // Compute startDestination based on current defaultServer value (not remembered)
-        val startDestination = if (defaultServer != null) {
-            Screen.ChatThreads.route
-        } else {
-            Screen.Servers.route
+        // Compute startDestination based on current defaultServer value (not remembered).
+        // If we got here via the "Resume last chat" launcher shortcut, jump straight
+        // to that chat instead of the threads list.
+        val startDestination = when {
+            initialThreadId > 0L && defaultServer != null ->
+                Screen.Chat.createRoute(initialThreadId)
+            defaultServer != null -> Screen.ChatThreads.route
+            else -> Screen.Servers.route
+        }
+
+        // If a NEW shortcut intent arrives while the app is already running
+        // (singleTask reuse) navigate to that chat thread.
+        LaunchedEffect(initialThreadId) {
+            if (initialThreadId > 0L &&
+                defaultServer != null &&
+                navController.graph.findNode(Screen.Chat.route) != null
+            ) {
+                val current = navController.currentBackStackEntry?.destination?.route
+                val target = Screen.Chat.createRoute(initialThreadId)
+                if (current != target) {
+                    navController.navigate(target) {
+                        launchSingleTop = true
+                    }
+                }
+            }
         }
         
         NavHost(

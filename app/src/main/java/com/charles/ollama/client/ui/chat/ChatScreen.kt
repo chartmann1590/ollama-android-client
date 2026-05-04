@@ -1,7 +1,12 @@
 package com.charles.ollama.client.ui.chat
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.speech.RecognizerIntent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -18,6 +23,11 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -48,6 +58,7 @@ import java.io.InputStream
 import android.util.Base64
 import com.charles.ollama.client.util.ImageCompressionHelper
 import com.charles.ollama.client.util.PerformanceMonitor
+import com.charles.ollama.client.util.TextToSpeechHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,9 +72,12 @@ fun ChatScreen(
     LaunchedEffect(Unit) {
         PerformanceMonitor.addAttribute(screenTrace, "thread_id", threadId.toString())
     }
+    val ttsAppContext = LocalContext.current.applicationContext
+    val ttsHelper = remember(ttsAppContext) { TextToSpeechHelper(context = ttsAppContext) }
     DisposableEffect(Unit) {
         onDispose {
             PerformanceMonitor.stopTrace(screenTrace)
+            ttsHelper.shutdown()
         }
     }
     
@@ -75,6 +89,10 @@ fun ChatScreen(
     val error by viewModel.error.collectAsState()
     val availableModels by viewModel.availableModels.collectAsState()
     val isLoadingModels by viewModel.isLoadingModels.collectAsState()
+    val searchActive by viewModel.searchActive.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val matchIndices by viewModel.matchMessageIndices.collectAsState()
+    val currentMatch by viewModel.currentMatchIndex.collectAsState()
     
     var messageText by remember { mutableStateOf("") }
     var selectedImages by remember { mutableStateOf<List<String>>(emptyList()) } // Base64 encoded images
@@ -85,6 +103,24 @@ fun ChatScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
+    // System speech-to-text launcher (no library, no manifest permission needed —
+    // the dedicated recognizer activity owns the mic capture).
+    val speechLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spoken = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+                ?.trim()
+                .orEmpty()
+            if (spoken.isNotEmpty()) {
+                messageText = if (messageText.isBlank()) spoken
+                else messageText.trimEnd() + " " + spoken
+            }
+        }
+    }
+
     // Image picker launcher
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -130,48 +166,114 @@ fun ChatScreen(
     }
 
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
+        // Don't yank the user away from a search match while they're navigating it.
+        if (messages.isNotEmpty() && !searchActive) {
             scope.launch {
                 listState.animateScrollToItem(chatRows.lastIndex.coerceAtLeast(0))
             }
         }
     }
-    
+
+    // Map a message index to a chat row index (the ad row is interleaved after `nativeAdAfter` messages).
+    fun messageIndexToRow(messageIndex: Int): Int {
+        return if (messages.size > nativeAdAfter && messageIndex >= nativeAdAfter) messageIndex + 1
+        else messageIndex
+    }
+
+    LaunchedEffect(searchActive, currentMatch, matchIndices) {
+        if (!searchActive) return@LaunchedEffect
+        val matches = matchIndices
+        if (matches.isEmpty()) return@LaunchedEffect
+        val targetMessageIndex = matches[currentMatch.coerceIn(0, matches.lastIndex)]
+        listState.animateScrollToItem(messageIndexToRow(targetMessageIndex))
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(thread?.title ?: "Chat")
-                        selectedModel?.let {
-                            Text(
-                                text = it,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    if (searchActive) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = viewModel::updateSearchQuery,
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Search in chat") },
+                            singleLine = true,
+                            trailingIcon = {
+                                if (matchIndices.isNotEmpty()) {
+                                    Text(
+                                        text = "${currentMatch + 1}/${matchIndices.size}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    )
+                                } else if (searchQuery.isNotBlank()) {
+                                    Text(
+                                        text = "0/0",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    )
+                                }
+                            }
+                        )
+                    } else {
+                        Column {
+                            Text(thread?.title ?: "Chat")
+                            selectedModel?.let {
+                                Text(
+                                    text = it,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        if (searchActive) viewModel.setSearchActive(false) else onNavigateBack()
+                    }) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
+                            imageVector = if (searchActive) Icons.Default.Close else Icons.Default.ArrowBack,
+                            contentDescription = if (searchActive) "Close search" else "Back"
                         )
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showChatSettings = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Chat Settings"
-                        )
-                    }
-                    IconButton(onClick = { showModelSelector = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = "Select Model"
-                        )
+                    if (searchActive) {
+                        IconButton(
+                            onClick = viewModel::previousMatch,
+                            enabled = matchIndices.isNotEmpty()
+                        ) {
+                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Previous match")
+                        }
+                        IconButton(
+                            onClick = viewModel::nextMatch,
+                            enabled = matchIndices.isNotEmpty()
+                        ) {
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Next match")
+                        }
+                    } else {
+                        IconButton(onClick = { viewModel.setSearchActive(true) }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search this chat")
+                        }
+                        IconButton(onClick = { viewModel.shareCurrentThread() }) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share chat as Markdown"
+                            )
+                        }
+                        IconButton(onClick = { showChatSettings = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Chat Settings"
+                            )
+                        }
+                        IconButton(onClick = { showModelSelector = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Tune,
+                                contentDescription = "Select Model"
+                            )
+                        }
                     }
                 }
             )
@@ -200,7 +302,15 @@ fun ChatScreen(
                             MessageBubble(
                                 message = row.message,
                                 showThinking = showThinking,
-                                onLoadImages = { messageId -> viewModel.loadMessageImages(messageId) }
+                                onLoadImages = { messageId -> viewModel.loadMessageImages(messageId) },
+                                highlightQuery = if (searchActive) searchQuery else null,
+                                onShare = { messageId -> viewModel.shareMessageById(messageId) },
+                                onDelete = { messageId -> viewModel.deleteSingleMessage(messageId) },
+                                onReadAloud = { text -> ttsHelper.speak(text) },
+                                onRegenerate = { messageId -> viewModel.regenerateAssistant(messageId) },
+                                onEditAndResend = { messageId, newContent ->
+                                    viewModel.editAndResend(messageId, newContent)
+                                },
                             )
                         }
                         is ChatRow.Ad -> NativeAdCard()
@@ -281,6 +391,29 @@ fun ChatScreen(
                     ) {
                         Icon(Icons.Default.Image, contentDescription = "Add image")
                     }
+                }
+                IconButton(
+                    onClick = {
+                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                            putExtra(
+                                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                            )
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your message")
+                        }
+                        try {
+                            speechLauncher.launch(intent)
+                        } catch (e: ActivityNotFoundException) {
+                            Toast.makeText(
+                                context,
+                                "Speech recognizer not available on this device",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    },
+                    enabled = selectedModel != null
+                ) {
+                    Icon(Icons.Default.Mic, contentDescription = "Voice input")
                 }
                 OutlinedTextField(
                     value = messageText,
