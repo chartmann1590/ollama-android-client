@@ -398,14 +398,23 @@ jobs:
           cp "$github_aab_src" "release/ollama-android-github-${{ steps.meta.outputs.tag }}.aab"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.meta.outputs.tag }}
-          name: ${{ steps.meta.outputs.name }}
-          body: ${{ steps.meta.outputs.body }}
-          draft: false
-          prerelease: false
-          make_latest: "true"
-          files: |
-            release/*.apk
-            release/*.aab
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_BODY: ${{ steps.meta.outputs.body }}
+          RELEASE_TAG: ${{ steps.meta.outputs.tag }}
+          RELEASE_NAME: ${{ steps.meta.outputs.name }}
+        run: |
+          # Publish with the gh CLI in a single atomic call. This creates the tag
+          # and a published (non-draft) release together — avoiding the
+          # softprops/action-gh-release two-phase flow, which was leaving releases
+          # stuck as drafts with "untagged-" URLs that never reach the public
+          # Releases page.
+          printf '%s' "$RELEASE_BODY" > release_notes.md
+          # Make the step idempotent on re-runs: drop any partial release/tag first.
+          gh release delete "$RELEASE_TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$RELEASE_TAG" \
+            --target "$GITHUB_SHA" \
+            --title "$RELEASE_NAME" \
+            --notes-file release_notes.md \
+            --latest \
+            release/*.apk release/*.aab
