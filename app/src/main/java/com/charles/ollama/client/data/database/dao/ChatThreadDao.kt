@@ -27,6 +27,9 @@ interface ChatThreadDao {
     @Query("UPDATE chat_threads SET isArchived = :archived WHERE id = :threadId")
     suspend fun setArchived(threadId: Long, archived: Boolean)
 
+    @Query("UPDATE chat_threads SET systemPrompt = :systemPrompt, updatedAt = :updatedAt WHERE id = :threadId")
+    suspend fun setSystemPrompt(threadId: Long, systemPrompt: String?, updatedAt: Long = System.currentTimeMillis())
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertThread(thread: ChatThreadEntity): Long
     

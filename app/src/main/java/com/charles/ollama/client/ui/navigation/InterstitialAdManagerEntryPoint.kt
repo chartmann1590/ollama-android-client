@@ -3,6 +3,7 @@ package com.charles.ollama.client.ui.navigation
 import com.charles.ollama.client.ads.AdGate
 import com.charles.ollama.client.ads.InterstitialAdManager
 import com.charles.ollama.client.ads.RewardedAdManager
+import com.charles.ollama.client.data.billing.PremiumManager
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
@@ -13,5 +14,6 @@ interface InterstitialAdManagerEntryPoint {
     fun interstitialAdManager(): InterstitialAdManager
     fun rewardedAdManager(): RewardedAdManager
     fun adGate(): AdGate
+    fun premiumManager(): PremiumManager
 }
 

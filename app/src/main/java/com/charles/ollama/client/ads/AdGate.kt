@@ -2,6 +2,7 @@ package com.charles.ollama.client.ads
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.charles.ollama.client.data.billing.PremiumManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,7 +23,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class AdGate @Inject constructor(
-    @ApplicationContext context: Context
+    @ApplicationContext context: Context,
+    private val premiumManager: PremiumManager,
 ) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -79,8 +81,11 @@ class AdGate @Inject constructor(
         return (now + offset) / 86_400_000L
     }
 
+    /** True if the user has paid to remove ads permanently. */
+    val isPremium: StateFlow<Boolean> = premiumManager.isPremium
+
     fun adsCurrentlyDisabled(): Boolean =
-        _adFreeUntilMs.value > System.currentTimeMillis()
+        premiumManager.isPremium.value || _adFreeUntilMs.value > System.currentTimeMillis()
 
     fun adFreeRemainingMs(): Long {
         val left = _adFreeUntilMs.value - System.currentTimeMillis()

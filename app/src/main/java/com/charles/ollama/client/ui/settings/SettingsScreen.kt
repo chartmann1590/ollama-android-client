@@ -11,13 +11,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.charles.ollama.client.R
+import com.charles.ollama.client.data.preferences.ThemeMode
 import com.charles.ollama.client.ui.components.BannerAd
 import com.charles.ollama.client.util.PerformanceMonitor
 
@@ -26,6 +29,7 @@ import com.charles.ollama.client.util.PerformanceMonitor
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAbout: () -> Unit,
+    onNavigateToPaywall: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val screenTrace = remember { PerformanceMonitor.startScreenTrace("SettingsScreen") }
@@ -34,6 +38,9 @@ fun SettingsScreen(
     }
 
     val huggingFaceToken by viewModel.huggingFaceToken.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsState()
+    val dynamicColor by viewModel.dynamicColor.collectAsState()
+    val isPremium by viewModel.isPremium.collectAsState()
 
     Scaffold(
         topBar = {
@@ -56,6 +63,62 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Appearance",
+                style = MaterialTheme.typography.titleMedium
+            )
+            ThemeModeSelector(
+                selected = themeMode,
+                onSelect = viewModel::setThemeMode
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Material You colors",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "Use your wallpaper's colors instead of the app's brand palette (Android 12+).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = dynamicColor,
+                    onCheckedChange = viewModel::setDynamicColor
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "Premium",
+                style = MaterialTheme.typography.titleMedium
+            )
+            if (isPremium) {
+                Text(
+                    text = "Premium active ✓ — all ads are removed. Thanks for your support!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Text(
+                    text = "Remove every ad in the app with a subscription or a one-time lifetime purchase.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Button(
+                    onClick = onNavigateToPaywall,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Remove Ads / Go Premium")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "On-device LiteRT (Gemma)",
                 style = MaterialTheme.typography.titleMedium
@@ -125,6 +188,34 @@ fun SettingsScreen(
             ) {
                 Text(stringResource(R.string.settings_about_open_button))
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ThemeModeSelector(
+    selected: ThemeMode,
+    onSelect: (ThemeMode) -> Unit
+) {
+    val options = listOf(
+        ThemeMode.SYSTEM to "System",
+        ThemeMode.LIGHT to "Light",
+        ThemeMode.DARK to "Dark"
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { (mode, label) ->
+            FilterChip(
+                selected = selected == mode,
+                onClick = { onSelect(mode) },
+                label = { Text(label) },
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

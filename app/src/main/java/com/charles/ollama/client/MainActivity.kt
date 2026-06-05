@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,9 +21,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.charles.ollama.client.ads.InterstitialAdManager
 import com.charles.ollama.client.ads.RewardedAdManager
+import com.charles.ollama.client.data.billing.PremiumManager
+import com.charles.ollama.client.data.preferences.UiPreferences
 import com.charles.ollama.client.ui.navigation.NavGraph
 import com.charles.ollama.client.ui.theme.OllamaAndroidTheme
 import com.charles.ollama.client.ui.update.UpdateAvailablePrompt
+import com.charles.ollama.client.util.AppShortcuts
 import com.charles.ollama.client.util.RecentThreadShortcut
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
@@ -40,7 +44,13 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var rewardedAdManager: RewardedAdManager
-    
+
+    @Inject
+    lateinit var uiPreferences: UiPreferences
+
+    @Inject
+    lateinit var premiumManager: PremiumManager
+
     private lateinit var firebaseAnalytics: FirebaseAnalytics
     
     private val requestPermissionLauncher = registerForActivityResult(
@@ -76,26 +86,44 @@ class MainActivity : ComponentActivity() {
 
         // Preload a rewarded ad so the rewards screen feels instant.
         rewardedAdManager.loadAd(this)
-        
+
+        // Register launcher shortcuts (New chat / Models / Servers).
+        AppShortcuts.refresh(this)
+
         val initialThreadId = readShortcutThreadId(intent)
+        val initialDest = intent?.getStringExtra(EXTRA_DEST)
 
         setContent {
-            OllamaAndroidTheme {
+            val themeMode by uiPreferences.themeMode.collectAsState()
+            val dynamicColor by uiPreferences.dynamicColor.collectAsState()
+            OllamaAndroidTheme(themeMode = themeMode, dynamicColor = dynamicColor) {
                 // Use mutableState so we can re-route when a new shortcut intent
                 // arrives via onNewIntent (singleTask launchMode).
                 var pendingThreadId by remember { mutableStateOf(initialThreadId) }
+                var pendingDest by remember { mutableStateOf(initialDest) }
                 pendingShortcutHandler = { newId ->
                     if (newId > 0L) pendingThreadId = newId
                 }
+                pendingDestHandler = { dest -> pendingDest = dest }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NavGraph(initialThreadId = pendingThreadId)
+                    NavGraph(
+                        initialThreadId = pendingThreadId,
+                        initialDest = pendingDest,
+                        onDestConsumed = { pendingDest = null }
+                    )
                     UpdateAvailablePrompt()
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Reconcile premium status with Play each time we return to the foreground.
+        premiumManager.refreshPurchases()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -105,6 +133,7 @@ class MainActivity : ComponentActivity() {
         if (newThreadId > 0L) {
             pendingShortcutHandler?.invoke(newThreadId)
         }
+        intent.getStringExtra(EXTRA_DEST)?.let { pendingDestHandler?.invoke(it) }
     }
 
     private fun readShortcutThreadId(intent: Intent?): Long {
@@ -113,6 +142,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private var pendingShortcutHandler: ((Long) -> Unit)? = null
+    private var pendingDestHandler: ((String) -> Unit)? = null
     
     private fun requestNotificationPermission() {
         // POST_NOTIFICATIONS permission is required on Android 13+ (API 33+)
@@ -136,6 +166,10 @@ class MainActivity : ComponentActivity() {
     
     companion object {
         private const val TAG = "MainActivity"
+        const val EXTRA_DEST = "nav_dest"
+        const val DEST_NEW_CHAT = "new_chat"
+        const val DEST_MODELS = "models"
+        const val DEST_SERVERS = "servers"
     }
 }
 

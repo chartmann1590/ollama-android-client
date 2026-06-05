@@ -33,6 +33,8 @@ fun BannerAd(
             InterstitialAdManagerEntryPoint::class.java
         ).adGate()
     }
+    val isPremium by adGate.isPremium.collectAsState()
+    if (isPremium) return
     val adFreeUntil by adGate.adFreeUntilMs.collectAsState()
     if (adFreeUntil > System.currentTimeMillis()) return
     val lifecycleOwner = LocalLifecycleOwner.current

@@ -25,6 +25,8 @@ import com.charles.ollama.client.ui.chat.ChatScreen
 import com.charles.ollama.client.ui.chat.ChatThreadsScreen
 import com.charles.ollama.client.ui.models.ModelsScreen
 import com.charles.ollama.client.ui.onboarding.FirstRunSetupTutorialSheet
+import com.charles.ollama.client.ui.premium.PaywallScreen
+import com.charles.ollama.client.ui.prompts.PromptLibraryScreen
 import com.charles.ollama.client.ui.rewards.RewardsScreen
 import com.charles.ollama.client.ui.rewards.WhatsNewRewardsSheet
 import com.charles.ollama.client.ui.servers.ServerListScreen
@@ -38,6 +40,8 @@ import kotlinx.coroutines.delay
 fun NavGraph(
     navController: NavHostController = rememberNavController(),
     initialThreadId: Long = -1L,
+    initialDest: String? = null,
+    onDestConsumed: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -169,7 +173,25 @@ fun NavGraph(
                 }
             }
         }
-        
+
+        // Route launcher-shortcut / widget destinations (New chat / Models / Servers).
+        LaunchedEffect(initialDest) {
+            val dest = initialDest ?: return@LaunchedEffect
+            val targetRoute = when (dest) {
+                "models" -> Screen.Models.route
+                "servers" -> Screen.Servers.route
+                "new_chat" -> Screen.ChatThreads.route
+                else -> null
+            }
+            if (targetRoute != null && navController.graph.findNode(targetRoute) != null) {
+                val current = navController.currentBackStackEntry?.destination?.route
+                if (current != targetRoute) {
+                    navController.navigate(targetRoute) { launchSingleTop = true }
+                }
+            }
+            onDestConsumed()
+        }
+
         NavHost(
             navController = navController,
             startDestination = startDestination
@@ -196,7 +218,8 @@ fun NavGraph(
 
         composable(Screen.Rewards.route) {
             RewardsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPaywall = { navController.navigate(Screen.Paywall.route) }
             )
         }
         
@@ -209,6 +232,9 @@ fun NavGraph(
                 threadId = threadId,
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onNavigateToPromptLibrary = { id ->
+                    navController.navigate(Screen.PromptLibrary.createRoute(id))
                 }
             )
         }
@@ -255,11 +281,29 @@ fun NavGraph(
                 onNavigateToAbout = {
                     navController.navigate(Screen.About.route)
                 },
+                onNavigateToPaywall = {
+                    navController.navigate(Screen.Paywall.route)
+                },
             )
         }
 
         composable(Screen.About.route) {
             AboutScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Screen.Paywall.route) {
+            PaywallScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = Screen.PromptLibrary.route,
+            arguments = listOf(navArgument("threadId") { type = NavType.LongType })
+        ) {
+            PromptLibraryScreen(
                 onNavigateBack = { navController.popBackStack() },
             )
         }

@@ -11,6 +11,7 @@ import android.util.Log
 import com.charles.ollama.client.R
 import com.charles.ollama.client.ads.AdGate
 import com.charles.ollama.client.ads.AppOpenAdManager
+import com.charles.ollama.client.data.billing.PremiumManager
 import com.google.firebase.FirebaseApp
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -24,6 +25,9 @@ class OllamaApplication : Application() {
     @javax.inject.Inject
     lateinit var adGate: AdGate
 
+    @javax.inject.Inject
+    lateinit var premiumManager: PremiumManager
+
     private lateinit var appOpenAdManager: AppOpenAdManager
 
     override fun onCreate() {
@@ -36,6 +40,9 @@ class OllamaApplication : Application() {
         FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
 
         installMainLoopExceptionFilter()
+
+        // Start Play Billing early so premium status is known before ads load.
+        premiumManager.initialize()
 
         appOpenAdManager = AppOpenAdManager(adGate)
         appOpenAdManager.register(this)

@@ -2,6 +2,14 @@
 <resources>
     <string name="app_name">Ollama</string>
     <string name="default_notification_channel_id">ollama_notifications</string>
+    <string name="widget_new_chat">New chat</string>
+    <string name="widget_description">Jump straight into a new conversation.</string>
+    <string name="shortcut_new_chat_short">New chat</string>
+    <string name="shortcut_new_chat_long">Start a new chat</string>
+    <string name="shortcut_models_short">Models</string>
+    <string name="shortcut_models_long">Manage models</string>
+    <string name="shortcut_servers_short">Servers</string>
+    <string name="shortcut_servers_long">Manage servers</string>
     <string name="server_litert_description">On-device LiteRT-LM — download Gemma .litertlm in Models (multi‑GB).</string>
     <string name="servers_add_litert">On-device LiteRT</string>
     <string name="litert_first_load_hint">First reply after picking a model may take a while while the engine loads.</string>

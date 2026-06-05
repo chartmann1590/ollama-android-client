@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -65,6 +66,7 @@ import com.charles.ollama.client.util.TextToSpeechHelper
 fun ChatScreen(
     threadId: Long,
     onNavigateBack: () -> Unit,
+    onNavigateToPromptLibrary: (Long) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     // Performance monitoring for screen rendering
@@ -99,10 +101,23 @@ fun ChatScreen(
     var showModelSelector by remember { mutableStateOf(false) }
     var showChatSettings by remember { mutableStateOf(false) }
     var showTitleEditDialog by remember { mutableStateOf(false) }
-    
+    // Hands-free voice mode: speak -> auto-send -> read reply aloud -> listen again.
+    var voiceMode by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    
+
+    // Shared send action so both the Send button and voice mode use one path.
+    val performSend: (String) -> Unit = { text ->
+        val canSendNow = (text.isNotBlank() || selectedImages.isNotEmpty()) && selectedModel != null
+        if (canSendNow) {
+            val imagesToSend = if (selectedImages.isNotEmpty()) selectedImages else null
+            viewModel.sendMessage(text, imagesToSend)
+            messageText = ""
+            selectedImages = emptyList()
+        }
+    }
+
     // System speech-to-text launcher (no library, no manifest permission needed —
     // the dedicated recognizer activity owns the mic capture).
     val speechLauncher = rememberLauncherForActivityResult(
@@ -115,10 +130,50 @@ fun ChatScreen(
                 ?.trim()
                 .orEmpty()
             if (spoken.isNotEmpty()) {
-                messageText = if (messageText.isBlank()) spoken
-                else messageText.trimEnd() + " " + spoken
+                if (voiceMode) {
+                    // Hands-free: send what was heard immediately.
+                    performSend(spoken)
+                } else {
+                    messageText = if (messageText.isBlank()) spoken
+                    else messageText.trimEnd() + " " + spoken
+                }
             }
         }
+    }
+
+    // Launches the system speech recognizer; reused by the mic button and voice mode.
+    val startListening: () -> Unit = {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            )
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your message")
+        }
+        try {
+            speechLauncher.launch(intent)
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(
+                context,
+                "Speech recognizer not available on this device",
+                Toast.LENGTH_SHORT
+            ).show()
+            voiceMode = false
+        }
+    }
+
+    // When a reply finishes while voice mode is on, read it aloud then listen again.
+    var wasLoading by remember { mutableStateOf(false) }
+    LaunchedEffect(isLoading, voiceMode) {
+        if (wasLoading && !isLoading && voiceMode) {
+            val lastAssistant = messages.lastOrNull { it.role == "assistant" }?.content?.trim()
+            if (!lastAssistant.isNullOrEmpty()) {
+                ttsHelper.speak(lastAssistant)
+            }
+            kotlinx.coroutines.delay(600)
+            if (voiceMode) startListening()
+        }
+        wasLoading = isLoading
     }
 
     // Image picker launcher
@@ -253,6 +308,17 @@ fun ChatScreen(
                             Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Next match")
                         }
                     } else {
+                        IconButton(onClick = {
+                            voiceMode = !voiceMode
+                            if (voiceMode) startListening() else ttsHelper.stop()
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.RecordVoiceOver,
+                                contentDescription = if (voiceMode) "Turn off voice mode" else "Turn on voice mode",
+                                tint = if (voiceMode) MaterialTheme.colorScheme.primary
+                                else LocalContentColor.current
+                            )
+                        }
                         IconButton(onClick = { viewModel.setSearchActive(true) }) {
                             Icon(Icons.Default.Search, contentDescription = "Search this chat")
                         }
@@ -393,24 +459,7 @@ fun ChatScreen(
                     }
                 }
                 IconButton(
-                    onClick = {
-                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                            putExtra(
-                                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-                            )
-                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your message")
-                        }
-                        try {
-                            speechLauncher.launch(intent)
-                        } catch (e: ActivityNotFoundException) {
-                            Toast.makeText(
-                                context,
-                                "Speech recognizer not available on this device",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    },
+                    onClick = { startListening() },
                     enabled = selectedModel != null
                 ) {
                     Icon(Icons.Default.Mic, contentDescription = "Voice input")
@@ -426,17 +475,7 @@ fun ChatScreen(
                 )
                 val canSend = (messageText.isNotBlank() || selectedImages.isNotEmpty()) && selectedModel != null
                 FloatingActionButton(
-                    onClick = {
-                        if (canSend) {
-                            val imagesToSend = if (selectedImages.isNotEmpty()) selectedImages else null
-                            android.util.Log.d("ChatScreen", "Send button clicked: text='$messageText', images=${imagesToSend?.size ?: 0}")
-                            viewModel.sendMessage(messageText, imagesToSend)
-                            messageText = ""
-                            selectedImages = emptyList()
-                        } else {
-                            android.util.Log.w("ChatScreen", "Send button clicked but canSend=false: text='$messageText', images=${selectedImages.size}, isLoading=$isLoading, model=$selectedModel")
-                        }
-                    },
+                    onClick = { performSend(messageText) },
                     modifier = Modifier.size(56.dp),
                     containerColor = if (canSend) 
                         MaterialTheme.colorScheme.primary 
@@ -473,6 +512,10 @@ fun ChatScreen(
             thread = thread,
             showThinking = showThinking,
             onDismiss = { showChatSettings = false },
+            onBrowseLibrary = {
+                showChatSettings = false
+                onNavigateToPromptLibrary(threadId)
+            },
             onStreamEnabledChanged = { enabled ->
                 viewModel.updateStreamEnabled(enabled)
             },
@@ -505,7 +548,8 @@ fun ChatSettingsDialog(
     onStreamEnabledChanged: (Boolean) -> Unit,
     onSystemPromptChanged: (String) -> Unit,
     onVibrationEnabledChanged: (Boolean) -> Unit,
-    onShowThinkingChanged: (Boolean) -> Unit
+    onShowThinkingChanged: (Boolean) -> Unit,
+    onBrowseLibrary: () -> Unit = {}
 ) {
     var streamEnabled by remember { mutableStateOf(thread?.streamEnabled ?: true) }
     var systemPrompt by remember { mutableStateOf(thread?.systemPrompt ?: "") }
@@ -622,6 +666,13 @@ fun ChatSettingsDialog(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onBrowseLibrary,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Browse prompt library")
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = systemPrompt,

@@ -27,6 +27,8 @@ class RewardsViewModel @Inject constructor(
     val rewardedAdState: StateFlow<com.charles.ollama.client.ads.RewardedAdState> =
         rewardedAdManager.state
 
+    val isPremium: StateFlow<Boolean> = adGate.isPremium
+
     val tiers: List<RewardTier> = AdGate.TIERS
     val creditsPerAd: Int = AdGate.CREDITS_PER_AD
     val maxCreditsPerDay: Int = AdGate.MAX_CREDITS_PER_DAY

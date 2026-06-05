@@ -96,7 +96,7 @@ android {
         // was 3) — the offset gives plenty of headroom even if the workflow
         // ever resets. Local builds keep a stable baseline so incremental
         // gradle outputs aren't churned on every commit.
-        val baseVersionCode = 3
+        val baseVersionCode = 4
         val baseVersionName = "1.2"
         val ciRunNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
         versionCode = if (ciRunNumber != null) 1000 + ciRunNumber else baseVersionCode
@@ -155,6 +155,18 @@ android {
         buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"$admobNativeId\"")
         buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$admobAppOpenId\"")
         buildConfigField("String", "ADMOB_REWARDED_AD_UNIT_ID", "\"$admobRewardedId\"")
+
+        // Google Play Billing public license key (base64 RSA, from Play Console >
+        // Monetization setup). Used to verify purchase signatures locally. Blank
+        // by default so a freshly-cloned build still runs; when set, unverified
+        // purchases are rejected. Supply via env PLAY_LICENSE_KEY or
+        // local.properties `play.licenseKey`.
+        val playLicenseKey = adProp(
+            envName = "PLAY_LICENSE_KEY",
+            propName = "play.licenseKey",
+            default = ""
+        )
+        buildConfigField("String", "PLAY_LICENSE_KEY", "\"$playLicenseKey\"")
 
         // Substituted into AndroidManifest.xml's
         // <meta-data com.google.android.gms.ads.APPLICATION_ID/> entry.
@@ -311,7 +323,10 @@ dependencies {
     
     // AdMob
     implementation("com.google.android.gms:play-services-ads:22.6.0")
-    
+
+    // Google Play Billing (Remove-Ads / Premium)
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:5.7.0")

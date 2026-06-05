@@ -26,4 +26,19 @@ object Migrations {
             db.execSQL("ALTER TABLE chat_threads ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
         }
     }
+
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS prompt_presets (
+                    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    text TEXT NOT NULL,
+                    createdAt INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+        }
+    }
 }

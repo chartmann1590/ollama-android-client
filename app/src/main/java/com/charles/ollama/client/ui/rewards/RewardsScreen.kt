@@ -44,11 +44,13 @@ import com.charles.ollama.client.ads.RewardedAdState
 @Composable
 fun RewardsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToPaywall: () -> Unit = {},
     viewModel: RewardsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
 
+    val isPremium by viewModel.isPremium.collectAsState()
     val credits by viewModel.credits.collectAsState()
     val adFreeUntil by viewModel.adFreeUntilMs.collectAsState()
     val now by viewModel.nowMs.collectAsState()
@@ -106,6 +108,10 @@ fun RewardsScreen(
                 maxPerDay = maxPerDay
             )
 
+            if (!isPremium) {
+                GoPremiumCard(onClick = onNavigateToPaywall)
+            }
+
             AdFreeStatusCard(isActive = isAdFree, remainingMs = remainingMs)
 
             EarnSection(
@@ -137,6 +143,46 @@ fun RewardsScreen(
             HowItWorksCard(maxPerDay = maxPerDay)
 
             Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun GoPremiumCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Stars,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Go ad-free forever",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = "Skip the watching — remove every ad with Premium.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
+            }
+            FilledTonalButton(onClick = onClick) {
+                Text("Upgrade")
+            }
         }
     }
 }

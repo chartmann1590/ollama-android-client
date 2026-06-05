@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.outlined.Tune
 import com.charles.ollama.client.R
 import androidx.compose.material3.*
@@ -98,15 +99,11 @@ fun ServerListScreen(
                     .padding(padding),
                 contentAlignment = androidx.compose.ui.Alignment.Center
             ) {
-                Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                    Text("No servers configured")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Add a server to get started",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                com.charles.ollama.client.ui.components.EmptyState(
+                    icon = Icons.Default.Dns,
+                    title = "No servers yet",
+                    subtitle = "Add an Ollama server or on-device model to start chatting."
+                )
             }
         } else {
             LazyColumn(

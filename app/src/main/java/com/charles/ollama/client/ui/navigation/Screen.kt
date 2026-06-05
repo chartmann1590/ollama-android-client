@@ -10,5 +10,9 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object Rewards : Screen("rewards")
     object About : Screen("about")
+    object Paywall : Screen("paywall")
+    object PromptLibrary : Screen("prompt_library/{threadId}") {
+        fun createRoute(threadId: Long) = "prompt_library/$threadId"
+    }
 }
 

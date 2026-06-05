@@ -30,6 +30,10 @@ jobs:
       ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
       ADMOB_NATIVE_AD_UNIT_ID: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
       ADMOB_APP_OPEN_AD_UNIT_ID: ${{ secrets.ADMOB_APP_OPEN_AD_UNIT_ID }}
+      # Play Billing public license key — used for local purchase signature
+      # verification. Public key (ships in the APK), kept in secrets so it isn't
+      # hardcoded. Blank in unconfigured forks → verification is skipped.
+      PLAY_LICENSE_KEY: ${{ secrets.PLAY_LICENSE_KEY }}
 
     steps:
       - name: Checkout
@@ -213,6 +217,10 @@ jobs:
       ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
       ADMOB_NATIVE_AD_UNIT_ID: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
       ADMOB_APP_OPEN_AD_UNIT_ID: ${{ secrets.ADMOB_APP_OPEN_AD_UNIT_ID }}
+      # Play Billing public license key — used for local purchase signature
+      # verification. Public key (ships in the APK), kept in secrets so it isn't
+      # hardcoded. Blank in unconfigured forks → verification is skipped.
+      PLAY_LICENSE_KEY: ${{ secrets.PLAY_LICENSE_KEY }}
 
     # Guards two prior Crashlytics regressions that both surfaced at app open:
     #   * UnsatisfiedLinkError: litertlm_jni from LiteRtChatService.<init>

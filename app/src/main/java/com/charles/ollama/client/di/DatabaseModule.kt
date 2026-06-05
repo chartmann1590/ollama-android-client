@@ -7,6 +7,7 @@ import com.charles.ollama.client.data.database.Migrations
 import com.charles.ollama.client.data.database.dao.ChatMessageDao
 import com.charles.ollama.client.data.database.dao.ChatThreadDao
 import com.charles.ollama.client.data.database.dao.InstalledLitertModelDao
+import com.charles.ollama.client.data.database.dao.PromptPresetDao
 import com.charles.ollama.client.data.database.dao.ServerConfigDao
 import dagger.Module
 import dagger.Provides
@@ -27,7 +28,7 @@ object DatabaseModule {
             OllamaDatabase::class.java,
             "ollama_database"
         )
-        .addMigrations(Migrations.MIGRATION_6_7, Migrations.MIGRATION_7_8)
+        .addMigrations(Migrations.MIGRATION_6_7, Migrations.MIGRATION_7_8, Migrations.MIGRATION_8_9)
         .fallbackToDestructiveMigration()
         // Set query executor to handle large queries better
         .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
@@ -52,6 +53,11 @@ object DatabaseModule {
     @Provides
     fun provideInstalledLitertModelDao(database: OllamaDatabase): InstalledLitertModelDao {
         return database.installedLitertModelDao()
+    }
+
+    @Provides
+    fun providePromptPresetDao(database: OllamaDatabase): PromptPresetDao {
+        return database.promptPresetDao()
     }
 }
 
