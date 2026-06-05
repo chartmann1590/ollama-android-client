@@ -23,7 +23,7 @@ import com.charles.ollama.client.data.database.dao.InstalledLitertModelDao
         InstalledLitertModelEntity::class,
         PromptPresetEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(StringListConverter::class)

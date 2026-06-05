@@ -28,11 +28,23 @@ class ChatThreadsViewModel @Inject constructor(
     private val _showArchived = MutableStateFlow(false)
     val showArchived: StateFlow<Boolean> = _showArchived.asStateFlow()
 
+    private val _selectedLabel = MutableStateFlow<String?>(null)
+    val selectedLabel: StateFlow<String?> = _selectedLabel.asStateFlow()
+
+    /** Distinct, non-empty labels currently in use, for the filter chip row. */
+    val labels: StateFlow<List<String>> = chatRepository.getLabels()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val threads: StateFlow<List<ChatThread>> =
-        combine(_searchQuery, _showArchived) { q, archived -> q to archived }
-            .flatMapLatest { (query, archived) ->
-                if (query.isBlank()) getChatThreadsUseCase(archived = archived)
+        combine(_searchQuery, _showArchived, _selectedLabel) { q, archived, label ->
+            Triple(q, archived, label)
+        }
+            .flatMapLatest { (query, archived, label) ->
+                val base = if (query.isBlank()) getChatThreadsUseCase(archived = archived)
                 else getChatThreadsUseCase.search(query, archived = archived)
+                base.map { list ->
+                    if (label == null) list else list.filter { it.label == label }
+                }
             }
             .stateIn(
                 scope = viewModelScope,
@@ -65,6 +77,20 @@ class ChatThreadsViewModel @Inject constructor(
 
     fun toggleShowArchived() {
         _showArchived.value = !_showArchived.value
+    }
+
+    fun setSelectedLabel(label: String?) {
+        _selectedLabel.value = label
+    }
+
+    fun setLabel(threadId: Long, label: String?) {
+        viewModelScope.launch {
+            try {
+                chatRepository.setThreadLabel(threadId, label)
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to update label"
+            }
+        }
     }
 
     fun setPinned(threadId: Long, pinned: Boolean) {

@@ -23,11 +23,13 @@ import androidx.navigation.navArgument
 import com.charles.ollama.client.ads.InterstitialAdManager
 import com.charles.ollama.client.ui.chat.ChatScreen
 import com.charles.ollama.client.ui.chat.ChatThreadsScreen
+import com.charles.ollama.client.ui.models.ModelDetailScreen
 import com.charles.ollama.client.ui.models.ModelsScreen
 import com.charles.ollama.client.ui.onboarding.FirstRunSetupTutorialSheet
 import com.charles.ollama.client.ui.premium.PaywallScreen
 import com.charles.ollama.client.ui.prompts.PromptLibraryScreen
 import com.charles.ollama.client.ui.rewards.RewardsScreen
+import com.charles.ollama.client.ui.search.GlobalSearchScreen
 import com.charles.ollama.client.ui.rewards.WhatsNewRewardsSheet
 import com.charles.ollama.client.ui.servers.ServerListScreen
 import com.charles.ollama.client.ui.servers.ServersViewModel
@@ -213,6 +215,18 @@ fun NavGraph(
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 },
+                onNavigateToSearch = {
+                    navController.navigate(Screen.Search.route)
+                },
+            )
+        }
+
+        composable(Screen.Search.route) {
+            GlobalSearchScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenThread = { threadId ->
+                    navController.navigate(Screen.Chat.createRoute(threadId))
+                }
             )
         }
 
@@ -243,7 +257,19 @@ fun NavGraph(
             ModelsScreen(
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onShowModelDetails = { modelName ->
+                    navController.navigate(Screen.ModelDetail.createRoute(modelName))
                 }
+            )
+        }
+
+        composable(
+            route = Screen.ModelDetail.route,
+            arguments = listOf(navArgument("modelName") { type = NavType.StringType })
+        ) {
+            ModelDetailScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         

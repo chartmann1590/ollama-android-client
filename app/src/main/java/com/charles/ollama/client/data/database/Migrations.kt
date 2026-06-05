@@ -41,4 +41,21 @@ object Migrations {
             )
         }
     }
+
+    val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Per-thread label/folder + optional Ollama generation parameters.
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN label TEXT")
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN temperature REAL")
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN topP REAL")
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN topK INTEGER")
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN numCtx INTEGER")
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN seed INTEGER")
+            // Per-message generation metrics from Ollama.
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN evalCount INTEGER")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN evalDurationNs INTEGER")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN promptEvalCount INTEGER")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN totalDurationNs INTEGER")
+        }
+    }
 }

@@ -28,7 +28,7 @@ object DatabaseModule {
             OllamaDatabase::class.java,
             "ollama_database"
         )
-        .addMigrations(Migrations.MIGRATION_6_7, Migrations.MIGRATION_7_8, Migrations.MIGRATION_8_9)
+        .addMigrations(Migrations.MIGRATION_6_7, Migrations.MIGRATION_7_8, Migrations.MIGRATION_8_9, Migrations.MIGRATION_9_10)
         .fallbackToDestructiveMigration()
         // Set query executor to handle large queries better
         .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))

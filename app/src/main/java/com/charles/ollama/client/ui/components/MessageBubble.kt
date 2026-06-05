@@ -57,6 +57,28 @@ private fun copyMessageToClipboard(
 }
 
 /**
+ * Formats Ollama generation metrics into a compact caption like
+ * "38 tok/s · 312 tokens · 4.1s". Returns null when no usable metrics are present
+ * (e.g. on-device LiteRT replies or older messages).
+ */
+private fun formatGenerationStats(message: ChatMessage): String? {
+    val evalCount = message.evalCount ?: return null
+    if (evalCount <= 0) return null
+    val parts = mutableListOf<String>()
+    val evalNs = message.evalDurationNs
+    if (evalNs != null && evalNs > 0) {
+        val toksPerSec = evalCount * 1_000_000_000.0 / evalNs
+        parts.add(String.format("%.0f tok/s", toksPerSec))
+    }
+    parts.add("$evalCount tokens")
+    val totalNs = message.totalDurationNs
+    if (totalNs != null && totalNs > 0) {
+        parts.add(String.format("%.1fs", totalNs / 1_000_000_000.0))
+    }
+    return parts.joinToString(" · ")
+}
+
+/**
  * Highlights [query] inside [text] with a bold span. Used by in-thread search.
  * Matches are case-insensitive; if [query] is blank, returns [text] unchanged.
  */
@@ -284,6 +306,22 @@ fun MessageBubble(
                             )
                         }
                     }
+                }
+            }
+
+            // Generation stats caption (assistant replies from remote Ollama; the
+            // on-device LiteRT backend reports no counters so this stays hidden).
+            if (!isUser) {
+                val stats = remember(message.evalCount, message.evalDurationNs, message.totalDurationNs) {
+                    formatGenerationStats(message)
+                }
+                if (stats != null) {
+                    Text(
+                        text = stats,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(top = 2.dp, start = 4.dp)
+                    )
                 }
             }
 

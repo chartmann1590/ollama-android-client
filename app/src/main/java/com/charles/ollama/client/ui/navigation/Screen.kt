@@ -6,8 +6,15 @@ sealed class Screen(val route: String) {
         fun createRoute(threadId: Long) = "chat/$threadId"
     }
     object Models : Screen("models")
+    object ModelDetail : Screen("model_detail/{modelName}") {
+        fun createRoute(modelName: String): String {
+            val encoded = java.net.URLEncoder.encode(modelName, "UTF-8")
+            return "model_detail/$encoded"
+        }
+    }
     object Servers : Screen("servers")
     object Settings : Screen("settings")
+    object Search : Screen("search")
     object Rewards : Screen("rewards")
     object About : Screen("about")
     object Paywall : Screen("paywall")

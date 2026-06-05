@@ -1,8 +1,10 @@
 package com.charles.ollama.client.ui.chat
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
@@ -10,8 +12,10 @@ import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Unarchive
@@ -44,6 +48,7 @@ fun ChatThreadsScreen(
     onNavigateToModels: () -> Unit,
     onNavigateToRewards: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToSearch: () -> Unit = {},
     viewModel: ChatThreadsViewModel = hiltViewModel()
 ) {
     val screenTrace = remember { PerformanceMonitor.startScreenTrace("ChatThreadsScreen") }
@@ -61,6 +66,8 @@ fun ChatThreadsScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val showArchived by viewModel.showArchived.collectAsState()
     val archivedCount by viewModel.archivedCount.collectAsState()
+    val labels by viewModel.labels.collectAsState()
+    val selectedLabel by viewModel.selectedLabel.collectAsState()
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var hasWaitedForServer by remember { mutableStateOf(false) }
@@ -84,6 +91,9 @@ fun ChatThreadsScreen(
             TopAppBar(
                 title = { Text(if (showArchived) "Archived" else "Chat Threads") },
                 actions = {
+                    IconButton(onClick = onNavigateToSearch) {
+                        Icon(Icons.Default.Search, contentDescription = "Search all chats")
+                    }
                     IconButton(onClick = onNavigateToRewards) {
                         Icon(Icons.Default.CardGiftcard, contentDescription = "Rewards")
                     }
@@ -134,7 +144,34 @@ fun ChatThreadsScreen(
                     placeholder = { Text("Search threads...") },
                     singleLine = true
                 )
-                
+
+                // Label filter chips (only shown once at least one thread is labeled).
+                if (labels.isNotEmpty() && !showArchived) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = selectedLabel == null,
+                            onClick = { viewModel.setSelectedLabel(null) },
+                            label = { Text("All") }
+                        )
+                        labels.forEach { label ->
+                            FilterChip(
+                                selected = selectedLabel == label,
+                                onClick = {
+                                    viewModel.setSelectedLabel(if (selectedLabel == label) null else label)
+                                },
+                                label = { Text(label) }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 // Pick the slot where a native ad is interleaved among threads.
                 val nativeAdAfter = rememberSaveable { (1..3).random() }
                 val rows = remember(threads, nativeAdAfter, showArchived) {
@@ -146,12 +183,16 @@ fun ChatThreadsScreen(
                             is ThreadRow.SectionHeader -> SectionHeader(row.title)
                             is ThreadRow.Thread -> ThreadItem(
                                 thread = row.thread,
+                                existingLabels = labels,
                                 onClick = { onNavigateToChat(row.thread.id) },
                                 onTogglePinned = {
                                     viewModel.setPinned(row.thread.id, !row.thread.isPinned)
                                 },
                                 onToggleArchived = {
                                     viewModel.setArchived(row.thread.id, !row.thread.isArchived)
+                                },
+                                onSetLabel = { label ->
+                                    viewModel.setLabel(row.thread.id, label)
                                 },
                                 onShare = { viewModel.shareThread(row.thread.id) },
                                 onDelete = { viewModel.deleteThread(row.thread.id) }
@@ -221,9 +262,12 @@ fun ThreadItem(
     onToggleArchived: () -> Unit,
     onShare: () -> Unit,
     onDelete: () -> Unit,
+    existingLabels: List<String> = emptyList(),
+    onSetLabel: (String?) -> Unit = {},
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var showLabelDialog by remember { mutableStateOf(false) }
     Card(
         onClick = onClick,
         modifier = Modifier
@@ -261,6 +305,23 @@ fun ThreadItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+                thread.label?.let { label ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.Label,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -309,6 +370,16 @@ fun ThreadItem(
                         }
                     )
                     DropdownMenuItem(
+                        text = { Text("Set label…") },
+                        leadingIcon = {
+                            Icon(Icons.Filled.Label, contentDescription = null)
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            showLabelDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
                         text = { Text("Share") },
                         leadingIcon = {
                             Icon(Icons.Default.Share, contentDescription = null)
@@ -353,6 +424,78 @@ fun ThreadItem(
             }
         )
     }
+
+    if (showLabelDialog) {
+        SetLabelDialog(
+            currentLabel = thread.label,
+            existingLabels = existingLabels,
+            onDismiss = { showLabelDialog = false },
+            onConfirm = { label ->
+                showLabelDialog = false
+                onSetLabel(label)
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SetLabelDialog(
+    currentLabel: String?,
+    existingLabels: List<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (String?) -> Unit,
+) {
+    var text by remember { mutableStateOf(currentLabel ?: "") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Set label") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Label") },
+                    placeholder = { Text("e.g. Work, Ideas") },
+                    singleLine = true
+                )
+                if (existingLabels.isNotEmpty()) {
+                    Text(
+                        text = "Existing labels",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        existingLabels.forEach { label ->
+                            FilterChip(
+                                selected = text == label,
+                                onClick = { text = label },
+                                label = { Text(label) }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(text.trim().takeIf { it.isNotBlank() }) }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            Row {
+                if (currentLabel != null) {
+                    TextButton(onClick = { onConfirm(null) }) { Text("Clear") }
+                }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        }
+    )
 }
 
 @Composable

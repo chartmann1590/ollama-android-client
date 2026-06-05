@@ -27,6 +27,12 @@ interface ChatThreadDao {
     @Query("UPDATE chat_threads SET isArchived = :archived WHERE id = :threadId")
     suspend fun setArchived(threadId: Long, archived: Boolean)
 
+    @Query("UPDATE chat_threads SET label = :label WHERE id = :threadId")
+    suspend fun setLabel(threadId: Long, label: String?)
+
+    @Query("SELECT DISTINCT label FROM chat_threads WHERE label IS NOT NULL AND label != '' AND isArchived = 0 ORDER BY label")
+    fun getLabels(): Flow<List<String>>
+
     @Query("UPDATE chat_threads SET systemPrompt = :systemPrompt, updatedAt = :updatedAt WHERE id = :threadId")
     suspend fun setSystemPrompt(threadId: Long, systemPrompt: String?, updatedAt: Long = System.currentTimeMillis())
 

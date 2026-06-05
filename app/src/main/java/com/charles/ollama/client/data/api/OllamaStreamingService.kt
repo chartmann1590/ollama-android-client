@@ -22,7 +22,12 @@ class OllamaStreamingService(
 ) {
     data class StreamDelta(
         val content: String,
-        val thinking: String? = null
+        val thinking: String? = null,
+        val done: Boolean = false,
+        val evalCount: Int? = null,
+        val evalDurationNs: Long? = null,
+        val promptEvalCount: Int? = null,
+        val totalDurationNs: Long? = null
     )
     
     fun streamChat(baseUrl: String, request: ChatRequest): Flow<StreamDelta> = callbackFlow {
@@ -145,6 +150,23 @@ class OllamaStreamingService(
                                     if (chatResponse.done == true) {
                                         android.util.Log.d("OllamaStreaming", "Stream done flag received. Total lines so far: $lineCount. Total content emitted: $totalContentEmitted chars")
                                         isDone = true
+                                        // Surface the final generation metrics (token counts, durations)
+                                        // so the repository can persist token-speed stats.
+                                        try {
+                                            send(
+                                                StreamDelta(
+                                                    content = "",
+                                                    thinking = null,
+                                                    done = true,
+                                                    evalCount = chatResponse.evalCount,
+                                                    evalDurationNs = chatResponse.evalDuration,
+                                                    promptEvalCount = chatResponse.promptEvalCount,
+                                                    totalDurationNs = chatResponse.totalDuration
+                                                )
+                                            )
+                                        } catch (e: Exception) {
+                                            android.util.Log.w("OllamaStreaming", "Failed to send metrics delta: ${e.message}")
+                                        }
                                         // Don't break immediately - read a few more lines in case there's trailing data
                                         var additionalLinesRead = 0
                                         while (additionalLinesRead < 5 && !source.exhausted()) {

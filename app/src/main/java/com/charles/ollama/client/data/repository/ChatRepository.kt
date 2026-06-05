@@ -8,6 +8,7 @@ import com.charles.ollama.client.data.api.dto.ChatRequest
 import com.charles.ollama.client.data.database.dao.ChatMessageDao
 import com.charles.ollama.client.data.database.dao.ChatThreadDao
 import com.charles.ollama.client.data.database.dao.InstalledLitertModelDao
+import com.charles.ollama.client.data.database.dao.MessageSearchResult
 import com.charles.ollama.client.data.database.entity.ChatMessageEntity
 import com.charles.ollama.client.data.database.entity.ChatThreadEntity
 import com.charles.ollama.client.data.litert.LocalModelCatalog
@@ -16,6 +17,9 @@ import com.charles.ollama.client.data.litert.ServerBackend
 import com.charles.ollama.client.util.ThinkingParser
 import com.charles.ollama.client.util.PerformanceMonitor
 import android.util.Log
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -54,6 +58,22 @@ class ChatRepository @Inject constructor(
     suspend fun setThreadArchived(threadId: Long, archived: Boolean) {
         PerformanceMonitor.measureSuspend("database_set_thread_archived") {
             chatThreadDao.setArchived(threadId, archived)
+        }
+    }
+
+    suspend fun setThreadLabel(threadId: Long, label: String?) {
+        PerformanceMonitor.measureSuspend("database_set_thread_label") {
+            chatThreadDao.setLabel(threadId, label?.takeIf { it.isNotBlank() })
+        }
+    }
+
+    fun getLabels(): Flow<List<String>> = chatThreadDao.getLabels()
+
+    /** Search message bodies across all threads. Returns a capped, snippet-only result set. */
+    suspend fun searchMessages(query: String): List<MessageSearchResult> {
+        if (query.isBlank()) return emptyList()
+        return PerformanceMonitor.measureSuspend("database_search_messages") {
+            chatMessageDao.searchMessages("%$query%")
         }
     }
     
@@ -340,12 +360,13 @@ class ChatRepository @Inject constructor(
             val request = ChatRequest(
                 model = model,
                 messages = allMessages,
-                stream = false
+                stream = false,
+                options = buildOptions(thread)
             )
-            
+
             val api = apiFactory.create(baseUrl)
             val response = api.chat(request)
-            
+
             if (response.isSuccessful && response.body() != null) {
                 val chatResponse = response.body()!!
                 // Parse thinking content for non-streaming responses too
@@ -354,7 +375,11 @@ class ChatRepository @Inject constructor(
                     threadId = threadId,
                     role = "assistant",
                     content = responseContent,
-                    thinking = thinking
+                    thinking = thinking,
+                    evalCount = chatResponse.evalCount,
+                    evalDurationNs = chatResponse.evalDuration,
+                    promptEvalCount = chatResponse.promptEvalCount,
+                    totalDurationNs = chatResponse.totalDuration
                 )
                 PerformanceMonitor.measureSuspend("database_insert_assistant_message") {
                     chatMessageDao.insertMessage(assistantMessage)
@@ -376,8 +401,29 @@ class ChatRepository @Inject constructor(
     
     data class StreamDelta(
         val content: String,
-        val thinking: String? = null
+        val thinking: String? = null,
+        val done: Boolean = false,
+        val evalCount: Int? = null,
+        val evalDurationNs: Long? = null,
+        val promptEvalCount: Int? = null,
+        val totalDurationNs: Long? = null
     )
+
+    /**
+     * Assemble the per-thread Ollama generation parameters into a request `options`
+     * map, including only the values the user actually set. Returns null when no
+     * parameters are configured so the request omits `options` entirely.
+     */
+    private fun buildOptions(thread: ChatThreadEntity?): Map<String, Any>? {
+        if (thread == null) return null
+        val options = mutableMapOf<String, Any>()
+        thread.temperature?.let { options["temperature"] = it }
+        thread.topP?.let { options["top_p"] = it }
+        thread.topK?.let { options["top_k"] = it }
+        thread.numCtx?.let { options["num_ctx"] = it }
+        thread.seed?.let { options["seed"] = it }
+        return options.takeIf { it.isNotEmpty() }
+    }
     
     fun streamMessage(
         threadId: Long,
@@ -485,6 +531,21 @@ class ChatRepository @Inject constructor(
                         }
                         emit(StreamDelta(content = chunk, thinking = null))
                     }
+                } catch (e: CancellationException) {
+                    // User stopped — persist the partial reply so it isn't lost.
+                    withContext(NonCancellable) {
+                        chatMessageDao.insertMessage(
+                            ChatMessageEntity(
+                                id = assistantMessageId,
+                                threadId = threadId,
+                                role = "assistant",
+                                content = fullContent,
+                                thinking = null,
+                                timestamp = System.currentTimeMillis()
+                            )
+                        )
+                    }
+                    throw e
                 } catch (e: Exception) {
                     Log.e("ChatRepository", "LiteRT stream error: ${e.message}", e)
                     throw e
@@ -504,20 +565,35 @@ class ChatRepository @Inject constructor(
                 return@flow
             }
 
+            // Load the thread once for generation options and the final timestamp update.
+            val ollamaThread = chatThreadDao.getThreadById(threadId)
+
             // Create streaming request
             val request = ChatRequest(
                 model = model,
                 messages = allMessages,
-                stream = true
+                stream = true,
+                options = buildOptions(ollamaThread)
             )
-            
+
             // Stream the response
             var fullContent = ""
             var fullThinking = ""
             var deltaCount = 0
-            
+            // Generation metrics captured from the final `done` chunk.
+            var evalCount: Int? = null
+            var evalDurationNs: Long? = null
+            var promptEvalCount: Int? = null
+            var totalDurationNs: Long? = null
+
             try {
                 streamingService.streamChat(baseUrl, request).collect { streamDelta ->
+                    if (streamDelta.done) {
+                        evalCount = streamDelta.evalCount
+                        evalDurationNs = streamDelta.evalDurationNs
+                        promptEvalCount = streamDelta.promptEvalCount
+                        totalDurationNs = streamDelta.totalDurationNs
+                    }
                     deltaCount++
                     fullContent += streamDelta.content
                     streamDelta.thinking?.let { thinkingDelta ->
@@ -540,6 +616,26 @@ class ChatRepository @Inject constructor(
                     // Emit both content and thinking
                     emit(StreamDelta(content = streamDelta.content, thinking = streamDelta.thinking))
                 }
+            } catch (e: CancellationException) {
+                // User stopped — persist whatever was generated so far so it isn't lost.
+                android.util.Log.d("ChatRepository", "Stream cancelled, saving partial content: ${fullContent.length} chars")
+                withContext(NonCancellable) {
+                    chatMessageDao.insertMessage(
+                        ChatMessageEntity(
+                            id = assistantMessageId,
+                            threadId = threadId,
+                            role = "assistant",
+                            content = fullContent,
+                            thinking = fullThinking.takeIf { it.isNotEmpty() },
+                            evalCount = evalCount,
+                            evalDurationNs = evalDurationNs,
+                            promptEvalCount = promptEvalCount,
+                            totalDurationNs = totalDurationNs,
+                            timestamp = System.currentTimeMillis()
+                        )
+                    )
+                }
+                throw e
             } catch (e: Exception) {
                 android.util.Log.e("ChatRepository", "Error collecting stream: ${e.message}", e)
                 // Even if there's an error, save what we have
@@ -559,16 +655,21 @@ class ChatRepository @Inject constructor(
                 role = "assistant",
                 content = fullContent,
                 thinking = fullThinking.takeIf { it.isNotEmpty() },
+                evalCount = evalCount,
+                evalDurationNs = evalDurationNs,
+                promptEvalCount = promptEvalCount,
+                totalDurationNs = totalDurationNs,
                 timestamp = System.currentTimeMillis()
             )
             PerformanceMonitor.measureSuspend("database_save_final_message") {
-                chatMessageDao.insertMessage(finalMessage)
+                withContext(NonCancellable) {
+                    chatMessageDao.insertMessage(finalMessage)
+                }
             }
             android.util.Log.d("ChatRepository", "Final message saved to database with ${finalMessage.content.length} chars")
-            
+
             // Update thread timestamp
-            val thread = chatThreadDao.getThreadById(threadId)
-            thread?.let {
+            ollamaThread?.let {
                 updateThread(it)
             }
         } catch (e: Exception) {

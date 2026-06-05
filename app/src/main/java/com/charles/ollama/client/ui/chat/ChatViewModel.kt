@@ -19,6 +19,7 @@ import com.charles.ollama.client.util.ThreadExporter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.delay
@@ -48,6 +49,9 @@ class ChatViewModel @Inject constructor(
     
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    // Tracks the in-flight streaming send so the user can stop generation.
+    private var streamingJob: Job? = null
     
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -214,6 +218,10 @@ class ChatViewModel @Inject constructor(
                             content = content,
                             thinking = thinking,
                             images = entity.images,
+                            evalCount = entity.evalCount,
+                            evalDurationNs = entity.evalDurationNs,
+                            promptEvalCount = entity.promptEvalCount,
+                            totalDurationNs = entity.totalDurationNs,
                             timestamp = entity.timestamp
                         )
                         chatMessage
@@ -304,7 +312,7 @@ class ChatViewModel @Inject constructor(
         _messages.value = _messages.value + optimisticUserMessage
         android.util.Log.d("ChatViewModel", "Added optimistic message with ${images?.size ?: 0} images")
         
-        viewModelScope.launch {
+        streamingJob = viewModelScope.launch {
             val trace = PerformanceMonitor.startViewModelTrace("sendMessage")
             PerformanceMonitor.addAttribute(trace, "has_images", (images?.isNotEmpty() == true).toString())
             PerformanceMonitor.addAttribute(trace, "content_length", content.length.toString())
@@ -371,6 +379,13 @@ class ChatViewModel @Inject constructor(
                     
                     _streamingContent.value = null
                     _streamingThinking.value = null
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    // User tapped Stop. The repository persists the partial reply via a
+                    // NonCancellable save, so drop the streaming overlay and let the saved
+                    // message show through before re-throwing to honor cancellation.
+                    _streamingContent.value = null
+                    _streamingThinking.value = null
+                    throw e
                 } catch (e: Exception) {
                     android.util.Log.e("ChatViewModel", "Error streaming message", e)
                     PerformanceMonitor.addAttribute(trace, "error", e.javaClass.simpleName)
@@ -432,6 +447,14 @@ class ChatViewModel @Inject constructor(
     fun clearError() {
         _error.value = null
     }
+
+    /**
+     * Stop an in-flight streaming reply. Cancels the send coroutine; the repository
+     * persists whatever text was generated so far so nothing is lost.
+     */
+    fun stopGeneration() {
+        streamingJob?.cancel()
+    }
     
     fun updateStreamEnabled(enabled: Boolean) {
         _threadId.value?.let { threadId ->
@@ -457,6 +480,35 @@ class ChatViewModel @Inject constructor(
         }
     }
     
+    /**
+     * Persist per-thread Ollama generation parameters. Any null clears that
+     * parameter (falls back to the model's default). Applies to the remote
+     * Ollama backend only; the on-device LiteRT backend ignores them.
+     */
+    fun updateModelParams(
+        temperature: Float?,
+        topP: Float?,
+        topK: Int?,
+        numCtx: Int?,
+        seed: Int?
+    ) {
+        _threadId.value?.let { threadId ->
+            viewModelScope.launch {
+                val thread = chatRepository.getThreadById(threadId).first()
+                thread?.let {
+                    val updated = it.copy(
+                        temperature = temperature,
+                        topP = topP,
+                        topK = topK,
+                        numCtx = numCtx,
+                        seed = seed
+                    )
+                    chatRepository.updateThread(updated)
+                }
+            }
+        }
+    }
+
     fun updateVibrationEnabled(enabled: Boolean) {
         _threadId.value?.let { threadId ->
             viewModelScope.launch {
@@ -648,6 +700,10 @@ class ChatViewModel @Inject constructor(
                     content = it.content,
                     thinking = it.thinking,
                     images = it.images,
+                    evalCount = it.evalCount,
+                    evalDurationNs = it.evalDurationNs,
+                    promptEvalCount = it.promptEvalCount,
+                    totalDurationNs = it.totalDurationNs,
                     timestamp = it.timestamp
                 )
             }

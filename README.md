@@ -17,8 +17,14 @@ An Android application for interacting with Ollama AI models — remote or fully
 - 🔊 **Read aloud replies**: Play assistant responses using Android Text-to-Speech for accessibility
 - 📤 **Export / share chats**: Share threads (or individual messages) as Markdown/text logs
 - 🔎 **In-thread search**: Search inside the current conversation with next/previous match navigation
+- 🌐 **Global message search**: Search across every conversation by message content and jump straight to the result
+- 🏷️ **Labels & folders**: Organize threads with labels and filter the list by them, on top of pin/archive
 - 📌 **Pin and archive threads**: Keep active chats focused without deleting older conversations
 - 💬 **Per-message actions**: Copy, share, delete, edit-and-resend, and regenerate directly from message menus
+- ⏹️ **Stop generation**: Halt a streaming reply mid-stream — the partial response is kept
+- 🎚️ **Per-thread model parameters**: Tune temperature, top_p, top_k, context length (num_ctx), and seed per chat (remote Ollama)
+- 📊 **Token-speed stats**: See tokens/sec, token counts, and response time under each remote reply
+- ℹ️ **Model details**: Inspect a model's parameters, quantization, template, license, and modelfile via `/api/show`
 - 📱 **Launcher shortcut**: Resume your most recent thread via a dynamic home launcher shortcut
 - 🎨 **Modern UI**: Built with Jetpack Compose and Material Design 3
 - 🔄 **Real-time Streaming**: Receive AI responses streamed in real-time (remote *and* on-device)

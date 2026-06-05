@@ -28,6 +28,12 @@ data class ChatMessageEntity(
     val content: String,
     val thinking: String? = null, // Thinking content from thinking models
     val images: List<String>? = null, // Base64 encoded images for vision models
+    // Generation metrics reported by Ollama on the final response chunk. Null for
+    // on-device LiteRT replies (no counters) and pre-existing rows.
+    val evalCount: Int? = null,            // tokens generated
+    val evalDurationNs: Long? = null,      // generation time (nanoseconds)
+    val promptEvalCount: Int? = null,      // prompt tokens evaluated
+    val totalDurationNs: Long? = null,     // total request time (nanoseconds)
     val timestamp: Long = System.currentTimeMillis()
 )
 

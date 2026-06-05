@@ -23,6 +23,7 @@ import androidx.compose.runtime.DisposableEffect
 @Composable
 fun ModelsScreen(
     onNavigateBack: () -> Unit,
+    onShowModelDetails: (String) -> Unit = {},
     viewModel: ModelsViewModel = hiltViewModel()
 ) {
     // Performance monitoring for screen rendering
@@ -109,6 +110,9 @@ fun ModelsScreen(
                             onDelete = { viewModel.deleteModel(model.name) },
                             onDownload = if (isLitertBackend) {
                                 { viewModel.pullModel(model.name) }
+                            } else null,
+                            onShowDetails = if (!model.isOnDeviceLitert()) {
+                                { onShowModelDetails(model.name) }
                             } else null
                         )
                     }

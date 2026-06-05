@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Refresh
@@ -352,6 +353,11 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                // Lift the input above the soft keyboard. consumeWindowInsets tells
+                // imePadding the scaffold padding (e.g. the banner) is already applied,
+                // so the input sits directly on top of the keyboard with no gap.
+                .consumeWindowInsets(padding)
+                .imePadding()
         ) {
             LazyColumn(
                 state = listState,
@@ -474,19 +480,31 @@ fun ChatScreen(
                     maxLines = 4
                 )
                 val canSend = (messageText.isNotBlank() || selectedImages.isNotEmpty()) && selectedModel != null
-                FloatingActionButton(
-                    onClick = { performSend(messageText) },
-                    modifier = Modifier.size(56.dp),
-                    containerColor = if (canSend) 
-                        MaterialTheme.colorScheme.primary 
-                    else 
-                        MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = if (canSend)
-                        MaterialTheme.colorScheme.onPrimary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                ) {
-                    Icon(Icons.Default.Send, contentDescription = "Send")
+                if (isLoading) {
+                    // While a reply is streaming, the action button stops generation.
+                    FloatingActionButton(
+                        onClick = { viewModel.stopGeneration() },
+                        modifier = Modifier.size(56.dp),
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ) {
+                        Icon(Icons.Default.Stop, contentDescription = "Stop generating")
+                    }
+                } else {
+                    FloatingActionButton(
+                        onClick = { performSend(messageText) },
+                        modifier = Modifier.size(56.dp),
+                        containerColor = if (canSend)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (canSend)
+                            MaterialTheme.colorScheme.onPrimary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = "Send")
+                    }
                 }
             }
         }
@@ -527,6 +545,9 @@ fun ChatScreen(
             },
             onShowThinkingChanged = { show ->
                 viewModel.setShowThinking(show)
+            },
+            onModelParamsChanged = { temperature, topP, topK, numCtx, seed ->
+                viewModel.updateModelParams(temperature, topP, topK, numCtx, seed)
             }
         )
     }
@@ -549,16 +570,27 @@ fun ChatSettingsDialog(
     onSystemPromptChanged: (String) -> Unit,
     onVibrationEnabledChanged: (Boolean) -> Unit,
     onShowThinkingChanged: (Boolean) -> Unit,
+    onModelParamsChanged: (Float?, Float?, Int?, Int?, Int?) -> Unit = { _, _, _, _, _ -> },
     onBrowseLibrary: () -> Unit = {}
 ) {
     var streamEnabled by remember { mutableStateOf(thread?.streamEnabled ?: true) }
     var systemPrompt by remember { mutableStateOf(thread?.systemPrompt ?: "") }
     var vibrationEnabled by remember { mutableStateOf(thread?.vibrationEnabled ?: true) }
-    
+    var temperatureText by remember { mutableStateOf(thread?.temperature?.toString() ?: "") }
+    var topPText by remember { mutableStateOf(thread?.topP?.toString() ?: "") }
+    var topKText by remember { mutableStateOf(thread?.topK?.toString() ?: "") }
+    var numCtxText by remember { mutableStateOf(thread?.numCtx?.toString() ?: "") }
+    var seedText by remember { mutableStateOf(thread?.seed?.toString() ?: "") }
+
     LaunchedEffect(thread) {
         streamEnabled = thread?.streamEnabled ?: true
         systemPrompt = thread?.systemPrompt ?: ""
         vibrationEnabled = thread?.vibrationEnabled ?: true
+        temperatureText = thread?.temperature?.toString() ?: ""
+        topPText = thread?.topP?.toString() ?: ""
+        topKText = thread?.topK?.toString() ?: ""
+        numCtxText = thread?.numCtx?.toString() ?: ""
+        seedText = thread?.seed?.toString() ?: ""
     }
     
     AlertDialog(
@@ -653,7 +685,80 @@ fun ChatSettingsDialog(
                 }
                 
                 Divider()
-                
+
+                // Model parameters (remote Ollama only)
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Model Parameters",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        TextButton(onClick = {
+                            temperatureText = ""
+                            topPText = ""
+                            topKText = ""
+                            numCtxText = ""
+                            seedText = ""
+                        }) { Text("Reset") }
+                    }
+                    Text(
+                        text = "Leave blank to use the model default. Applies to remote Ollama models only.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = temperatureText,
+                        onValueChange = { temperatureText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Temperature") },
+                        placeholder = { Text("e.g. 0.8") },
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = topPText,
+                        onValueChange = { topPText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Top P") },
+                        placeholder = { Text("e.g. 0.9") },
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = topKText,
+                        onValueChange = { topKText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Top K") },
+                        placeholder = { Text("e.g. 40") },
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = numCtxText,
+                        onValueChange = { numCtxText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Context length (num_ctx)") },
+                        placeholder = { Text("e.g. 4096") },
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = seedText,
+                        onValueChange = { seedText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Seed") },
+                        placeholder = { Text("e.g. 42") },
+                        singleLine = true
+                    )
+                }
+
+                Divider()
+
                 // System prompt editor
                 Column {
                     Text(
@@ -690,6 +795,13 @@ fun ChatSettingsDialog(
             TextButton(
                 onClick = {
                     onSystemPromptChanged(systemPrompt)
+                    onModelParamsChanged(
+                        temperatureText.trim().toFloatOrNull(),
+                        topPText.trim().toFloatOrNull(),
+                        topKText.trim().toIntOrNull(),
+                        numCtxText.trim().toIntOrNull(),
+                        seedText.trim().toIntOrNull()
+                    )
                     onDismiss()
                 }
             ) {

@@ -9,6 +9,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
 import com.charles.ollama.client.domain.model.Model
 import com.charles.ollama.client.ui.models.displayTitle
 
@@ -17,6 +18,7 @@ fun ModelCard(
     model: Model,
     onDelete: () -> Unit,
     onDownload: (() -> Unit)? = null,
+    onShowDetails: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -68,6 +70,14 @@ fun ModelCard(
                     if (model.isOnDeviceLitert() && !model.isLitertDownloaded() && onDownload != null) {
                         FilledTonalButton(onClick = onDownload) {
                             Text("Download")
+                        }
+                    }
+                    if (onShowDetails != null) {
+                        IconButton(onClick = onShowDetails) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Model details"
+                            )
                         }
                     }
                     if (!model.isOnDeviceLitert() || model.isLitertDownloaded()) {

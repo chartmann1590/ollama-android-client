@@ -31,6 +31,7 @@ private fun ChatThreadEntity.toDomain(): ChatThread {
         serverId = serverId,
         isPinned = isPinned,
         isArchived = isArchived,
+        label = label,
         createdAt = createdAt,
         updatedAt = updatedAt
     )

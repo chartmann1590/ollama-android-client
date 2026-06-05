@@ -16,11 +16,11 @@ interface ChatMessageDao {
     
     // Load message metadata without large content fields (for messages that are too large)
     // Note: images are excluded to avoid CursorWindow overflow - will be loaded separately if needed
-    @Query("SELECT id, threadId, role, '' as content, null as thinking, null as images, timestamp FROM chat_messages WHERE threadId = :threadId ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
+    @Query("SELECT id, threadId, role, '' as content, null as thinking, null as images, null as evalCount, null as evalDurationNs, null as promptEvalCount, null as totalDurationNs, timestamp FROM chat_messages WHERE threadId = :threadId ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
     suspend fun getMessagesByThreadIdPagedMetadata(threadId: Long, limit: Int, offset: Int): List<ChatMessageEntity>
     
     // Load message IDs and basic info only (for messages that are too large even for metadata)
-    @Query("SELECT id, threadId, role, '' as content, null as thinking, null as images, timestamp FROM chat_messages WHERE threadId = :threadId ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
+    @Query("SELECT id, threadId, role, '' as content, null as thinking, null as images, null as evalCount, null as evalDurationNs, null as promptEvalCount, null as totalDurationNs, timestamp FROM chat_messages WHERE threadId = :threadId ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
     suspend fun getMessagesByThreadIdPagedBasic(threadId: Long, limit: Int, offset: Int): List<ChatMessageEntity>
     
     // Get a single message by ID (for loading large content separately)
@@ -30,6 +30,22 @@ interface ChatMessageDao {
     // Get count of messages for a thread
     @Query("SELECT COUNT(*) FROM chat_messages WHERE threadId = :threadId")
     suspend fun getMessageCount(threadId: Long): Int
+
+    // Global search across all message bodies. Selects only a short snippet (not the
+    // full content/images) so large rows can't overflow the CursorWindow.
+    @Query(
+        """
+        SELECT m.id AS id, m.threadId AS threadId, m.role AS role,
+               substr(m.content, 1, 200) AS snippet, m.timestamp AS timestamp,
+               t.title AS threadTitle
+        FROM chat_messages m
+        JOIN chat_threads t ON t.id = m.threadId
+        WHERE m.content LIKE :query
+        ORDER BY m.timestamp DESC
+        LIMIT 100
+        """
+    )
+    suspend fun searchMessages(query: String): List<MessageSearchResult>
     
     // Full query for sync operations - loads all messages but with error handling in repository
     @Query("SELECT * FROM chat_messages WHERE threadId = :threadId ORDER BY timestamp ASC")
