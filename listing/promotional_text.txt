@@ -1,2 +1,1 @@
-Chat with AI models on your Ollama server! Real-time streaming, image support, and beautiful Material Design 3 interface. Your conversations stay private and secure.
-
+Now with model tuning, token-speed stats, labels, global search & on-device AI!

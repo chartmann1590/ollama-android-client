@@ -1,2 +1,1 @@
-ollama, ai chat, artificial intelligence, llm, language model, chatbot, ai assistant, llama, mistral, local ai, private ai, open source ai, ai conversation, machine learning, neural network, chat interface, ai models, ollama client, android ai, offline ai
-
+ollama, ai chat, on-device ai, offline ai, local llm, private ai, llm, language model, chatbot, ai assistant, llama, mistral, gemma, qwen, deepseek, phi, litert, voice assistant, speech to text, text to speech, vision ai, image chat, open source ai, ai conversation, machine learning, chat interface, ai models, ollama client, android ai, model parameters
