@@ -25,3 +25,8 @@
 # admob.interstitialAdUnitId=ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX
 # admob.nativeAdUnitId=ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX
 # admob.appOpenAdUnitId=ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX
+
+# --- GitHub issue reporting and screenshots ---
+# github.api.token=github_pat_...
+# github.repo.owner=chartmann1590
+# github.repo.name=ollama-android-client

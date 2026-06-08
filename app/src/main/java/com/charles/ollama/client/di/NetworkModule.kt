@@ -1,6 +1,8 @@
 package com.charles.ollama.client.di
 
 import com.charles.ollama.client.data.api.OllamaApi
+import com.charles.ollama.client.data.api.GitHubApiService
+import com.charles.ollama.client.BuildConfig
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -13,7 +15,13 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
+import javax.inject.Qualifier
 import javax.inject.Singleton
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class GitHubClient
+
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -82,6 +90,50 @@ object NetworkModule {
         gson: Gson
     ): com.charles.ollama.client.data.api.OllamaStreamingService {
         return com.charles.ollama.client.data.api.OllamaStreamingService(okHttpClient, gson)
+    }
+
+    @Provides
+    @Singleton
+    @GitHubClient
+    fun provideGitHubOkHttpClient(): OkHttpClient {
+        val loggingInterceptor = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+        return OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .addInterceptor { chain ->
+                val original = chain.request()
+                val requestBuilder = original.newBuilder()
+                    .header("Accept", "application/vnd.github+json")
+                if (BuildConfig.GITHUB_API_TOKEN.isNotEmpty()) {
+                    requestBuilder.header("Authorization", "token ${BuildConfig.GITHUB_API_TOKEN}")
+                }
+                chain.proceed(requestBuilder.build())
+            }
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @GitHubClient
+    fun provideGitHubRetrofit(
+        @GitHubClient okHttpClient: OkHttpClient,
+        gson: Gson
+    ): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://api.github.com/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideGitHubApiService(@GitHubClient retrofit: Retrofit): GitHubApiService {
+        return retrofit.create(GitHubApiService::class.java)
     }
 }
 

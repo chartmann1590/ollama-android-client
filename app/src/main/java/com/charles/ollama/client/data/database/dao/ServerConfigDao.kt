@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 interface ServerConfigDao {
     @Query("SELECT * FROM server_configs ORDER BY isDefault DESC, name ASC")
     fun getAllServers(): Flow<List<ServerConfigEntity>>
+
+    @Query("SELECT * FROM server_configs")
+    suspend fun getAllServersSync(): List<ServerConfigEntity>
     
     @Query("SELECT * FROM server_configs WHERE id = :serverId")
     suspend fun getServerById(serverId: Long): ServerConfigEntity?

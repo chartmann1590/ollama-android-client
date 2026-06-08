@@ -34,6 +34,9 @@ jobs:
       # verification. Public key (ships in the APK), kept in secrets so it isn't
       # hardcoded. Blank in unconfigured forks → verification is skipped.
       PLAY_LICENSE_KEY: ${{ secrets.PLAY_LICENSE_KEY }}
+      GH_API_TOKEN: ${{ secrets.GH_API_TOKEN || 'stub_token' }}
+      GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER || 'chartmann1590' }}
+      GH_REPO_NAME: ${{ secrets.GH_REPO_NAME || 'ollama-android-client' }}
 
     steps:
       - name: Checkout
@@ -221,6 +224,9 @@ jobs:
       # verification. Public key (ships in the APK), kept in secrets so it isn't
       # hardcoded. Blank in unconfigured forks → verification is skipped.
       PLAY_LICENSE_KEY: ${{ secrets.PLAY_LICENSE_KEY }}
+      GH_API_TOKEN: ${{ secrets.GH_API_TOKEN || 'stub_token' }}
+      GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER || 'chartmann1590' }}
+      GH_REPO_NAME: ${{ secrets.GH_REPO_NAME || 'ollama-android-client' }}
 
     # Guards two prior Crashlytics regressions that both surfaced at app open:
     #   * UnsatisfiedLinkError: litertlm_jni from LiteRtChatService.<init>

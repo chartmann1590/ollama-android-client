@@ -34,6 +34,14 @@ fun adsEnabled(): Boolean {
     return true
 }
 
+fun githubProp(envName: String, propName: String, default: String): String {
+    val fromEnv = System.getenv(envName)
+    if (!fromEnv.isNullOrBlank()) return fromEnv
+    val fromLocal = localProperties.getProperty(propName)
+    if (!fromLocal.isNullOrBlank()) return fromLocal
+    return default
+}
+
 // Git commit epoch seconds, used to drive the in-app "new release available"
 // check against the GitHub release `published_at` field. Using the commit
 // timestamp (not `System.currentTimeMillis()`) keeps `buildConfigField` values
@@ -107,8 +115,13 @@ android {
             useSupportLibrary = true
         }
 
-        buildConfigField("String", "GITHUB_OWNER", "\"chartmann1590\"")
-        buildConfigField("String", "GITHUB_REPO", "\"ollama-android-client\"")
+        val githubOwner = githubProp("GH_REPO_OWNER", "github.repo.owner", "chartmann1590")
+        val githubRepo = githubProp("GH_REPO_NAME", "github.repo.name", "ollama-android-client")
+        val githubApiToken = githubProp("GH_API_TOKEN", "github.api.token", "")
+
+        buildConfigField("String", "GITHUB_OWNER", "\"$githubOwner\"")
+        buildConfigField("String", "GITHUB_REPO", "\"$githubRepo\"")
+        buildConfigField("String", "GITHUB_API_TOKEN", "\"$githubApiToken\"")
         buildConfigField("long", "BUILD_COMMIT_EPOCH_SECONDS", "${gitCommitEpochSeconds()}L")
         buildConfigField("String", "BUILD_GIT_SHA", "\"${gitShortSha()}\"")
 
