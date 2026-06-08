@@ -16,29 +16,24 @@ See `docs/release_notes_v1.0.0.md` for complete release notes.
 - Image compression and storage optimization
 - Modern UI with Jetpack Compose and Material Design 3
 
-## To Create Release on GitLab
+## To Create Release on GitHub
 
-1. Go to your GitLab repository: http://10.0.0.129:3000/charles/ollama-android-client
-2. Navigate to **Releases** section
-3. Click **New Release**
+1. Go to your GitHub repository: https://github.com/chartmann1590/ollama-android-client
+2. Navigate to **Releases** section (under Releases on the right side of the main page)
+3. Click **Draft a new release**
 4. Fill in:
    - **Tag**: v1.0.0 (already exists)
    - **Release title**: Ollama Android Client v1.0.0
-   - **Release notes**: Copy from `docs/release_notes_v1.0.0.md`
+   - **Description**: Copy from `docs/release_notes_v1.0.0.md`
 5. Upload the APK: `releases/ollama-android-client-v1.0.0.apk`
-6. Click **Create Release**
+6. Click **Publish release**
 
-## Alternative: Using GitLab API
+## Alternative: Using GitHub CLI
 
 ```bash
-curl --request POST \
-  --header "PRIVATE-TOKEN: <your-token>" \
-  --form "name=v1.0.0" \
-  --form "tag_name=v1.0.0" \
-  --form "description=$(cat docs/release_notes_v1.0.0.md)" \
-  --form "assets[links][][name]=APK" \
-  --form "assets[links][][url]=<upload-url>" \
-  "http://10.0.0.129:3000/api/v4/projects/charles%2Follama-android-client/releases"
+gh release create v1.0.0 releases/ollama-android-client-v1.0.0.apk \
+  --title "Ollama Android Client v1.0.0" \
+  --notes-file docs/release_notes_v1.0.0.md
 ```
 
 ## Build Information

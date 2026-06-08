@@ -86,5 +86,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-For more details, see the [Git commit history](http://10.0.0.129:3000/charles/ollama-android-client/commits/master).
+For more details, see the [Git commit history](https://github.com/chartmann1590/ollama-android-client/commits/master).
 

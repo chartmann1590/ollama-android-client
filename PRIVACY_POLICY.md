@@ -73,7 +73,7 @@ We may update our Privacy Policy from time to time. We will notify you of any ch
 
 If you have any questions about this Privacy Policy, please contact us:
 
-- **Repository**: [http://10.0.0.129:3000/charles/ollama-android-client](http://10.0.0.129:3000/charles/ollama-android-client)
+- **Repository**: [https://github.com/chartmann1590/ollama-android-client](https://github.com/chartmann1590/ollama-android-client)
 - **Issues**: Open an issue on the repository
 
 ## Compliance

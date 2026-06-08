@@ -76,7 +76,7 @@ When using Ollama Android Client:
 
 For security-related issues, please contact:
 
-- **Repository**: [http://10.0.0.129:3000/charles/ollama-android-client](http://10.0.0.129:3000/charles/ollama-android-client)
+- **Repository**: [https://github.com/chartmann1590/ollama-android-client](https://github.com/chartmann1590/ollama-android-client)
 - **Security Issues**: Create a private security advisory or contact the maintainers directly
 
 Thank you for helping keep Ollama Android Client and its users safe!

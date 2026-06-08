@@ -42,7 +42,7 @@ Enhancement suggestions are welcome! Please include:
 
 1. Clone your fork:
    ```bash
-   git clone http://10.0.0.129:3000/your-username/ollama-android-client.git
+   git clone https://github.com/your-username/ollama-android-client.git
    cd ollama-android-client
    ```
 

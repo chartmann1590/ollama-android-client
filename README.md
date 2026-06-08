@@ -56,7 +56,7 @@ An Android application for interacting with Ollama AI models — remote or fully
 
 1. **Clone the repository**
    ```bash
-   git clone http://10.0.0.129:3000/charles/ollama-android-client.git
+   git clone https://github.com/chartmann1590/ollama-android-client.git
    cd ollama-android-client
    ```
 
