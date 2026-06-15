@@ -215,7 +215,7 @@ jobs:
   e2e:
     name: E2E launch test (emulator)
     needs: test-and-build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       ADS_ENABLED: ${{ vars.ADS_ENABLED || 'true' }}
       ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
