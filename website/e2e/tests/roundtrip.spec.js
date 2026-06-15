@@ -15,7 +15,7 @@ test.describe('Full phone round-trip sync', () => {
     const ROUND_TRIP_TIMEOUT = 90000; // 90s — Ollama inference can take time
 
     test.beforeEach(async ({ page }) => {
-        await page.goto('/chat.html');
+        await page.goto('chat.html');
         await page.fill('#auth-email', process.env.PLAYWRIGHT_TEST_EMAIL);
         await page.fill('#auth-password', process.env.PLAYWRIGHT_TEST_PASSWORD);
         await page.click('#btn-signin');

@@ -1,7 +1,8 @@
 // @ts-check
 const { defineConfig, devices } = require('@playwright/test');
 
-const BASE_URL = process.env.BASE_URL || 'https://chartmann1590.github.io/ollama-android-client';
+// Ensure trailing slash so relative paths like 'chat.html' resolve correctly
+const BASE_URL = (process.env.BASE_URL || 'https://chartmann1590.github.io/ollama-android-client').replace(/\/?$/, '/');
 
 module.exports = defineConfig({
     testDir: './tests',

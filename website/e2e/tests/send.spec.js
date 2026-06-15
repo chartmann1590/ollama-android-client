@@ -5,7 +5,7 @@ test.describe('Message input UI', () => {
     test.skip(!process.env.PLAYWRIGHT_TEST_EMAIL, 'Set PLAYWRIGHT_TEST_EMAIL + PLAYWRIGHT_TEST_PASSWORD to run');
 
     test.beforeEach(async ({ page }) => {
-        await page.goto('/chat.html');
+        await page.goto('chat.html');
         await page.fill('#auth-email', process.env.PLAYWRIGHT_TEST_EMAIL);
         await page.fill('#auth-password', process.env.PLAYWRIGHT_TEST_PASSWORD);
         await page.click('#btn-signin');

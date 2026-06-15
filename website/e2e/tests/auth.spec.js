@@ -3,22 +3,22 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('Chat page — auth wall', () => {
     test('page loads and returns 200', async ({ page }) => {
-        const res = await page.goto('/chat.html');
+        const res = await page.goto('chat.html');
         expect(res.status()).toBe(200);
     });
 
     test('auth section is visible when not signed in', async ({ page }) => {
-        await page.goto('/chat.html');
+        await page.goto('chat.html');
         await expect(page.locator('#auth-section')).toBeVisible();
     });
 
     test('chat shell is hidden when not signed in', async ({ page }) => {
-        await page.goto('/chat.html');
+        await page.goto('chat.html');
         await expect(page.locator('#chat-shell')).not.toHaveClass(/visible/);
     });
 
     test('sign-in form elements are present', async ({ page }) => {
-        await page.goto('/chat.html');
+        await page.goto('chat.html');
         await expect(page.locator('#btn-google')).toBeVisible();
         await expect(page.locator('#auth-email')).toBeVisible();
         await expect(page.locator('#auth-password')).toBeVisible();
@@ -28,21 +28,21 @@ test.describe('Chat page — auth wall', () => {
     });
 
     test('info box about phone requirement is shown', async ({ page }) => {
-        await page.goto('/chat.html');
+        await page.goto('chat.html');
         const infoBox = page.locator('.auth-info-box');
         await expect(infoBox).toBeVisible();
         await expect(infoBox).toContainText('Web Sync');
     });
 
     test('shows error on empty email sign-in attempt', async ({ page }) => {
-        await page.goto('/chat.html');
+        await page.goto('chat.html');
         await page.click('#btn-signin');
         await expect(page.locator('#auth-error')).toBeVisible();
         await expect(page.locator('#auth-error')).toContainText('email and password');
     });
 
     test('Google sign-in button is clickable', async ({ page }) => {
-        await page.goto('/chat.html');
+        await page.goto('chat.html');
         // Clicking opens a popup — just verify the button is enabled and reachable
         await expect(page.locator('#btn-google')).toBeEnabled();
     });
@@ -52,7 +52,7 @@ test.describe('Chat page — email sign-in with test account', () => {
     test.skip(!process.env.PLAYWRIGHT_TEST_EMAIL, 'Set PLAYWRIGHT_TEST_EMAIL + PLAYWRIGHT_TEST_PASSWORD to run');
 
     test('signs in and shows chat shell', async ({ page }) => {
-        await page.goto('/chat.html');
+        await page.goto('chat.html');
 
         await page.fill('#auth-email', process.env.PLAYWRIGHT_TEST_EMAIL);
         await page.fill('#auth-password', process.env.PLAYWRIGHT_TEST_PASSWORD);
@@ -64,7 +64,7 @@ test.describe('Chat page — email sign-in with test account', () => {
     });
 
     test('shows user email in sidebar after sign-in', async ({ page }) => {
-        await page.goto('/chat.html');
+        await page.goto('chat.html');
         await page.fill('#auth-email', process.env.PLAYWRIGHT_TEST_EMAIL);
         await page.fill('#auth-password', process.env.PLAYWRIGHT_TEST_PASSWORD);
         await page.click('#btn-signin');
@@ -75,7 +75,7 @@ test.describe('Chat page — email sign-in with test account', () => {
     });
 
     test('sign-out button returns to auth wall', async ({ page }) => {
-        await page.goto('/chat.html');
+        await page.goto('chat.html');
         await page.fill('#auth-email', process.env.PLAYWRIGHT_TEST_EMAIL);
         await page.fill('#auth-password', process.env.PLAYWRIGHT_TEST_PASSWORD);
         await page.click('#btn-signin');
