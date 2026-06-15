@@ -7,9 +7,14 @@
 // The placeholder below is replaced with the actual JSON value.
 const firebaseConfig = __FIREBASE_CONFIG__;
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db   = firebase.database();
+let auth = null, db = null;
+try {
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db   = firebase.database();
+} catch (e) {
+    console.warn('Firebase init failed (config missing or invalid):', e.message);
+}
 
 // ---- State ----
 let uid              = null;
@@ -20,7 +25,10 @@ let pendingImages    = [];     // { dataUrl, base64 } objects
 let phoneStatusTimer = null;
 
 // ---- Auth state ----
-auth.onAuthStateChanged(user => {
+if (!auth) {
+    console.warn('Auth unavailable — Firebase config not set.');
+}
+(auth || { onAuthStateChanged: () => {} }).onAuthStateChanged(user => {
     if (user) {
         uid     = user.uid;
         userRef = db.ref('users/' + uid);
@@ -60,6 +68,7 @@ function showChatShell(user) {
 // Google sign-in (popup — works with subpath on GitHub Pages)
 document.getElementById('btn-google').addEventListener('click', () => {
     clearAuthError();
+    if (!auth) { showAuthError('Firebase is not configured on this deployment.'); return; }
     const provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithPopup(provider).catch(err => showAuthError(err.message));
 });
@@ -70,6 +79,7 @@ document.getElementById('btn-signin').addEventListener('click', () => {
     const email = document.getElementById('auth-email').value.trim();
     const pass  = document.getElementById('auth-password').value;
     if (!email || !pass) { showAuthError('Please enter your email and password.'); return; }
+    if (!auth) { showAuthError('Firebase is not configured on this deployment.'); return; }
     auth.signInWithEmailAndPassword(email, pass).catch(err => showAuthError(friendlyAuthError(err)));
 });
 
@@ -80,6 +90,7 @@ document.getElementById('btn-create').addEventListener('click', () => {
     const pass  = document.getElementById('auth-password').value;
     if (!email || !pass) { showAuthError('Please enter an email and password.'); return; }
     if (pass.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+    if (!auth) { showAuthError('Firebase is not configured on this deployment.'); return; }
     auth.createUserWithEmailAndPassword(email, pass).catch(err => showAuthError(friendlyAuthError(err)));
 });
 
@@ -88,6 +99,7 @@ document.getElementById('btn-forgot').addEventListener('click', e => {
     e.preventDefault();
     const email = document.getElementById('auth-email').value.trim();
     if (!email) { showAuthError('Enter your email address above first.'); return; }
+    if (!auth) { showAuthError('Firebase is not configured on this deployment.'); return; }
     auth.sendPasswordResetEmail(email)
         .then(() => showAuthError('Password reset email sent — check your inbox.', false))
         .catch(err => showAuthError(err.message));
@@ -95,7 +107,7 @@ document.getElementById('btn-forgot').addEventListener('click', e => {
 
 // Sign out
 document.getElementById('btn-signout').addEventListener('click', () => {
-    auth.signOut();
+    if (auth) auth.signOut();
 });
 
 function showAuthError(msg, isError = true) {
