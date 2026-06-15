@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://ollama-android-7525f.web.app/sitemap.xml
+Sitemap: https://chartmann1590.github.io/ollama-android-client/sitemap.xml
