@@ -5,6 +5,7 @@ on:
     branches: [master, main]
     paths:
       - 'website/**'
+      - 'database.rules.json'
   workflow_dispatch:
 
 permissions:
@@ -33,6 +34,32 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      - name: Inject Firebase web config
+        env:
+          FIREBASE_WEB_CONFIG: ${{ secrets.FIREBASE_WEB_CONFIG }}
+        run: |
+          python3 -c "
+import os
+config = os.environ.get('FIREBASE_WEB_CONFIG', '{}')
+if not config:
+    config = '{\"apiKey\":\"\",\"authDomain\":\"\",\"databaseURL\":\"\",\"projectId\":\"\",\"storageBucket\":\"\",\"messagingSenderId\":\"\",\"appId\":\"\"}'
+text = open('website/chat.js').read()
+text = text.replace('__FIREBASE_CONFIG__', config)
+open('website/chat.js', 'w').write(text)
+print('Firebase config injected into chat.js')
+"
+
+      - name: Deploy Firebase database rules
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          if [ -z "$FIREBASE_TOKEN" ]; then
+            echo "FIREBASE_TOKEN not set — skipping database rules deploy"
+            exit 0
+          fi
+          npm install -g firebase-tools --silent
+          firebase deploy --only database --token "$FIREBASE_TOKEN" --project ollama-android-7525f
+
       - name: Upload website artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -41,3 +68,40 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  e2e-tests:
+    name: Web E2E Tests
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright dependencies
+        run: |
+          cd website/e2e
+          npm ci
+          npx playwright install --with-deps chromium webkit
+
+      - name: Run web E2E tests
+        env:
+          PLAYWRIGHT_TEST_EMAIL: ${{ secrets.PLAYWRIGHT_TEST_EMAIL }}
+          PLAYWRIGHT_TEST_PASSWORD: ${{ secrets.PLAYWRIGHT_TEST_PASSWORD }}
+          BASE_URL: ${{ steps.deployment.outputs.page_url }}
+          CI: 'true'
+        run: |
+          cd website/e2e
+          npx playwright test
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: website/e2e/playwright-report
+          retention-days: 30
