@@ -38,16 +38,7 @@ jobs:
         env:
           FIREBASE_WEB_CONFIG: ${{ secrets.FIREBASE_WEB_CONFIG }}
         run: |
-          python3 -c "
-import os
-config = os.environ.get('FIREBASE_WEB_CONFIG', '{}')
-if not config:
-    config = '{\"apiKey\":\"\",\"authDomain\":\"\",\"databaseURL\":\"\",\"projectId\":\"\",\"storageBucket\":\"\",\"messagingSenderId\":\"\",\"appId\":\"\"}'
-text = open('website/chat.js').read()
-text = text.replace('__FIREBASE_CONFIG__', config)
-open('website/chat.js', 'w').write(text)
-print('Firebase config injected into chat.js')
-"
+          python3 -c "import os; c=os.environ.get('FIREBASE_WEB_CONFIG','{}') or '{}'; t=open('website/chat.js').read().replace('__FIREBASE_CONFIG__',c); open('website/chat.js','w').write(t); print('Firebase config injected into chat.js')"
 
       - name: Deploy Firebase database rules
         env:
@@ -92,7 +83,7 @@ print('Firebase config injected into chat.js')
         env:
           PLAYWRIGHT_TEST_EMAIL: ${{ secrets.PLAYWRIGHT_TEST_EMAIL }}
           PLAYWRIGHT_TEST_PASSWORD: ${{ secrets.PLAYWRIGHT_TEST_PASSWORD }}
-          BASE_URL: ${{ steps.deployment.outputs.page_url }}
+          BASE_URL: 'https://chartmann1590.github.io/ollama-android-client'
           CI: 'true'
         run: |
           cd website/e2e
