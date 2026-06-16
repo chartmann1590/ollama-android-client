@@ -2,17 +2,21 @@
    Chat page styles — builds on styles.css CSS variables
    ========================================================= */
 
-/* ---- Layout shell ---- */
+/* ---- Layout shell ----
+   The navbar is taken out of fixed positioning on this page so the
+   flex column can fill the exact remaining height with no hardcoded px. */
 body.chat-page {
     overflow: hidden;
     display: flex;
     flex-direction: column;
     height: 100vh;
-    padding-top: 75px; /* offset for fixed navbar */
+    height: 100dvh; /* dynamic viewport height — correct on mobile browsers */
 }
 
 body.chat-page .navbar {
+    position: static;  /* override global fixed; stays in flex flow */
     flex-shrink: 0;
+    width: 100%;
 }
 
 /* ---- Auth wall ---- */
@@ -856,22 +860,19 @@ body.chat-page .navbar {
 
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
-    body.chat-page {
-        padding-top: 60px;
-    }
-
     #chat-shell.visible {
         grid-template-columns: 1fr;
     }
 
     #thread-sidebar {
         position: fixed;
-        top: 60px; /* below navbar on mobile */
+        top: 0;
         left: -100%;
         width: 85%;
         max-width: 320px;
-        height: calc(100vh - 60px);
-        z-index: 300;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 1001; /* above the static navbar */
         transition: left 0.25s ease;
         box-shadow: var(--shadow-xl);
         background: var(--bg-secondary);
@@ -879,6 +880,10 @@ body.chat-page .navbar {
 
     #thread-sidebar.open {
         left: 0;
+    }
+
+    .sidebar-overlay {
+        z-index: 1000;
     }
 
     .btn-sidebar-toggle {
