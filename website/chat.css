@@ -235,11 +235,23 @@ body.chat-page .navbar {
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    min-width: 0;
 }
 
 #chat-shell.visible {
     display: grid;
     grid-template-columns: 280px 1fr;
+    min-height: 0;
+}
+
+/* Medium screens: narrow sidebar */
+@media (max-width: 1024px) and (min-width: 769px) {
+    #chat-shell.visible {
+        grid-template-columns: 220px 1fr;
+    }
+    #thread-sidebar {
+        width: 220px;
+    }
 }
 
 /* ---- Sidebar ---- */
@@ -845,16 +857,21 @@ body.chat-page .navbar {
 
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
+    body.chat-page {
+        padding-top: 60px;
+    }
+
     #chat-shell.visible {
         grid-template-columns: 1fr;
     }
 
     #thread-sidebar {
         position: fixed;
-        top: 0;
+        top: 60px; /* below navbar on mobile */
         left: -100%;
-        width: 280px;
-        height: 100%;
+        width: 85%;
+        max-width: 320px;
+        height: calc(100vh - 60px);
         z-index: 300;
         transition: left 0.25s ease;
         box-shadow: var(--shadow-xl);
