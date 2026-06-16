@@ -36,7 +36,7 @@ class ChatSyncCoordinator @Inject constructor(
                 user?.uid to enabled
             }.collect { (uid, enabled) ->
                 if (uid != null && enabled) {
-                    syncRepository.start(uid) { request -> handleWebRequest(uid, request) }
+                    syncRepository.start(uid, deviceId) { request -> handleWebRequest(uid, request) }
                 } else {
                     syncRepository.stop()
                 }

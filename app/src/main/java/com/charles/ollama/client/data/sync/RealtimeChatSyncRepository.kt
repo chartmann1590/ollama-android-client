@@ -40,15 +40,18 @@ class RealtimeChatSyncRepository @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private var activeUid: String? = null
+    private var activeDeviceId: String? = null
     private var dirtyJob: Job? = null
+    private var heartbeatJob: Job? = null
     private var threadListener: ChildEventListener? = null
     private var messageListener: ChildEventListener? = null
     private var requestListener: ChildEventListener? = null
 
-    fun start(uid: String, webRequestHandler: suspend (WebChatRequest) -> Result<Unit>) {
+    fun start(uid: String, deviceId: String, webRequestHandler: suspend (WebChatRequest) -> Result<Unit>) {
         if (activeUid == uid) return
         stop()
         activeUid = uid
+        activeDeviceId = deviceId
         syncPreferences.setCurrentUid(uid)
         userRef(uid).child("profile").updateChildren(
             mapOf(
@@ -74,17 +77,35 @@ class RealtimeChatSyncRepository @Inject constructor(
                 delay(5_000)
             }
         }
+        heartbeatJob = scope.launch {
+            while (activeUid == uid) {
+                runCatching {
+                    userRef(uid).child("devices").child(deviceId).updateChildren(
+                        mapOf("updatedAt" to System.currentTimeMillis(), "online" to true)
+                    ).await()
+                }
+                delay(60_000)
+            }
+        }
     }
 
     fun stop() {
         val uid = activeUid
+        val deviceId = activeDeviceId
         if (uid != null) {
             threadListener?.let { userRef(uid).child("threads").removeEventListener(it) }
             messageListener?.let { userRef(uid).child("messages").removeEventListener(it) }
             requestListener?.let { userRef(uid).child("webRequests").removeEventListener(it) }
+            if (deviceId != null) {
+                userRef(uid).child("devices").child(deviceId).updateChildren(
+                    mapOf("updatedAt" to System.currentTimeMillis(), "online" to false)
+                )
+            }
         }
         dirtyJob?.cancel()
+        heartbeatJob?.cancel()
         activeUid = null
+        activeDeviceId = null
         threadListener = null
         messageListener = null
         requestListener = null

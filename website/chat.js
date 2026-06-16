@@ -543,7 +543,8 @@ function startPhoneStatusMonitor() {
         let maxUpdatedAt = 0;
         snap.forEach(child => {
             const d = child.val();
-            if (d && d.updatedAt > maxUpdatedAt) maxUpdatedAt = d.updatedAt;
+            // Skip devices that have explicitly marked themselves offline
+            if (d && d.online !== false && d.updatedAt > maxUpdatedAt) maxUpdatedAt = d.updatedAt;
         });
         lastDeviceUpdatedAt = maxUpdatedAt;
         evaluatePhoneOnline();
