@@ -36,21 +36,30 @@ class ModelRepository @Inject constructor(
         return try {
             val installed = installedLitertModelDao.getAll()
             val list = LocalModelCatalog.entries.map { entry ->
-                val inst = installed.find { it.catalogId == entry.id }
-                ModelInfo(
-                    name = entry.threadModelName,
-                    modifiedAt = if (inst != null) "installed" else "not installed",
-                    size = inst?.expectedBytes ?: entry.approximateSizeBytes,
-                    digest = "litert-${entry.id}",
-                    details = ModelDetails(
-                        parameterSize = "Gemma (LiteRT-LM)",
-                        quantizationLevel = if (inst != null) "on-device" else "download required"
+                    val inst = installed.find { it.catalogId == entry.id }
+                    ModelInfo(
+                        name = entry.threadModelName,
+                        modifiedAt = if (inst != null) "installed" else "not installed",
+                        size = inst?.expectedBytes ?: entry.approximateSizeBytes,
+                        digest = "litert-${entry.id}",
+                        details = ModelDetails(
+                            parameterSize = "LiteRT-LM",
+                            quantizationLevel = if (inst != null) "on-device" else "download required"
+                        )
                     )
-                )
-            }
+                }
             Result.success(list)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    suspend fun getInstalledModelsForBackend(baseUrl: String, backend: ServerBackend): Result<List<ModelInfo>> {
+        return when (backend) {
+            ServerBackend.LITERT_LOCAL -> getLitertModels().map { list ->
+                list.filter { it.modifiedAt == "installed" }
+            }
+            ServerBackend.OLLAMA -> getModels(baseUrl)
         }
     }
 

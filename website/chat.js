@@ -24,6 +24,8 @@ let messagesListener = null;   // detach handle
 let pendingImages    = [];     // { dataUrl, base64 } objects
 let knownModels      = new Set();  // models from phone's availableModels path
 let modelsListener   = null;   // real-time listener handle for availableModels
+// Threads created locally before phone confirms — map of syncId → { title, model, updatedAt }
+const pendingThreads = new Map();
 
 // Phone presence (real-time listener)
 let phoneDevicesRef         = null;
@@ -167,14 +169,42 @@ function loadThreadList() {
     });
 }
 
+function prependPendingThread(syncId, title, model) {
+    const list = document.getElementById('thread-list');
+    // Remove existing placeholder for this syncId if any
+    list.querySelector(`[data-id="${CSS.escape(syncId)}"]`)?.remove();
+    const div = document.createElement('div');
+    div.className = 'thread-item' + (syncId === activeThreadId ? ' active' : '');
+    div.dataset.id = syncId;
+    div.onclick = () => openThread(syncId, title, model);
+    div.innerHTML = `
+        <div class="thread-title">${escHtml(title)}</div>
+        <div class="thread-meta">
+            ${model ? `<span class="thread-model">${escHtml(model)}</span>` : ''}
+            <span class="thread-time">just now</span>
+        </div>`;
+    list.insertBefore(div, list.firstChild);
+}
+
 function renderThreadList(threads) {
     const list = document.getElementById('thread-list');
-    if (!threads.length) {
+
+    // Remove pending threads that have now been confirmed by Firebase
+    threads.forEach(t => pendingThreads.delete(t.syncId));
+
+    // Merge: pending (not yet confirmed) + Firebase threads
+    const pendingNotYetConfirmed = [...pendingThreads.values()];
+    const allThreads = [
+        ...pendingNotYetConfirmed,
+        ...threads.filter(t => !pendingThreads.has(t.syncId))
+    ].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+    if (!allThreads.length) {
         list.innerHTML = '<div style="padding:1rem;font-size:0.85rem;color:var(--text-light);text-align:center;">No conversations yet.<br>Start a new chat below.</div>';
         return;
     }
 
-    list.innerHTML = threads.map(t => `
+    list.innerHTML = allThreads.map(t => `
         <div class="thread-item ${t.syncId === activeThreadId ? 'active' : ''}"
              data-id="${escHtml(t.syncId)}"
              onclick="openThread('${escHtml(t.syncId)}','${escHtml(t.title || 'Chat')}','${escHtml(t.model || '')}')">
@@ -426,7 +456,12 @@ async function sendMessage() {
     // Activate new thread UI immediately (even if phone is offline)
     if (isNewThread) {
         activeThreadId = threadSyncId;
+        pendingThreads.set(threadSyncId, { syncId: threadSyncId, title: threadTitle || 'New Chat', model, updatedAt: Date.now() });
+        prependPendingThread(threadSyncId, threadTitle || 'New Chat', model);
         document.getElementById('chat-header-title').textContent = threadTitle || 'New Chat';
+        const modelEl = document.getElementById('chat-header-model');
+        modelEl.textContent = model;
+        modelEl.style.display = '';
         document.getElementById('chat-header').style.display = '';
         document.getElementById('chat-header-empty').style.display = 'none';
         loadMessages(threadSyncId);

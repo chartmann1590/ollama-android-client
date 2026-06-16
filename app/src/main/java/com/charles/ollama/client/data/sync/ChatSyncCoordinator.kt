@@ -57,7 +57,7 @@ class ChatSyncCoordinator @Inject constructor(
                     com.charles.ollama.client.data.litert.ServerBackend.LITERT_LOCAL
                 else
                     com.charles.ollama.client.data.litert.ServerBackend.OLLAMA
-                modelRepository.getModelsForBackend(server.baseUrl, backend)
+                modelRepository.getInstalledModelsForBackend(server.baseUrl, backend)
                     .getOrNull()
                     ?.map { it.name }
                     ?.let { allModels.addAll(it) }
