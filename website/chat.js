@@ -221,6 +221,27 @@ function renderThreadList(threads) {
           </div>
         </div>
     `).join('');
+
+    // Restore model badge for the active thread (may have no model in Firebase but one selected)
+    if (activeThreadId) {
+        const selectedModel = document.getElementById('model-select').value;
+        if (selectedModel) updateActiveThreadModelBadge(selectedModel);
+    }
+}
+
+function updateActiveThreadModelBadge(model) {
+    const m = model !== undefined ? model : document.getElementById('model-select').value;
+    if (!activeThreadId || !m) return;
+    const el = document.querySelector(`.thread-item[data-id="${CSS.escape(activeThreadId)}"]`);
+    if (!el) return;
+    let badge = el.querySelector('.thread-model');
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'thread-model';
+        const meta = el.querySelector('.thread-meta');
+        if (meta) meta.insertBefore(badge, meta.firstChild);
+    }
+    badge.textContent = m;
 }
 
 function updateModelSelector() {
@@ -255,20 +276,30 @@ function openThread(threadSyncId, title, model) {
         el.classList.toggle('active', el.dataset.id === threadSyncId);
     });
 
-    // Update header
-    document.getElementById('chat-header-title').textContent = title || 'Chat';
-    const modelEl = document.getElementById('chat-header-model');
-    modelEl.textContent = model || '';
-    modelEl.style.display = model ? '' : 'none';
-    document.getElementById('chat-header').style.display = '';
-    document.getElementById('chat-header-empty').style.display = 'none';
-
     // Pre-select this thread's model in the selector
     if (model) {
         knownModels.add(model);
         updateModelSelector();
         document.getElementById('model-select').value = model;
     }
+
+    // Effective model — stored model, or whatever is already selected in the dropdown
+    const effectiveModel = model || document.getElementById('model-select').value ||
+        (knownModels.size > 0 ? [...knownModels][0] : '');
+    if (!model && effectiveModel) {
+        document.getElementById('model-select').value = effectiveModel;
+    }
+
+    // Update header
+    document.getElementById('chat-header-title').textContent = title || 'Chat';
+    const modelEl = document.getElementById('chat-header-model');
+    modelEl.textContent = effectiveModel || '';
+    modelEl.style.display = effectiveModel ? '' : 'none';
+    document.getElementById('chat-header').style.display = '';
+    document.getElementById('chat-header-empty').style.display = 'none';
+
+    // Update the sidebar badge for this thread to match the effective model
+    updateActiveThreadModelBadge(effectiveModel);
 
     // Enable input
     setInputEnabled(true);
@@ -395,6 +426,17 @@ document.getElementById('btn-new-chat').addEventListener('click', () => {
 document.getElementById('send-btn').addEventListener('click', sendMessage);
 document.getElementById('msg-input').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+// When model changes, update the active thread's sidebar badge + header
+document.getElementById('model-select').addEventListener('change', () => {
+    const model = document.getElementById('model-select').value;
+    updateActiveThreadModelBadge(model);
+    if (activeThreadId && model) {
+        const modelEl = document.getElementById('chat-header-model');
+        modelEl.textContent = model;
+        modelEl.style.display = '';
+    }
 });
 
 // Auto-resize textarea
