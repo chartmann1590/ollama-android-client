@@ -192,6 +192,12 @@ function renderThreadList(threads) {
     // Remove pending threads that have now been confirmed by Firebase
     threads.forEach(t => pendingThreads.delete(t.syncId));
 
+    // Fallback: if the phone hasn't published availableModels yet, use models seen in threads
+    if (knownModels.size === 0) {
+        threads.forEach(t => { if (t.model) knownModels.add(t.model); });
+        if (knownModels.size > 0) updateModelSelector();
+    }
+
     // Merge: pending (not yet confirmed) + Firebase threads
     const pendingNotYetConfirmed = [...pendingThreads.values()];
     const allThreads = [
