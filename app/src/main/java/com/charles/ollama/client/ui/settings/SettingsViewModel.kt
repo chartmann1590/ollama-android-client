@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.charles.ollama.client.ads.AdGate
 import com.charles.ollama.client.data.auth.AuthRepository
+import com.charles.ollama.client.data.billing.PremiumManager
 import com.charles.ollama.client.data.litert.LitertPreferences
 import com.charles.ollama.client.data.preferences.ThemeMode
 import com.charles.ollama.client.data.preferences.UiPreferences
@@ -68,7 +69,8 @@ class SettingsViewModel @Inject constructor(
     private val uiPreferences: UiPreferences,
     private val feedbackRepository: GitHubFeedbackRepository,
     private val authRepository: AuthRepository,
-    private val syncPreferences: SyncPreferences
+    private val syncPreferences: SyncPreferences,
+    private val premiumManager: PremiumManager
 ) : ViewModel() {
 
     private val _huggingFaceToken = MutableStateFlow(litertPreferences.getHuggingFaceToken().orEmpty())
@@ -77,6 +79,7 @@ class SettingsViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> = uiPreferences.themeMode
     val dynamicColor: StateFlow<Boolean> = uiPreferences.dynamicColor
     val isPremium: StateFlow<Boolean> = adGate.isPremium
+    val isWebSyncPremium: StateFlow<Boolean> = premiumManager.isWebSyncPremium
 
     val accountUiState: StateFlow<AccountUiState> = combine(
         authRepository.currentUser,

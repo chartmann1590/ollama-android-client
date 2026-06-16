@@ -24,6 +24,7 @@ class PaywallViewModel @Inject constructor(
 ) : ViewModel() {
 
     val isPremium: StateFlow<Boolean> = premiumManager.isPremium
+    val isWebSyncPremium: StateFlow<Boolean> = premiumManager.isWebSyncPremium
     val productDetails: StateFlow<Map<String, ProductDetails>> = premiumManager.productDetails
 
     init {
@@ -33,22 +34,36 @@ class PaywallViewModel @Inject constructor(
 
     fun planOptions(details: Map<String, ProductDetails>): List<PlanOption> = listOf(
         PlanOption(
-            plan = PremiumPlan.YEARLY,
-            title = "Yearly",
-            tagline = "Best value — save vs monthly",
-            price = details[PremiumPlan.YEARLY.productId]?.let { displayPrice(it, subscription = true) },
+            plan = PremiumPlan.WEBSYNC_YEARLY,
+            title = "Web Sync Yearly",
+            tagline = "Unlimited web messages + no ads — best value",
+            price = details[PremiumPlan.WEBSYNC_YEARLY.productId]?.let { displayPrice(it, subscription = true) },
             highlight = true
         ),
         PlanOption(
+            plan = PremiumPlan.WEBSYNC_MONTHLY,
+            title = "Web Sync Monthly",
+            tagline = "Unlimited web messages + no ads",
+            price = details[PremiumPlan.WEBSYNC_MONTHLY.productId]?.let { displayPrice(it, subscription = true) },
+            highlight = false
+        ),
+        PlanOption(
+            plan = PremiumPlan.YEARLY,
+            title = "Ad-Free Yearly",
+            tagline = "Remove all ads — best value",
+            price = details[PremiumPlan.YEARLY.productId]?.let { displayPrice(it, subscription = true) },
+            highlight = false
+        ),
+        PlanOption(
             plan = PremiumPlan.MONTHLY,
-            title = "Monthly",
-            tagline = "Cancel anytime",
+            title = "Ad-Free Monthly",
+            tagline = "Remove all ads, cancel anytime",
             price = details[PremiumPlan.MONTHLY.productId]?.let { displayPrice(it, subscription = true) },
             highlight = false
         ),
         PlanOption(
             plan = PremiumPlan.LIFETIME,
-            title = "Lifetime",
+            title = "Lifetime Ad-Free",
             tagline = "One payment, ad-free forever",
             price = details[PremiumPlan.LIFETIME.productId]?.let { displayPrice(it, subscription = false) },
             highlight = false

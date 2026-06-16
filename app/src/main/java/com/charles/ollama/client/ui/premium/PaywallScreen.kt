@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.charles.ollama.client.data.billing.PremiumPlan
+import com.charles.ollama.client.data.billing.PremiumProducts
 import com.charles.ollama.client.ui.theme.BrandGradientEnd
 import com.charles.ollama.client.ui.theme.BrandGradientStart
 
@@ -57,6 +58,7 @@ fun PaywallScreen(
     val context = LocalContext.current
     val activity = context as? Activity
     val isPremium by viewModel.isPremium.collectAsState()
+    val isWebSyncPremium by viewModel.isWebSyncPremium.collectAsState()
     val details by viewModel.productDetails.collectAsState()
     val options = viewModel.planOptions(details)
 
@@ -102,7 +104,11 @@ fun PaywallScreen(
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = if (isPremium) "You're Premium" else "Remove ads, forever",
+                    text = when {
+                        isWebSyncPremium -> "Web Sync Premium Active"
+                        isPremium -> "You're Ad-Free"
+                        else -> "Unlock Premium Features"
+                    },
                     style = MaterialTheme.typography.headlineSmall,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
@@ -110,10 +116,10 @@ fun PaywallScreen(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = if (isPremium) {
-                        "Thanks for your support — every ad is now disabled."
-                    } else {
-                        "No banners, no interstitials, no app-open ads. Just you and your models."
+                    text = when {
+                        isWebSyncPremium -> "Unlimited web messages and no ads. Thanks for your support!"
+                        isPremium -> "Thanks for your support — every ad is now disabled."
+                        else -> "Unlimited web chat, no banners, no interstitials, no app-open ads."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White.copy(alpha = 0.9f),
@@ -123,16 +129,45 @@ fun PaywallScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            if (isPremium) {
-                PremiumBenefits()
+            if (isPremium || isWebSyncPremium) {
+                PremiumBenefits(isWebSyncPremium = isWebSyncPremium)
             } else {
-                options.forEach { option ->
+                val webSyncOptions = options.filter { it.plan.productId in PremiumProducts.webSyncIds }
+                val adFreeOptions  = options.filter { it.plan.productId !in PremiumProducts.webSyncIds }
+
+                Text(
+                    text = "WEB SYNC + AD FREE",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                )
+                webSyncOptions.forEach { option ->
                     PlanCard(
                         option = option,
                         onClick = { activity?.let { viewModel.purchase(it, option.plan) } }
                     )
                     Spacer(Modifier.height(12.dp))
                 }
+
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "AD FREE ONLY",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                )
+                adFreeOptions.forEach { option ->
+                    PlanCard(
+                        option = option,
+                        onClick = { activity?.let { viewModel.purchase(it, option.plan) } }
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 Spacer(Modifier.height(4.dp))
                 TextButton(onClick = viewModel::restore) {
                     Text("Restore purchase")
@@ -201,14 +236,24 @@ private fun PlanCard(option: PlanOption, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PremiumBenefits() {
+private fun PremiumBenefits(isWebSyncPremium: Boolean) {
+    val benefits = if (isWebSyncPremium) {
+        listOf(
+            "Unlimited web chat messages",
+            "All ads removed across the app",
+            "Support ongoing development",
+            "Faster, cleaner reading experience"
+        )
+    } else {
+        listOf(
+            "All ads removed across the app",
+            "Support ongoing development",
+            "Faster, cleaner reading experience"
+        )
+    }
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp)) {
-            listOf(
-                "All ads removed across the app",
-                "Support ongoing development",
-                "Faster, cleaner reading experience"
-            ).forEach { benefit ->
+            benefits.forEach { benefit ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 6.dp)

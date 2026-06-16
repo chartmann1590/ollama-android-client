@@ -3,6 +3,7 @@ package com.charles.ollama.client.data.sync
 import android.content.Context
 import android.provider.Settings
 import com.charles.ollama.client.data.auth.AuthRepository
+import com.charles.ollama.client.data.billing.PremiumManager
 import com.charles.ollama.client.data.database.dao.ChatThreadDao
 import com.charles.ollama.client.data.database.entity.ChatThreadEntity
 import com.charles.ollama.client.data.litert.LitertConstants
@@ -29,7 +30,8 @@ class ChatSyncCoordinator @Inject constructor(
     private val chatRepository: ChatRepository,
     private val chatThreadDao: ChatThreadDao,
     private val serverRepository: ServerRepository,
-    private val modelRepository: ModelRepository
+    private val modelRepository: ModelRepository,
+    private val premiumManager: PremiumManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val deviceId: String by lazy { loadDeviceId() }
@@ -44,6 +46,16 @@ class ChatSyncCoordinator @Inject constructor(
                     scope.launch { pushAvailableModels(uid) }
                 } else {
                     syncRepository.stop()
+                }
+            }
+        }
+        // Keep Firebase subscription.webSyncPremium in sync with the purchased state.
+        scope.launch {
+            combine(authRepository.currentUser, syncPreferences.syncEnabled, premiumManager.isWebSyncPremium) { user, enabled, webSync ->
+                Triple(user?.uid, enabled, webSync)
+            }.collect { (uid, enabled, webSync) ->
+                if (uid != null && enabled) {
+                    syncRepository.writePremiumStatus(uid, webSync)
                 }
             }
         }

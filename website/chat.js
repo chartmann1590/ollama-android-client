@@ -37,6 +37,14 @@ let isPhoneOnline           = false;
 // Offline message queue
 let offlineQueue = [];  // { requestId, request, threadSyncId, isNewThread, threadTitle }
 
+// ---- Web Sync Premium / daily usage ----
+const WEB_DAILY_LIMIT  = 3;
+let isWebSyncPremium   = false;
+let dailyMsgCount      = 0;
+let dailyMsgDate       = '';
+let subscriptionRef    = null;
+let dailyUsageRef      = null;
+
 // ---- Auth state ----
 if (!auth) {
     console.warn('Auth unavailable — Firebase config not set.');
@@ -53,6 +61,8 @@ if (!auth) {
         clearMessagesListener();
         stopModelsListener();
         stopPhoneStatusMonitor();
+        stopSubscriptionListener();
+        stopDailyUsageListener();
         showAuthWall();
     }
 });
@@ -77,6 +87,8 @@ function showChatShell(user) {
     loadThreadList();
     startModelsListener();
     startPhoneStatusMonitor();
+    startSubscriptionListener();
+    startDailyUsageListener();
     showEmptyChatState();
 }
 
@@ -476,6 +488,15 @@ async function sendMessage() {
         return;
     }
 
+    // Enforce daily web message limit for free users
+    if (!isWebSyncPremium) {
+        checkAndResetDailyUsageIfNewDay();
+        if (dailyMsgCount >= WEB_DAILY_LIMIT) {
+            showPremiumModal();
+            return;
+        }
+    }
+
     // If no active thread, create one now so messages show immediately
     const isNewThread  = !activeThreadId;
     const threadSyncId = activeThreadId || crypto.randomUUID();
@@ -533,9 +554,20 @@ async function dispatchRequest(requestId, request) {
     try {
         await userRef.child('webRequests/' + requestId).set(request);
     } catch (err) {
-        setStatus('Error sending: ' + err.message, true);
+        // Firebase rule rejection shows up here for free users over the limit
+        if (!isWebSyncPremium && (err.code === 'PERMISSION_DENIED' || (err.message && err.message.includes('PERMISSION_DENIED')))) {
+            setStatus('Daily limit reached. Upgrade for unlimited web messages.', true);
+            dailyMsgCount = WEB_DAILY_LIMIT;
+            updateWebSyncUI();
+        } else {
+            setStatus('Error sending: ' + err.message, true);
+        }
         setInputEnabled(true);
         return;
+    }
+    // Increment daily counter for free users after a successful write
+    if (!isWebSyncPremium) {
+        incrementDailyUsage();
     }
     watchRequest(requestId);
 }
@@ -756,6 +788,134 @@ function closeMobileSidebar() {
     document.getElementById('thread-sidebar').classList.remove('open');
     document.getElementById('sidebar-overlay').classList.remove('open');
 }
+
+// ---- Web Sync Premium — subscription & daily usage ----
+function getUtcDateString() {
+    const d = new Date();
+    const yyyy = d.getUTCFullYear();
+    const mm   = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd   = String(d.getUTCDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function startSubscriptionListener() {
+    stopSubscriptionListener();
+    if (!userRef) return;
+    subscriptionRef = userRef.child('subscription/webSyncPremium');
+    subscriptionRef.on('value', snap => {
+        isWebSyncPremium = snap.val() === true;
+        updateWebSyncUI();
+    });
+}
+
+function stopSubscriptionListener() {
+    if (subscriptionRef) { subscriptionRef.off('value'); subscriptionRef = null; }
+    isWebSyncPremium = false;
+}
+
+function startDailyUsageListener() {
+    stopDailyUsageListener();
+    if (!userRef) return;
+    dailyUsageRef = userRef.child('webSyncDailyUsage');
+    dailyUsageRef.on('value', snap => {
+        const val  = snap.val();
+        const today = getUtcDateString();
+        if (val && val.date === today) {
+            dailyMsgDate  = val.date;
+            dailyMsgCount = val.count || 0;
+        } else {
+            dailyMsgDate  = today;
+            dailyMsgCount = 0;
+        }
+        updateWebSyncUI();
+    });
+}
+
+function stopDailyUsageListener() {
+    if (dailyUsageRef) { dailyUsageRef.off('value'); dailyUsageRef = null; }
+    dailyMsgCount = 0;
+    dailyMsgDate  = '';
+}
+
+function checkAndResetDailyUsageIfNewDay() {
+    const today = getUtcDateString();
+    if (dailyMsgDate !== today) {
+        dailyMsgDate  = today;
+        dailyMsgCount = 0;
+    }
+}
+
+function incrementDailyUsage() {
+    checkAndResetDailyUsageIfNewDay();
+    dailyMsgCount++;
+    if (userRef) {
+        userRef.child('webSyncDailyUsage').set({ date: dailyMsgDate, count: dailyMsgCount });
+    }
+    updateWebSyncUI();
+}
+
+function updateWebSyncUI() {
+    const banner   = document.getElementById('websync-banner');
+    if (!banner) return;
+
+    if (isWebSyncPremium) {
+        banner.style.display = 'none';
+        banner.innerHTML = '';
+        // Re-enable send if it was blocked by limit
+        const input = document.getElementById('msg-input');
+        if (input && !input.disabled) {
+            document.getElementById('send-btn').disabled = !input.value.trim() && !pendingImages.length;
+        }
+        return;
+    }
+
+    const today     = getUtcDateString();
+    const count     = (dailyMsgDate === today) ? dailyMsgCount : 0;
+    const remaining = Math.max(0, WEB_DAILY_LIMIT - count);
+    const resetTime = getNextUtcMidnight();
+
+    if (remaining === 0) {
+        banner.style.display = '';
+        banner.className = 'websync-banner limit-reached';
+        banner.innerHTML = `
+            <span class="websync-icon">⚠️</span>
+            <span class="websync-text">Daily limit reached — <strong>${WEB_DAILY_LIMIT}/${WEB_DAILY_LIMIT}</strong> messages used. Resets at midnight UTC (${resetTime}).
+            <button class="websync-upgrade-btn" onclick="showPremiumModal()">Get Unlimited</button></span>`;
+        // Disable send button visually
+        document.getElementById('send-btn').disabled = true;
+    } else {
+        banner.style.display = '';
+        banner.className = 'websync-banner free-tier';
+        banner.innerHTML = `
+            <span class="websync-icon">💬</span>
+            <span class="websync-text"><strong>${count}/${WEB_DAILY_LIMIT}</strong> web messages today · ${remaining} remaining · resets at midnight UTC
+            <button class="websync-upgrade-btn" onclick="showPremiumModal()">Upgrade</button></span>`;
+    }
+}
+
+function getNextUtcMidnight() {
+    const now  = new Date();
+    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    const diff = next - now;
+    const h    = Math.floor(diff / 3600000);
+    const m    = Math.floor((diff % 3600000) / 60000);
+    return `in ${h}h ${m}m`;
+}
+
+function showPremiumModal() {
+    const overlay = document.getElementById('premium-modal-overlay');
+    if (overlay) overlay.style.display = 'flex';
+}
+
+function hidePremiumModal() {
+    const overlay = document.getElementById('premium-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+document.getElementById('btn-premium-modal-close')?.addEventListener('click', hidePremiumModal);
+document.getElementById('premium-modal-overlay')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('premium-modal-overlay')) hidePremiumModal();
+});
 
 // ---- Test hooks (used by Playwright E2E only) ----
 window.__testSetPhoneOnline = function(online) {

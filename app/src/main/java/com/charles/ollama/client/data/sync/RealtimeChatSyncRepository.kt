@@ -166,6 +166,12 @@ class RealtimeChatSyncRepository @Inject constructor(
         ).await()
     }
 
+    fun writePremiumStatus(uid: String, webSyncPremium: Boolean) {
+        userRef(uid).child("subscription").setValue(
+            mapOf("webSyncPremium" to webSyncPremium, "updatedAt" to System.currentTimeMillis())
+        )
+    }
+
     suspend fun publishAvailableModels(uid: String, models: List<String>) {
         if (models.isEmpty()) return
         val now = System.currentTimeMillis()

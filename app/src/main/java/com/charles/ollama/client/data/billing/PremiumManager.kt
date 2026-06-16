@@ -46,6 +46,9 @@ class PremiumManager @Inject constructor(
     private val _isPremium = MutableStateFlow(prefs.getBoolean(KEY_IS_PREMIUM, false))
     val isPremium: StateFlow<Boolean> = _isPremium.asStateFlow()
 
+    private val _isWebSyncPremium = MutableStateFlow(prefs.getBoolean(KEY_IS_WEB_SYNC_PREMIUM, false))
+    val isWebSyncPremium: StateFlow<Boolean> = _isWebSyncPremium.asStateFlow()
+
     /** Loaded product details keyed by product id, used by the paywall UI. */
     private val _productDetails = MutableStateFlow<Map<String, ProductDetails>>(emptyMap())
     val productDetails: StateFlow<Map<String, ProductDetails>> = _productDetails.asStateFlow()
@@ -92,15 +95,20 @@ class PremiumManager @Inject constructor(
             return
         }
         var anyOwned = false
+        var anyWebSync = false
         var pending = 2
         val finish = {
             pending--
-            if (pending == 0) setPremium(anyOwned)
+            if (pending == 0) {
+                setPremium(anyOwned)
+                setWebSyncPremium(anyWebSync)
+            }
         }
         billingClient.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder().setProductType(ProductType.SUBS).build()
         ) { _, purchases ->
             if (purchases.any { it.grantsPremium() }) anyOwned = true
+            if (purchases.any { it.grantsWebSync() }) anyWebSync = true
             purchases.forEach { handlePurchase(it) }
             finish()
         }
@@ -163,11 +171,14 @@ class PremiumManager @Inject constructor(
     override fun onPurchasesUpdated(result: BillingResult, purchases: MutableList<Purchase>?) {
         if (result.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
             var granted = false
+            var grantedWebSync = false
             purchases.forEach {
                 if (it.grantsPremium()) granted = true
+                if (it.grantsWebSync()) grantedWebSync = true
                 handlePurchase(it)
             }
             if (granted) setPremium(true)
+            if (grantedWebSync) setWebSyncPremium(true)
         }
     }
 
@@ -191,15 +202,26 @@ class PremiumManager @Inject constructor(
         products.any { it in PremiumProducts.allIds } &&
             BillingSecurity.verifyPurchase(BuildConfig.PLAY_LICENSE_KEY, originalJson, signature)
 
+    private fun Purchase.grantsWebSync(): Boolean =
+        products.any { it in PremiumProducts.webSyncIds } &&
+            BillingSecurity.verifyPurchase(BuildConfig.PLAY_LICENSE_KEY, originalJson, signature)
+
     private fun setPremium(premium: Boolean) {
         if (_isPremium.value == premium) return
         prefs.edit().putBoolean(KEY_IS_PREMIUM, premium).apply()
         _isPremium.value = premium
     }
 
+    private fun setWebSyncPremium(webSync: Boolean) {
+        if (_isWebSyncPremium.value == webSync) return
+        prefs.edit().putBoolean(KEY_IS_WEB_SYNC_PREMIUM, webSync).apply()
+        _isWebSyncPremium.value = webSync
+    }
+
     companion object {
         private const val TAG = "PremiumManager"
         private const val PREFS_NAME = "premium_prefs"
         private const val KEY_IS_PREMIUM = "is_premium"
+        private const val KEY_IS_WEB_SYNC_PREMIUM = "is_web_sync_premium"
     }
 }

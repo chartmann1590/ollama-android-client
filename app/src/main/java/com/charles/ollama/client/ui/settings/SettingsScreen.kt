@@ -57,6 +57,7 @@ fun SettingsScreen(
     val themeMode by viewModel.themeMode.collectAsState()
     val dynamicColor by viewModel.dynamicColor.collectAsState()
     val isPremium by viewModel.isPremium.collectAsState()
+    val isWebSyncPremium by viewModel.isWebSyncPremium.collectAsState()
     val accountUiState by viewModel.accountUiState.collectAsState()
     val authActionState by viewModel.authActionState.collectAsState()
     val context = LocalContext.current
@@ -139,6 +140,7 @@ fun SettingsScreen(
             AccountSyncSection(
                 accountUiState = accountUiState,
                 authActionState = authActionState,
+                isWebSyncPremium = isWebSyncPremium,
                 onCreateAccount = viewModel::createAccount,
                 onSignInEmail = viewModel::signInWithEmail,
                 onPasswordReset = viewModel::sendPasswordReset,
@@ -147,7 +149,8 @@ fun SettingsScreen(
                 },
                 onSignOut = viewModel::signOut,
                 onSyncEnabledChange = viewModel::setWebSyncEnabled,
-                onDismissAuthMessage = viewModel::resetAuthActionState
+                onDismissAuthMessage = viewModel::resetAuthActionState,
+                onNavigateToPaywall = onNavigateToPaywall
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -734,13 +737,15 @@ fun SettingsScreen(
 private fun AccountSyncSection(
     accountUiState: AccountUiState,
     authActionState: AuthActionState,
+    isWebSyncPremium: Boolean,
     onCreateAccount: (String, String) -> Unit,
     onSignInEmail: (String, String) -> Unit,
     onPasswordReset: (String) -> Unit,
     onGoogleSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onSyncEnabledChange: (Boolean) -> Unit,
-    onDismissAuthMessage: () -> Unit
+    onDismissAuthMessage: () -> Unit,
+    onNavigateToPaywall: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -847,6 +852,36 @@ private fun AccountSyncSection(
                         checked = accountUiState.syncEnabled,
                         onCheckedChange = onSyncEnabledChange
                     )
+                }
+                if (accountUiState.syncEnabled) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isWebSyncPremium) {
+                            Text(
+                                text = "Unlimited web messages",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Text(
+                                text = "3 free web messages / day",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            TextButton(
+                                onClick = onNavigateToPaywall,
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                            ) {
+                                Text(
+                                    text = "Upgrade",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
                 }
                 if (accountUiState.lastSyncAt > 0L) {
                     Text(

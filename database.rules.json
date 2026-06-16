@@ -168,7 +168,7 @@
         },
         "webRequests": {
           "$requestId": {
-            ".write": "auth != null && auth.uid == $uid",
+            ".write": "auth != null && auth.uid == $uid && (root.child('users').child($uid).child('subscription').child('webSyncPremium').val() == true || root.child('users').child($uid).child('webSyncDailyUsage').child('count').val() < 3)",
             ".validate": "newData.hasChildren(['threadSyncId', 'content', 'status', 'createdAt']) && (newData.child('status').val() == 'pending' || newData.child('status').val() == 'running' || newData.child('status').val() == 'complete' || newData.child('status').val() == 'error')",
             "threadSyncId": {
               ".validate": "newData.isString()"
@@ -208,6 +208,31 @@
             "$other": {
               ".validate": false
             }
+          }
+        },
+        "subscription": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.hasChildren(['webSyncPremium', 'updatedAt'])",
+          "webSyncPremium": {
+            ".validate": "newData.isBoolean()"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "webSyncDailyUsage": {
+          ".write": "auth != null && auth.uid == $uid",
+          "date": {
+            ".validate": "newData.isString() && newData.val().length == 10"
+          },
+          "count": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "$other": {
+            ".validate": false
           }
         },
         "availableModels": {
