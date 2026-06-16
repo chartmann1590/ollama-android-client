@@ -225,11 +225,12 @@
         },
         "webSyncDailyUsage": {
           ".write": "auth != null && auth.uid == $uid",
+          ".validate": "!data.exists() || newData.child('date').val() != data.child('date').val() || newData.child('count').val() >= data.child('count').val()",
           "date": {
             ".validate": "newData.isString() && newData.val().length == 10"
           },
           "count": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100 && (!data.parent().exists() || newData.parent().child('date').val() != data.parent().child('date').val() || newData.val() >= data.val())"
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
           },
           "$other": {
             ".validate": false
