@@ -1,6 +1,26 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
+/** Ensures a model is selected in the dropdown, injecting a fake one if none are available yet. */
+async function ensureModelSelected(page) {
+    await page.evaluate(() => {
+        const sel = document.getElementById('model-select');
+        if (!sel) return;
+        if (!sel.value) {
+            // No real model loaded — inject a sentinel so the send gate passes in CI
+            if (Array.from(sel.options).every(o => !o.value)) {
+                const opt = document.createElement('option');
+                opt.value = 'llama3.2:latest';
+                opt.textContent = 'llama3.2:latest';
+                sel.appendChild(opt);
+            }
+            // Pick the first non-placeholder option
+            const real = Array.from(sel.options).find(o => o.value);
+            if (real) sel.value = real.value;
+        }
+    });
+}
+
 test.describe('Message input UI', () => {
     test.skip(!process.env.PLAYWRIGHT_TEST_EMAIL, 'Set PLAYWRIGHT_TEST_EMAIL + PLAYWRIGHT_TEST_PASSWORD to run');
 
@@ -18,6 +38,21 @@ test.describe('Message input UI', () => {
         await expect(page.locator('#send-btn')).toBeDisabled();
     });
 
+    test('model selector is visible when chat is open', async ({ page }) => {
+        await expect(page.locator('#model-bar')).toBeVisible();
+        await expect(page.locator('#model-select')).toBeVisible();
+    });
+
+    test('send without model selected shows model error', async ({ page }) => {
+        // Ensure model-select has no value (clear any auto-selected)
+        await page.evaluate(() => { document.getElementById('model-select').value = ''; });
+        await page.fill('#msg-input', 'Test without model');
+        // Manually enable send to bypass disabled guard
+        await page.evaluate(() => { document.getElementById('send-btn').disabled = false; });
+        await page.click('#send-btn');
+        await expect(page.locator('#status-bar')).toContainText(/select a model/i, { timeout: 3000 });
+    });
+
     test('send button enables after typing a message', async ({ page }) => {
         await page.fill('#msg-input', 'Hello');
         await expect(page.locator('#send-btn')).toBeEnabled();
@@ -33,6 +68,7 @@ test.describe('Message input UI', () => {
     });
 
     test('clicking send shows status (Sending or queued when phone offline)', async ({ page }) => {
+        await ensureModelSelected(page);
         await page.fill('#msg-input', 'Test message from Playwright');
         await page.click('#send-btn');
         // Either "Sending…" (phone online) or "queued — waiting for phone" (phone offline)
@@ -41,6 +77,7 @@ test.describe('Message input UI', () => {
     });
 
     test('Enter key submits message (shows status bar)', async ({ page }) => {
+        await ensureModelSelected(page);
         await page.fill('#msg-input', 'Enter key test');
         await page.locator('#msg-input').press('Enter');
         const statusBar = page.locator('#status-bar');
@@ -48,6 +85,7 @@ test.describe('Message input UI', () => {
     });
 
     test('offline queue: message queued when phone offline shows queued status', async ({ page }) => {
+        await ensureModelSelected(page);
         // Force phone-offline via test hook exposed by chat.js
         await page.evaluate(() => window.__testSetPhoneOnline(false));
         await page.fill('#msg-input', 'Queued message test');
@@ -59,6 +97,7 @@ test.describe('Message input UI', () => {
     });
 
     test('offline queue: multiple messages can be queued', async ({ page }) => {
+        await ensureModelSelected(page);
         await page.evaluate(() => window.__testSetPhoneOnline(false));
         await page.fill('#msg-input', 'First queued');
         await page.click('#send-btn');
@@ -69,6 +108,7 @@ test.describe('Message input UI', () => {
     });
 
     test('offline queue: queue drains when phone comes online', async ({ page }) => {
+        await ensureModelSelected(page);
         // Queue a message while offline
         await page.evaluate(() => window.__testSetPhoneOnline(false));
         await page.fill('#msg-input', 'Will drain when online');
