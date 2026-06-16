@@ -752,6 +752,40 @@ body.chat-page .navbar {
     line-height: 1;
 }
 
+/* ---- Model bar ---- */
+#model-bar {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem 0;
+    flex-shrink: 0;
+}
+
+#model-bar.visible { display: flex; }
+
+.model-bar-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+#model-select {
+    flex: 1;
+    max-width: 360px;
+    font-size: 0.82rem;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    outline: none;
+}
+
+#model-select:focus { border-color: var(--primary); }
+#model-select:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ---- Input bar ---- */
 #input-bar {
     display: flex;

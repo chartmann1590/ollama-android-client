@@ -22,6 +22,7 @@ let userRef          = null;
 let activeThreadId   = null;   // current thread's syncId UUID
 let messagesListener = null;   // detach handle
 let pendingImages    = [];     // { dataUrl, base64 } objects
+let knownModels      = new Set();  // models seen across threads
 
 // Phone presence (real-time listener)
 let phoneDevicesRef         = null;
@@ -169,6 +170,11 @@ function renderThreadList(threads) {
         list.innerHTML = '<div style="padding:1rem;font-size:0.85rem;color:var(--text-light);text-align:center;">No conversations yet.<br>Start a new chat below.</div>';
         return;
     }
+
+    // Collect models seen across threads and refresh selector
+    threads.forEach(t => { if (t.model) knownModels.add(t.model); });
+    updateModelSelector();
+
     list.innerHTML = threads.map(t => `
         <div class="thread-item ${t.syncId === activeThreadId ? 'active' : ''}"
              data-id="${escHtml(t.syncId)}"
@@ -180,6 +186,20 @@ function renderThreadList(threads) {
           </div>
         </div>
     `).join('');
+}
+
+function updateModelSelector() {
+    const sel = document.getElementById('model-select');
+    const prev = sel.value;
+    // Rebuild options — keep placeholder, add known models
+    sel.innerHTML = '<option value="">— select a model —</option>' +
+        Array.from(knownModels).sort().map(m =>
+            `<option value="${escHtml(m)}">${escHtml(m)}</option>`
+        ).join('');
+    // Restore previous selection if still valid
+    if (prev && knownModels.has(prev)) sel.value = prev;
+    // Auto-select if only one option
+    else if (knownModels.size === 1) sel.value = [...knownModels][0];
 }
 
 function threadSkeletons() {
@@ -207,6 +227,13 @@ function openThread(threadSyncId, title, model) {
     modelEl.style.display = model ? '' : 'none';
     document.getElementById('chat-header').style.display = '';
     document.getElementById('chat-header-empty').style.display = 'none';
+
+    // Pre-select this thread's model in the selector
+    if (model) {
+        knownModels.add(model);
+        updateModelSelector();
+        document.getElementById('model-select').value = model;
+    }
 
     // Enable input
     setInputEnabled(true);
@@ -343,20 +370,34 @@ document.getElementById('msg-input').addEventListener('input', function() {
 });
 
 function setInputEnabled(enabled) {
-    const input   = document.getElementById('msg-input');
-    const sendBtn = document.getElementById('send-btn');
-    const attach  = document.getElementById('btn-attach');
-    input.disabled  = !enabled;
-    attach.disabled = !enabled;
-    sendBtn.disabled = !enabled || (!input.value.trim() && !pendingImages.length);
-    if (enabled) input.focus();
+    const input    = document.getElementById('msg-input');
+    const sendBtn  = document.getElementById('send-btn');
+    const attach   = document.getElementById('btn-attach');
+    const modelSel = document.getElementById('model-select');
+    const modelBar = document.getElementById('model-bar');
+    input.disabled    = !enabled;
+    attach.disabled   = !enabled;
+    modelSel.disabled = !enabled;
+    sendBtn.disabled  = !enabled || (!input.value.trim() && !pendingImages.length);
+    if (enabled) {
+        modelBar.classList.add('visible');
+        input.focus();
+    } else {
+        modelBar.classList.remove('visible');
+    }
 }
 
 async function sendMessage() {
-    const input   = document.getElementById('msg-input');
-    const content = input.value.trim();
+    const input    = document.getElementById('msg-input');
+    const content  = input.value.trim();
+    const model    = document.getElementById('model-select').value;
     if (!content && !pendingImages.length) return;
     if (!uid || !userRef) return;
+    if (!model) {
+        setStatus('Select a model before sending.', true);
+        document.getElementById('model-select').focus();
+        return;
+    }
 
     // If no active thread, create one now so messages show immediately
     const isNewThread  = !activeThreadId;
@@ -376,6 +417,7 @@ async function sendMessage() {
     const request = {
         threadSyncId,
         content,
+        model,
         status: 'pending',
         createdAt: Date.now(),
         ...(threadTitle ? { threadTitle } : {}),
@@ -459,7 +501,7 @@ function watchRequest(requestId) {
             ref.off('value', handler);
         }
         if (status === 'error') {
-            setStatus('Error: ' + (val.errorMessage || 'Unknown error'), true);
+            setStatus('Error: ' + (val.error || val.errorMessage || 'Unknown error'), true);
             setInputEnabled(true);
             ref.off('value', handler);
         }

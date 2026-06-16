@@ -54,7 +54,8 @@ class ChatSyncCoordinator @Inject constructor(
             val thread = chatThreadDao.getThreadBySyncId(request.threadSyncId)
                 ?: createThreadForWebRequest(request, server.id)
             val model = request.model ?: thread.model
-                ?: error("Web request did not specify a model and the local thread has no model.")
+                ?: chatThreadDao.getMostRecentModel()
+                ?: error("No model available — open the app and start a chat to set a default model.")
 
             if (thread.streamEnabled) {
                 chatRepository.streamMessage(
