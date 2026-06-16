@@ -5,6 +5,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -22,6 +23,7 @@ class ChatContextInstrumentedTest {
     @get:Rule
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
+    @Ignore("Requires a pre-downloaded on-device Gemma model and a seeded thread — run manually on device")
     @Test
     fun onDeviceLiteRT_chatUsesConversationHistory() {
         // Open an existing thread that uses the on-device Gemma model.
