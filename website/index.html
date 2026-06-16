@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Ollama AI Chat for Android — connect to your Ollama server or run Gemma 4, Qwen 3, DeepSeek R1 Distill and Phi-4 Mini fully on-device with Google LiteRT-LM. Real-time streaming, private, offline-capable.">
-    <meta name="keywords" content="Ollama, Android, AI chat, LiteRT, LiteRT-LM, on-device AI, Gemma, Qwen, DeepSeek, Phi-4, local LLM, private AI, offline AI, LLM client, Ollama client">
+    <meta name="description" content="Ollama AI Chat for Android — connect to your Ollama server or run Gemma 4, Qwen 3, DeepSeek R1 Distill and Phi-4 Mini fully on-device with Google LiteRT-LM. Real-time streaming, web chat sync, private, offline-capable.">
+    <meta name="keywords" content="Ollama, Android, AI chat, LiteRT, LiteRT-LM, on-device AI, Gemma, Qwen, DeepSeek, Phi-4, local LLM, private AI, offline AI, LLM client, Ollama client, web chat, Firebase sync, browser AI chat">
     <meta name="author" content="Charles Hartmann">
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#6366f1">
@@ -102,9 +102,13 @@
                         <span class="gradient-text">On Your Android Device</span>
                     </h1>
                     <p class="hero-description">
-                        Connect to your Ollama server <strong>or run models fully on-device</strong> — Gemma 4, Qwen 3, DeepSeek R1 Distill and Phi-4 Mini all powered by Google LiteRT-LM. Real-time streaming, no data leaves your phone when you go local.
+                        Connect to your Ollama server <strong>or run models fully on-device</strong> — Gemma 4, Qwen 3, DeepSeek R1 Distill and Phi-4 Mini all powered by Google LiteRT-LM. Now with <strong>real-time web chat sync</strong>: access all your conversations from any browser and send messages that your phone handles and streams back instantly.
                     </p>
                     <div class="hero-buttons">
+                        <a href="chat.html" class="btn btn-primary" style="background: linear-gradient(135deg, #8b5cf6, #6366f1);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                            Try Web Chat
+                        </a>
                         <a href="https://play.google.com/store/apps/details?id=com.charles.ollama.client.play&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -157,6 +161,11 @@
                 <p class="section-subtitle">Everything you need for seamless AI conversations</p>
             </div>
             <div class="features-grid">
+                <div class="feature-card" style="border-color: #8b5cf6; background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(99,102,241,0.04));">
+                    <div class="feature-icon">💻</div>
+                    <h3 class="feature-title">Web Chat — Chat from Any Browser</h3>
+                    <p class="feature-description">Open <a href="chat.html" style="color:#8b5cf6;font-weight:600;">chat.html</a> on any desktop or laptop. Sign in with the same account as your phone and all your conversations appear instantly. Send a message — your phone picks it up, runs AI inference, and the response streams back to your browser in real time. Works with Ollama and on-device LiteRT models alike.</p>
+                </div>
                 <div class="feature-card">
                     <div class="feature-icon">📲</div>
                     <h3 class="feature-title">On-device AI with LiteRT-LM</h3>
@@ -222,11 +231,6 @@
                     <h3 class="feature-title">Global Search</h3>
                     <p class="feature-description">Search across every conversation by message content and jump straight to the message you remember writing.</p>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">💻</div>
-                    <h3 class="feature-title">Web Chat Sync</h3>
-                    <p class="feature-description">Access your chats from any browser. Sign in with the same account on the web and your phone — messages sync in real time via Firebase.</p>
-                </div>
             </div>
         </div>
     </section>
@@ -287,6 +291,17 @@
                 <p class="section-subtitle">Everything you need to know</p>
             </div>
             <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>What is the Web Chat feature?</span>
+                        <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Web Chat lets you access all your AI conversations from any desktop or laptop browser — no app install needed. Open <a href="chat.html">chat.html</a>, sign in with the same Google or email account you use on the app, and your threads appear immediately. When you send a message, your Android phone receives it via Firebase, runs AI inference (using Ollama or on-device LiteRT), and streams the response back to your browser in real time. You can even type messages while your phone is offline — they queue locally and dispatch automatically when the phone reconnects.</p>
+                    </div>
+                </div>
                 <div class="faq-item">
                     <button class="faq-question">
                         <span>What is Ollama AI Chat?</span>

@@ -3,32 +3,50 @@
 [![Android CI](https://github.com/chartmann1590/ollama-android-client/actions/workflows/android-ci.yml/badge.svg)](https://github.com/chartmann1590/ollama-android-client/actions/workflows/android-ci.yml)
 [![Get it on Google Play](https://img.shields.io/badge/Google%20Play-Download-34A853?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.charles.ollama.client.play&pcampaignid=web_share)
 [![Website](https://img.shields.io/badge/Website-GitHub%20Pages-6366f1?logo=github&logoColor=white)](https://chartmann1590.github.io/ollama-android-client/)
+[![Web Chat](https://img.shields.io/badge/Web%20Chat-Live-8b5cf6?logo=firebase&logoColor=white)](https://chartmann1590.github.io/ollama-android-client/chat.html)
 
 > 📲 **Available on Google Play**: [Install Ollama AI Chat](https://play.google.com/store/apps/details?id=com.charles.ollama.client.play&pcampaignid=web_share)
+>
+> 💻 **Web Chat**: [Access your chats from any browser](https://chartmann1590.github.io/ollama-android-client/chat.html) — real-time 2-way sync with your phone via Firebase
 
-An Android application for interacting with Ollama AI models — remote or fully on-device. Built with Jetpack Compose, this app provides a modern and intuitive interface for chatting with AI models running on your Ollama server **or on your phone itself** via Google's LiteRT-LM runtime.
+An Android application for interacting with Ollama AI models — remote or fully on-device. Built with Jetpack Compose, this app provides a modern and intuitive interface for chatting with AI models running on your Ollama server **or on your phone itself** via Google's LiteRT-LM runtime. Your chats sync in real time to a **web interface** accessible from any browser.
 
 ## Features
 
+### New: Web Chat & 2-Way Sync
+- 🌐 **Web Chat interface**: Access all your conversations from any browser at [chat.html](https://chartmann1590.github.io/ollama-android-client/chat.html) — no app install needed on desktop
+- 🔄 **Real-time 2-way sync**: Messages written on the web are routed to your phone for inference; responses stream back to the browser within seconds
+- 📱 **Phone presence indicator**: The web UI shows whether your phone is online and ready to respond
+- 📬 **Offline message queue**: Type messages on the web even when your phone is offline — they dispatch automatically when the phone reconnects
+- 🤖 **Model selector**: The web UI shows only the models actually installed on your phone (Ollama + LiteRT), pre-selects the right model per thread, and includes it in every request
+- 🔐 **Firebase Auth**: Sign in with Google or email/password — the same account links your phone and browser sessions
+
+### AI Inference
 - 🤖 **Chat with AI Models**: Interact with various Ollama AI models through a clean chat interface
 - 📲 **On-device inference (LiteRT-LM)**: Download and run Gemma 4, Gemma 3, Qwen 3, DeepSeek R1 Distill, and Phi-4 Mini directly on your phone — no server, no network, no data leaving the device
+- 🔄 **Real-time Streaming**: Receive AI responses streamed in real-time (remote *and* on-device)
+- ⏹️ **Stop generation**: Halt a streaming reply mid-stream — the partial response is kept
+
+### Conversation Management
 - 💬 **Message History**: Persistent chat history using Room database
-- 🎙️ **Voice input**: Use Android system speech-to-text to dictate directly into the composer
-- 🔊 **Read aloud replies**: Play assistant responses using Android Text-to-Speech for accessibility
-- 📤 **Export / share chats**: Share threads (or individual messages) as Markdown/text logs
-- 🔎 **In-thread search**: Search inside the current conversation with next/previous match navigation
-- 🌐 **Global message search**: Search across every conversation by message content and jump straight to the result
 - 🏷️ **Labels & folders**: Organize threads with labels and filter the list by them, on top of pin/archive
 - 📌 **Pin and archive threads**: Keep active chats focused without deleting older conversations
 - 💬 **Per-message actions**: Copy, share, delete, edit-and-resend, and regenerate directly from message menus
-- ⏹️ **Stop generation**: Halt a streaming reply mid-stream — the partial response is kept
+- 📤 **Export / share chats**: Share threads (or individual messages) as Markdown/text logs
+- 🔎 **In-thread search**: Search inside the current conversation with next/previous match navigation
+- 🌍 **Global message search**: Search across every conversation by message content and jump straight to the result
+
+### Input & Accessibility
+- 🎙️ **Voice input**: Use Android system speech-to-text to dictate directly into the composer
+- 🔊 **Read aloud replies**: Play assistant responses using Android Text-to-Speech for accessibility
+- 📱 **Image Support**: Attach and send images in conversations with vision-capable remote models
+
+### Configuration & Stats
 - 🎚️ **Per-thread model parameters**: Tune temperature, top_p, top_k, context length (num_ctx), and seed per chat (remote Ollama)
 - 📊 **Token-speed stats**: See tokens/sec, token counts, and response time under each remote reply
 - ℹ️ **Model details**: Inspect a model's parameters, quantization, template, license, and modelfile via `/api/show`
 - 📱 **Launcher shortcut**: Resume your most recent thread via a dynamic home launcher shortcut
 - 🎨 **Modern UI**: Built with Jetpack Compose and Material Design 3
-- 🔄 **Real-time Streaming**: Receive AI responses streamed in real-time (remote *and* on-device)
-- 📱 **Image Support**: Attach and send images in conversations with vision-capable remote models
 - ⚙️ **Configurable Settings**: Customize model parameters and server settings
 - 🔐 **Secure Networking**: Support for both HTTP and HTTPS connections
 
@@ -43,6 +61,8 @@ An Android application for interacting with Ollama AI models — remote or fully
 - **Async Operations**: Kotlin Coroutines
 - **Analytics**: Firebase Analytics
 - **Crash Reporting**: Firebase Crashlytics
+- **Auth**: Firebase Authentication (Google + email/password)
+- **Sync**: Firebase Realtime Database (2-way web-phone chat sync)
 
 ## Prerequisites
 
@@ -111,6 +131,26 @@ No Ollama server? You can also run models fully on-device using Google's [LiteRT
    All bundles are pulled from the public [`litert-community`](https://huggingface.co/litert-community) Hugging Face organization as `.litertlm` files. Downloads support resume (`Range` requests with a `.part` file), free-space pre-checks, and optional Hugging Face tokens for gated repos via **Settings → Hugging Face token**.
 3. Start a new chat thread and pick the downloaded model. Inference runs via `com.google.ai.edge.litertlm.Engine` on the CPU backend — no traffic leaves the device.
 
+### Web Chat & Firebase Sync
+
+Enable real-time 2-way sync between your phone and browser:
+
+1. **Enable Web Sync** in **Settings → Web Sync** on the app. Sign in with Google or email/password.
+2. Open [chat.html](https://chartmann1590.github.io/ollama-android-client/chat.html) in any browser and sign in with the same account.
+3. Your existing threads appear immediately. Send a message — the phone claims it, runs inference, and the response streams back to the browser.
+
+**How it works (Firebase Realtime Database paths):**
+```
+/users/{uid}/
+  threads/{syncId}/          ← phone syncs up; web reads in real time
+  messages/{syncId}/{msgId}/ ← phone syncs up; web reads in real time
+  webRequests/{requestId}/   ← web writes; phone claims → runs → marks complete
+  devices/{deviceId}/        ← phone heartbeats every 60s; web shows online indicator
+  availableModels/           ← phone publishes installed model list; web populates dropdown
+```
+
+The web UI requires no backend — it's a static GitHub Pages site that talks directly to Firebase.
+
 ### Network Security
 
 The app includes network security configuration to allow cleartext traffic for local development. For production, ensure your server uses HTTPS.
@@ -151,6 +191,7 @@ The APK will be generated in `app/build/outputs/apk/play/`
 - [**Contributing Guidelines**](CONTRIBUTING.md) - How to contribute to this project
 - [**Code of Conduct**](CODE_OF_CONDUCT.md) - Community guidelines and standards
 - [**Privacy Policy**](PRIVACY_POLICY.md) - How we handle your data and privacy
+- [**Firebase Web Sync**](docs/firebase-web-sync.md) - Auth, Realtime Database schema, rules, and GitHub Pages web contract
 - [**Security Policy**](SECURITY.md) - How to report security vulnerabilities
 - [**Changelog**](CHANGELOG.md) - History of changes and updates
 - [**License**](LICENSE) - MIT License
@@ -181,9 +222,8 @@ For issues, questions, or contributions, please open an issue on the repository.
 
 ## Version
 
-Current Version: 1.0 (versionCode: 1)
+Current Version: 1.2 (versionCode: 4+CI run number)
 
 ---
 
 Made with ❤️ using Kotlin and Jetpack Compose
-
