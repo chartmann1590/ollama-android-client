@@ -79,6 +79,7 @@
                 <div class="nav-links">
                     <a href="#features">Features</a>
                     <a href="#screenshots">Screenshots</a>
+                    <a href="#pricing">Pricing</a>
                     <a href="#faq">FAQ</a>
                     <a href="chat.html">Web Chat</a>
                     <a href="#download" class="btn-download-nav">Download</a>
@@ -166,6 +167,7 @@
                     <div class="feature-icon">💻</div>
                     <h3 class="feature-title">Web Chat — Chat from Any Browser</h3>
                     <p class="feature-description">Open <a href="chat.html" style="color:#8b5cf6;font-weight:600;">chat.html</a> on any desktop or laptop. Sign in with the same account as your phone and all your conversations appear instantly. Send a message — your phone picks it up, runs AI inference, and the response streams back to your browser in real time. Works with Ollama and on-device LiteRT models alike.</p>
+                    <p class="feature-description" style="margin-top:0.5rem;font-size:0.85rem;color:#8b5cf6;font-weight:500;">✨ Free tier: 3 web messages/day &nbsp;·&nbsp; <a href="#pricing" style="color:#8b5cf6;">Upgrade for unlimited →</a></p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📲</div>
@@ -281,6 +283,62 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" style="padding:4rem 0;background:var(--bg-secondary);">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Premium Plans</h2>
+                <p class="section-subtitle">Everything is free to try — upgrade in-app for unlimited web chat and an ad-free experience.</p>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem;max-width:900px;margin:0 auto;">
+
+                <!-- Web Sync + Ad Free Yearly (featured) -->
+                <div style="border:2px solid var(--gradient-primary, #6366f1);border-radius:16px;padding:1.75rem;background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(139,92,246,0.04));position:relative;">
+                    <div style="position:absolute;top:-0.75rem;left:1.25rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:0.7rem;font-weight:700;padding:0.2rem 0.75rem;border-radius:20px;letter-spacing:0.05em;">BEST VALUE</div>
+                    <div style="font-size:1.5rem;margin-bottom:0.5rem;">⭐</div>
+                    <h3 style="font-size:1.1rem;font-weight:700;margin:0 0 0.25rem;color:var(--text-primary)">Web Sync + Ad Free — Yearly</h3>
+                    <div style="font-size:1.5rem;font-weight:800;color:#6366f1;margin-bottom:0.25rem;">$14.99<span style="font-size:0.9rem;font-weight:400;color:var(--text-secondary)">/year</span></div>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0 0 1rem;line-height:1.5;">~$1.25/mo · Unlimited web messages · All ads removed in-app</p>
+                    <ul style="font-size:0.85rem;color:var(--text-secondary);list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.4rem;">
+                        <li>✅ Unlimited web chat messages</li>
+                        <li>✅ No banners, interstitials, or app-open ads</li>
+                        <li>✅ Cancel anytime via Google Play</li>
+                    </ul>
+                </div>
+
+                <!-- Web Sync + Ad Free Monthly -->
+                <div style="border:1px solid var(--border);border-radius:16px;padding:1.75rem;background:var(--bg-card);">
+                    <div style="font-size:1.5rem;margin-bottom:0.5rem;">💬</div>
+                    <h3 style="font-size:1.1rem;font-weight:700;margin:0 0 0.25rem;color:var(--text-primary)">Web Sync + Ad Free — Monthly</h3>
+                    <div style="font-size:1.5rem;font-weight:800;color:#6366f1;margin-bottom:0.25rem;">$1.99<span style="font-size:0.9rem;font-weight:400;color:var(--text-secondary)">/month</span></div>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0 0 1rem;line-height:1.5;">Unlimited web messages · All ads removed in-app</p>
+                    <ul style="font-size:0.85rem;color:var(--text-secondary);list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.4rem;">
+                        <li>✅ Unlimited web chat messages</li>
+                        <li>✅ No banners, interstitials, or app-open ads</li>
+                        <li>✅ Cancel anytime via Google Play</li>
+                    </ul>
+                </div>
+
+                <!-- Ad Free Only -->
+                <div style="border:1px solid var(--border);border-radius:16px;padding:1.75rem;background:var(--bg-card);opacity:0.9;">
+                    <div style="font-size:1.5rem;margin-bottom:0.5rem;">🚫</div>
+                    <h3 style="font-size:1.1rem;font-weight:700;margin:0 0 0.25rem;color:var(--text-primary)">Ad-Free Only</h3>
+                    <div style="font-size:1.5rem;font-weight:800;color:#6366f1;margin-bottom:0.25rem;">from $0.99<span style="font-size:0.9rem;font-weight:400;color:var(--text-secondary)">/month</span></div>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0 0 1rem;line-height:1.5;">Monthly ($0.99/mo), Yearly ($9.99/yr), or Lifetime (one-time)</p>
+                    <ul style="font-size:0.85rem;color:var(--text-secondary);list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.4rem;">
+                        <li>✅ No banners, interstitials, or app-open ads</li>
+                        <li style="color:#aaa;">⚠️ Web messages still limited to 3/day</li>
+                    </ul>
+                </div>
+
+            </div>
+            <p style="text-align:center;margin-top:2rem;font-size:0.9rem;color:var(--text-secondary);">
+                To subscribe, open <strong>Ollama AI Chat</strong> on your Android phone → <strong>Settings → Remove Ads / Go Premium</strong>.
+                <br>All plans are managed by Google Play — cancel anytime, no questions asked.
+            </p>
         </div>
     </section>
 

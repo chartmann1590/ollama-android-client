@@ -20,6 +20,8 @@ An Android application for interacting with Ollama AI models — remote or fully
 - 📬 **Offline message queue**: Type messages on the web even when your phone is offline — they dispatch automatically when the phone reconnects
 - 🤖 **Model selector**: The web UI shows only the models actually installed on your phone (Ollama + LiteRT), pre-selects the right model per thread, and includes it in every request
 - 🔐 **Firebase Auth**: Sign in with Google or email/password — the same account links your phone and browser sessions
+- 💬 **Free tier**: Every user can send **3 web messages per day** at no cost — view all conversations for free
+- ⭐ **Web Sync Premium**: Upgrade in-app for unlimited web messages + no ads (see [Premium plans](#premium-plans) below)
 
 ### AI Inference
 - 🤖 **Chat with AI Models**: Interact with various Ollama AI models through a clean chat interface
@@ -135,9 +137,25 @@ No Ollama server? You can also run models fully on-device using Google's [LiteRT
 
 Enable real-time 2-way sync between your phone and browser:
 
-1. **Enable Web Sync** in **Settings → Web Sync** on the app. Sign in with Google or email/password.
+1. **Enable Web Sync** in **Settings → Account & Web Sync** on the app. Sign in with Google or email/password.
 2. Open [chat.html](https://chartmann1590.github.io/ollama-android-client/chat.html) in any browser and sign in with the same account.
 3. Your existing threads appear immediately. Send a message — the phone claims it, runs inference, and the response streams back to the browser.
+
+Free accounts send up to **3 web messages per day**. The web UI shows a live counter and resets at midnight UTC. Upgrade to **Web Sync Premium** for unlimited sends (see [Premium plans](#premium-plans) below).
+
+### Premium Plans
+
+Subscribe inside the app via **Settings → Premium** or the in-app paywall. All subscriptions are managed by Google Play and can be cancelled at any time.
+
+| Plan | Price | What you get |
+|---|---|---|
+| **Web Sync + Ad Free — Yearly** | ~$14.99/yr | ✅ Unlimited web messages + ✅ all ads removed (best value) |
+| **Web Sync + Ad Free — Monthly** | ~$1.99/mo | ✅ Unlimited web messages + ✅ all ads removed |
+| Ad-Free Yearly | ~$9.99/yr | ✅ All ads removed (web limit still applies) |
+| Ad-Free Monthly | ~$0.99/mo | ✅ All ads removed (web limit still applies) |
+| Lifetime Ad-Free | one-time | ✅ All ads removed forever (web limit still applies) |
+
+> **How to subscribe**: Open the app → Settings → tap **Remove Ads / Go Premium** → choose a plan.
 
 **How it works (Firebase Realtime Database paths):**
 ```

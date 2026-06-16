@@ -15,7 +15,9 @@ data class PlanOption(
     val title: String,
     val tagline: String,
     val price: String?,
-    val highlight: Boolean
+    val highlight: Boolean,
+    /** Shown in the button when the Play price hasn't loaded yet. */
+    val fallbackPrice: String? = null
 )
 
 @HiltViewModel
@@ -38,14 +40,16 @@ class PaywallViewModel @Inject constructor(
             title = "Web Sync Yearly",
             tagline = "Unlimited web messages + no ads — best value",
             price = details[PremiumPlan.WEBSYNC_YEARLY.productId]?.let { displayPrice(it, subscription = true) },
-            highlight = true
+            highlight = true,
+            fallbackPrice = "$14.99/yr"
         ),
         PlanOption(
             plan = PremiumPlan.WEBSYNC_MONTHLY,
             title = "Web Sync Monthly",
             tagline = "Unlimited web messages + no ads",
             price = details[PremiumPlan.WEBSYNC_MONTHLY.productId]?.let { displayPrice(it, subscription = true) },
-            highlight = false
+            highlight = false,
+            fallbackPrice = "$1.99/mo"
         ),
         PlanOption(
             plan = PremiumPlan.YEARLY,

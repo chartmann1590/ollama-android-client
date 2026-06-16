@@ -229,7 +229,8 @@ private fun PlanCard(option: PlanOption, onClick: () -> Unit) {
                 onClick = onClick,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(option.price?.let { "Subscribe — $it" } ?: "Continue")
+                val displayPrice = option.price ?: option.fallbackPrice
+                Text(displayPrice?.let { "Subscribe — $it" } ?: "Continue")
             }
         }
     }
