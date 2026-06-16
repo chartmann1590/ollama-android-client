@@ -5,13 +5,16 @@ import android.provider.Settings
 import com.charles.ollama.client.data.auth.AuthRepository
 import com.charles.ollama.client.data.database.dao.ChatThreadDao
 import com.charles.ollama.client.data.database.entity.ChatThreadEntity
+import com.charles.ollama.client.data.litert.LitertConstants
 import com.charles.ollama.client.data.repository.ChatRepository
+import com.charles.ollama.client.data.repository.ModelRepository
 import com.charles.ollama.client.data.repository.ServerRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
@@ -25,7 +28,8 @@ class ChatSyncCoordinator @Inject constructor(
     private val syncRepository: RealtimeChatSyncRepository,
     private val chatRepository: ChatRepository,
     private val chatThreadDao: ChatThreadDao,
-    private val serverRepository: ServerRepository
+    private val serverRepository: ServerRepository,
+    private val modelRepository: ModelRepository
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val deviceId: String by lazy { loadDeviceId() }
@@ -37,9 +41,29 @@ class ChatSyncCoordinator @Inject constructor(
             }.collect { (uid, enabled) ->
                 if (uid != null && enabled) {
                     syncRepository.start(uid, deviceId) { request -> handleWebRequest(uid, request) }
+                    scope.launch { pushAvailableModels(uid) }
                 } else {
                     syncRepository.stop()
                 }
+            }
+        }
+    }
+
+    private suspend fun pushAvailableModels(uid: String) {
+        runCatching {
+            val allModels = mutableListOf<String>()
+            serverRepository.getAllServers().first().forEach { server ->
+                val backend = if (LitertConstants.isLitertLocalBaseUrl(server.baseUrl))
+                    com.charles.ollama.client.data.litert.ServerBackend.LITERT_LOCAL
+                else
+                    com.charles.ollama.client.data.litert.ServerBackend.OLLAMA
+                modelRepository.getModelsForBackend(server.baseUrl, backend)
+                    .getOrNull()
+                    ?.map { it.name }
+                    ?.let { allModels.addAll(it) }
+            }
+            if (allModels.isNotEmpty()) {
+                syncRepository.publishAvailableModels(uid, allModels.distinct())
             }
         }
     }

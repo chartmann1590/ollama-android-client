@@ -166,6 +166,15 @@ class RealtimeChatSyncRepository @Inject constructor(
         ).await()
     }
 
+    suspend fun publishAvailableModels(uid: String, models: List<String>) {
+        if (models.isEmpty()) return
+        val now = System.currentTimeMillis()
+        val data = models.associate { name ->
+            name.replace('.', '_').replace('/', '|') to mapOf("name" to name, "updatedAt" to now)
+        }
+        userRef(uid).child("availableModels").setValue(data).await()
+    }
+
     private suspend fun ensureLocalSyncIds() {
         chatThreadDao.getThreadsMissingSyncId().forEach { thread ->
             chatThreadDao.setSyncId(thread.id, UUID.randomUUID().toString())

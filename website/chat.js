@@ -22,7 +22,8 @@ let userRef          = null;
 let activeThreadId   = null;   // current thread's syncId UUID
 let messagesListener = null;   // detach handle
 let pendingImages    = [];     // { dataUrl, base64 } objects
-let knownModels      = new Set();  // models seen across threads
+let knownModels      = new Set();  // models from phone's availableModels path
+let modelsListener   = null;   // real-time listener handle for availableModels
 
 // Phone presence (real-time listener)
 let phoneDevicesRef         = null;
@@ -48,6 +49,7 @@ if (!auth) {
         userRef       = null;
         activeThreadId = null;
         clearMessagesListener();
+        stopModelsListener();
         stopPhoneStatusMonitor();
         showAuthWall();
     }
@@ -71,6 +73,7 @@ function showChatShell(user) {
     document.getElementById('user-avatar').textContent = email.charAt(0).toUpperCase() || '?';
 
     loadThreadList();
+    startModelsListener();
     startPhoneStatusMonitor();
     showEmptyChatState();
 }
@@ -170,10 +173,6 @@ function renderThreadList(threads) {
         list.innerHTML = '<div style="padding:1rem;font-size:0.85rem;color:var(--text-light);text-align:center;">No conversations yet.<br>Start a new chat below.</div>';
         return;
     }
-
-    // Collect models seen across threads and refresh selector
-    threads.forEach(t => { if (t.model) knownModels.add(t.model); });
-    updateModelSelector();
 
     list.innerHTML = threads.map(t => `
         <div class="thread-item ${t.syncId === activeThreadId ? 'active' : ''}"
@@ -573,6 +572,33 @@ function removeImage(idx) {
 function clearImagePreviews() {
     pendingImages = [];
     document.getElementById('image-preview').innerHTML = '';
+}
+
+// ---- Available models (real-time from phone) ----
+function startModelsListener() {
+    stopModelsListener();
+    if (!userRef) return;
+    const ref = userRef.child('availableModels');
+    modelsListener = { ref };
+    ref.on('value', snap => {
+        const models = new Set();
+        snap.forEach(child => {
+            const d = child.val();
+            if (d && d.name) models.add(d.name);
+        });
+        if (models.size > 0) {
+            knownModels = models;
+            updateModelSelector();
+        }
+    });
+}
+
+function stopModelsListener() {
+    if (modelsListener && modelsListener.ref) {
+        modelsListener.ref.off('value');
+        modelsListener = null;
+    }
+    knownModels = new Set();
 }
 
 // ---- Phone status (real-time) ----
