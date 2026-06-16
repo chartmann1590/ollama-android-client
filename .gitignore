@@ -117,3 +117,12 @@ google-services.json
 # !app/google-services.json
 
 plan.md
+
+# Screenshots
+/screenshots/*.png
+
+# Logs
+/logs/
+
+# Agent instructions
+CLAUDE.md

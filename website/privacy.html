@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Privacy Policy for Ollama AI Chat for Android. Learn how we handle your chat messages, server configurations, and optional Web Sync.">
+    <meta name="robots" content="index, follow">
+    <title>Privacy Policy — Ollama AI Chat</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <style>
+        .privacy-section {
+            padding: 8rem 0 6rem 0;
+            background: var(--bg-secondary);
+            min-height: 100vh;
+        }
+        .privacy-content {
+            max-width: 850px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            padding: 3rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+        }
+        .privacy-content h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+        .privacy-content .last-updated {
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 2.5rem;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1.5rem;
+        }
+        .privacy-content h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+        .privacy-content h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+        .privacy-content p, .privacy-content ul {
+            color: var(--text-secondary);
+            margin-bottom: 1.25rem;
+            line-height: 1.7;
+        }
+        .privacy-content ul {
+            padding-left: 1.5rem;
+        }
+        .privacy-content li {
+            margin-bottom: 0.5rem;
+        }
+        .privacy-content strong {
+            color: var(--text-primary);
+        }
+        .privacy-content a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        .privacy-content a:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+        .privacy-content hr {
+            border: 0;
+            border-top: 1px solid var(--border);
+            margin: 2.5rem 0;
+        }
+        @media (max-width: 640px) {
+            .privacy-content {
+                padding: 1.5rem;
+            }
+            .privacy-content h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <a href="index.html" class="logo" style="text-decoration: none;">
+                    <img src="assets/images/icon.png" alt="Ollama AI Chat" class="logo-icon">
+                    <span class="logo-text">Ollama AI Chat</span>
+                </a>
+                <div class="nav-links">
+                    <a href="index.html#features">Features</a>
+                    <a href="index.html#screenshots">Screenshots</a>
+                    <a href="index.html#faq">FAQ</a>
+                    <a href="chat.html">Web Chat</a>
+                    <a href="index.html#download" class="btn-download-nav">Download</a>
+                </div>
+                <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Privacy Policy Section -->
+    <section class="privacy-section">
+        <div class="container">
+            <div class="privacy-content">
+                <h1>Privacy Policy</h1>
+                <div class="last-updated">Last Updated: June 16, 2026</div>
+
+                <h2>Introduction</h2>
+                <p>Ollama Android Client ("we", "our", or "the app") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application and the Web Chat interface.</p>
+
+                <h2>Information We Collect</h2>
+
+                <h3>Information You Provide</h3>
+                <ul>
+                    <li><strong>Chat Messages:</strong> The app stores chat messages locally on your device using a Room database. These messages are stored on your device and are not transmitted to our servers unless you explicitly configure a remote server or enable Web sync.</li>
+                    <li><strong>Account Information:</strong> If you create an account or sign in, Firebase Authentication stores account identifiers such as your email address, user ID, and sign-in provider.</li>
+                    <li><strong>Synced Chat Data:</strong> If you enable Web sync, chat threads, messages, message metadata, and pending web requests are stored under your Firebase user account in Firebase Realtime Database so your signed-in devices and the Web Chat interface can sync.</li>
+                    <li><strong>Server Configuration:</strong> Server URLs and connection settings you configure are stored locally on your device.</li>
+                </ul>
+
+                <h3>Automatically Collected Information</h3>
+                <ul>
+                    <li><strong>Analytics and Diagnostics:</strong> If analytics are enabled (such as Firebase Analytics, Crashlytics, and Performance Monitoring), we may collect:
+                        <ul>
+                            <li>App usage statistics and event logs</li>
+                            <li>Device information (model, manufacturer, operating system version)</li>
+                            <li>Crash logs, stack traces, and error reports</li>
+                            <li>Performance trace data (e.g., app startup time, screen rendering speeds, network latency)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Push Notification and Sync Token:</strong> If you allow notification permissions, Firebase Cloud Messaging (FCM) generates a unique device registration token to route push notifications and background synchronization triggers to your device. This token is unique to your specific app/device installation.</li>
+                </ul>
+
+                <h3>Third-Party Services</h3>
+                <p>This app uses the following third-party services that may collect information:</p>
+                <ul>
+                    <li><strong>Firebase Analytics:</strong> For app usage analytics, tracking interactions, and general statistics.</li>
+                    <li><strong>Firebase Crashlytics:</strong> For crash reporting, exception tracking, and debugging stability issues.</li>
+                    <li><strong>Firebase Performance Monitoring:</strong> For collecting performance metrics, trace logs, and latency statistics to improve the speed and responsiveness of the application.</li>
+                    <li><strong>Firebase Cloud Messaging (FCM):</strong> For delivering push notifications and initiating silent background sync triggers to synchronize web chat events.</li>
+                    <li><strong>Firebase Authentication:</strong> For secure user registration, email/password or Google sign-in, and session management.</li>
+                    <li><strong>Firebase Realtime Database:</strong> For real-time Web sync, storing and syncing chat threads, messages, and metadata across your authenticated devices.</li>
+                    <li><strong>Ollama Server:</strong> Your chat messages are sent to the Ollama server you configure. We do not control or have access to data sent to your Ollama server.</li>
+                </ul>
+
+                <h2>How We Use Your Information</h2>
+                <p>We use the information we collect to:</p>
+                <ul>
+                    <li>Provide and maintain the app's functionality</li>
+                    <li>Authenticate users who choose to create an account or sign in</li>
+                    <li>Sync chats across signed-in app sessions and the Web Chat interface when Web sync is enabled</li>
+                    <li>Deliver notifications and updates via Cloud Messaging</li>
+                    <li>Diagnose and fix technical issues, crashes, and performance issues</li>
+                    <li>Improve user experience, loading speed, and app performance</li>
+                    <li>Analyze app usage patterns (if analytics are enabled)</li>
+                </ul>
+
+                <h2>Data Storage</h2>
+                <ul>
+                    <li><strong>Local Storage:</strong> Chat messages, threads, and app settings are stored locally on your device using a Room database.</li>
+                    <li><strong>Optional Cloud Sync:</strong> If Web sync is enabled, synced chats are stored in Firebase Realtime Database under your authenticated user ID.</li>
+                    <li><strong>No Cloud Storage When Sync Is Off:</strong> We do not store your chat messages in Firebase Realtime Database when Web sync is disabled.</li>
+                    <li><strong>Third-Party Servers:</strong> When you use the app with an Ollama server, your messages are sent to that server. Please review your Ollama server's privacy policy.</li>
+                </ul>
+
+                <h2>Data Security</h2>
+                <p>We implement appropriate technical and organizational measures to protect your information:</p>
+                <ul>
+                    <li>Local data is encrypted using Android's built-in security features.</li>
+                    <li>Network communications use HTTPS when available.</li>
+                    <li>Firebase services use industry-standard encryption.</li>
+                    <li>Firebase Realtime Database security rules restrict synced chat data to the signed-in user ID.</li>
+                </ul>
+
+                <h2>Your Rights</h2>
+                <p>You have the right to:</p>
+                <ul>
+                    <li><strong>Access:</strong> View your locally stored data through the app.</li>
+                    <li><strong>Delete:</strong> Delete chat threads and messages directly from the app.</li>
+                    <li><strong>Disable Sync:</strong> Turn off Web sync in Settings to stop cloud synchronization.</li>
+                    <li><strong>Sign Out:</strong> Sign out from Firebase Authentication in Settings.</li>
+                    <li><strong>Opt-out:</strong> Disable Firebase Analytics in your device settings.</li>
+                    <li><strong>Uninstall:</strong> Remove all app data by uninstalling the app.</li>
+                </ul>
+
+                <h2>Children's Privacy</h2>
+                <p>Our app is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13.</p>
+
+                <h2>Changes to This Privacy Policy</h2>
+                <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date.</p>
+
+                <h2>Contact Us</h2>
+                <p>If you have any questions about this Privacy Policy, please contact us:</p>
+                <ul>
+                    <li><strong>Repository:</strong> <a href="https://github.com/chartmann1590/ollama-android-client" target="_blank" rel="noopener noreferrer">https://github.com/chartmann1590/ollama-android-client</a></li>
+                    <li><strong>Issues:</strong> Open an issue on the repository</li>
+                </ul>
+
+                <h2>Compliance</h2>
+                <p>This app complies with:</p>
+                <ul>
+                    <li>General Data Protection Regulation (GDPR)</li>
+                    <li>California Consumer Privacy Act (CCPA)</li>
+                    <li>Android Privacy Guidelines</li>
+                </ul>
+
+                <hr>
+                <p><strong>Note:</strong> This privacy policy applies only to the Ollama Android Client app. When you connect to an Ollama server, that server's privacy policy applies to data processed by that server.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img src="assets/images/icon.png" alt="Ollama AI Chat" class="footer-logo">
+                    <p class="footer-description">Your Personal AI Assistant on Android</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Resources</h4>
+                        <a href="chat.html">Web Chat</a>
+                        <a href="https://github.com/chartmann1590/ollama-android-client" target="_blank" rel="noopener noreferrer">GitHub</a>
+                        <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer">Ollama</a>
+                        <a href="https://github.com/chartmann1590/ollama-android-client/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">License</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Support</h4>
+                        <a href="https://buymeacoffee.com/charleshartmann" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
+                        <a href="https://github.com/chartmann1590/ollama-android-client/issues" target="_blank" rel="noopener noreferrer">Report Issue</a>
+                        <a href="https://github.com/chartmann1590/ollama-android-client/blob/master/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contribute</a>
+                        <a href="privacy.html">Privacy Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Ollama AI Chat. Made with ❤️ using Kotlin and Jetpack Compose.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
