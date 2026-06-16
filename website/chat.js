@@ -22,7 +22,16 @@ let userRef          = null;
 let activeThreadId   = null;   // current thread's syncId UUID
 let messagesListener = null;   // detach handle
 let pendingImages    = [];     // { dataUrl, base64 } objects
-let phoneStatusTimer = null;
+
+// Phone presence (real-time listener)
+let phoneDevicesRef         = null;
+let phoneOnlineCallback     = null;
+let phoneStatusRevalidateTimer = null;
+let lastDeviceUpdatedAt     = 0;
+let isPhoneOnline           = false;
+
+// Offline message queue
+let offlineQueue = [];  // { requestId, request, threadSyncId, isNewThread, threadTitle }
 
 // ---- Auth state ----
 if (!auth) {
@@ -38,7 +47,7 @@ if (!auth) {
         userRef       = null;
         activeThreadId = null;
         clearMessagesListener();
-        stopPhoneStatusPolling();
+        stopPhoneStatusMonitor();
         showAuthWall();
     }
 });
@@ -61,7 +70,7 @@ function showChatShell(user) {
     document.getElementById('user-avatar').textContent = email.charAt(0).toUpperCase() || '?';
 
     loadThreadList();
-    startPhoneStatusPolling();
+    startPhoneStatusMonitor();
     showEmptyChatState();
 }
 
@@ -349,10 +358,7 @@ async function sendMessage() {
     if (!content && !pendingImages.length) return;
     if (!uid || !userRef) return;
 
-    setInputEnabled(false);
-    setStatus('Sending…');
-
-    // If no active thread, create a new one
+    // If no active thread, create one now so messages show immediately
     const isNewThread  = !activeThreadId;
     const threadSyncId = activeThreadId || crypto.randomUUID();
     const threadTitle  = isNewThread ? content.slice(0, 60) : null;
@@ -364,8 +370,8 @@ async function sendMessage() {
     // Clear input
     input.value = '';
     input.style.height = 'auto';
+    document.getElementById('send-btn').disabled = true;
 
-    // Write web request to Firebase
     const requestId = crypto.randomUUID();
     const request = {
         threadSyncId,
@@ -376,15 +382,7 @@ async function sendMessage() {
         ...(images.length ? { images } : {})
     };
 
-    try {
-        await userRef.child('webRequests/' + requestId).set(request);
-    } catch (err) {
-        setStatus('Error writing request: ' + err.message, true);
-        setInputEnabled(true);
-        return;
-    }
-
-    // If new thread, start listening to messages now
+    // Activate new thread UI immediately (even if phone is offline)
     if (isNewThread) {
         activeThreadId = threadSyncId;
         document.getElementById('chat-header-title').textContent = threadTitle || 'New Chat';
@@ -393,8 +391,58 @@ async function sendMessage() {
         loadMessages(threadSyncId);
     }
 
-    // Watch the web request for status changes
+    if (!isPhoneOnline) {
+        // Queue locally — will be dispatched when phone comes online
+        offlineQueue.push({ requestId, request });
+        updateQueuedStatus();
+        setInputEnabled(true);
+        return;
+    }
+
+    // Phone is online — send immediately
+    await dispatchRequest(requestId, request);
+}
+
+async function dispatchRequest(requestId, request) {
+    setInputEnabled(false);
+    setStatus('Sending…');
+    try {
+        await userRef.child('webRequests/' + requestId).set(request);
+    } catch (err) {
+        setStatus('Error sending: ' + err.message, true);
+        setInputEnabled(true);
+        return;
+    }
     watchRequest(requestId);
+}
+
+async function drainOfflineQueue() {
+    if (!offlineQueue.length || !userRef) return;
+    const queue = [...offlineQueue];
+    offlineQueue = [];
+    clearStatus();
+    for (const item of queue) {
+        await dispatchRequest(item.requestId, item.request);
+        // Wait for this request to complete before dispatching next
+        await new Promise(resolve => {
+            const ref = userRef.child('webRequests/' + item.requestId);
+            const handler = ref.on('value', snap => {
+                const status = snap.val() && snap.val().status;
+                if (status === 'complete' || status === 'error' || !status) {
+                    ref.off('value', handler);
+                    resolve();
+                }
+            });
+        });
+    }
+}
+
+function updateQueuedStatus() {
+    const n = offlineQueue.length;
+    if (n === 0) { clearStatus(); return; }
+    const bar = document.getElementById('status-bar');
+    bar.innerHTML = `<div class="status-spinner"></div><span>${n} message${n > 1 ? 's' : ''} queued — waiting for phone to come online…</span>`;
+    bar.className = '';
 }
 
 function watchRequest(requestId) {
@@ -485,26 +533,55 @@ function clearImagePreviews() {
     document.getElementById('image-preview').innerHTML = '';
 }
 
-// ---- Phone status ----
-function startPhoneStatusPolling() {
-    checkPhoneStatus();
-    phoneStatusTimer = setInterval(checkPhoneStatus, 30000);
+// ---- Phone status (real-time) ----
+function startPhoneStatusMonitor() {
+    stopPhoneStatusMonitor();
+    if (!userRef) return;
+
+    phoneDevicesRef = userRef.child('devices');
+    phoneOnlineCallback = phoneDevicesRef.on('value', snap => {
+        let maxUpdatedAt = 0;
+        snap.forEach(child => {
+            const d = child.val();
+            if (d && d.updatedAt > maxUpdatedAt) maxUpdatedAt = d.updatedAt;
+        });
+        lastDeviceUpdatedAt = maxUpdatedAt;
+        evaluatePhoneOnline();
+    });
+
+    // Re-check every 60s — Firebase won't re-fire if the stored value simply ages past the threshold
+    phoneStatusRevalidateTimer = setInterval(evaluatePhoneOnline, 60000);
 }
 
-function stopPhoneStatusPolling() {
-    if (phoneStatusTimer) { clearInterval(phoneStatusTimer); phoneStatusTimer = null; }
+function stopPhoneStatusMonitor() {
+    if (phoneDevicesRef && phoneOnlineCallback) {
+        phoneDevicesRef.off('value', phoneOnlineCallback);
+        phoneDevicesRef = null;
+        phoneOnlineCallback = null;
+    }
+    if (phoneStatusRevalidateTimer) {
+        clearInterval(phoneStatusRevalidateTimer);
+        phoneStatusRevalidateTimer = null;
+    }
+    lastDeviceUpdatedAt = 0;
+    isPhoneOnline = false;
+    offlineQueue = [];
     setPhoneStatus(false);
 }
 
-function checkPhoneStatus() {
-    if (!userRef) return;
+function evaluatePhoneOnline() {
     const twoMinAgo = Date.now() - 2 * 60 * 1000;
-    userRef.child('devices').orderByChild('updatedAt').startAt(twoMinAgo)
-        .once('value', snap => {
-            let online = false;
-            snap.forEach(() => { online = true; });
-            setPhoneStatus(online);
-        }).catch(() => setPhoneStatus(false));
+    const nowOnline  = lastDeviceUpdatedAt > twoMinAgo;
+    const wasOnline  = isPhoneOnline;
+    isPhoneOnline    = nowOnline;
+    setPhoneStatus(nowOnline);
+
+    if (!wasOnline && nowOnline && offlineQueue.length > 0) {
+        drainOfflineQueue();
+    }
+    if (!nowOnline && offlineQueue.length > 0) {
+        updateQueuedStatus();
+    }
 }
 
 function setPhoneStatus(online) {
@@ -527,6 +604,15 @@ function closeMobileSidebar() {
     document.getElementById('thread-sidebar').classList.remove('open');
     document.getElementById('sidebar-overlay').classList.remove('open');
 }
+
+// ---- Test hooks (used by Playwright E2E only) ----
+window.__testSetPhoneOnline = function(online) {
+    const wasOnline = isPhoneOnline;
+    isPhoneOnline   = online;
+    setPhoneStatus(online);
+    if (!wasOnline && online && offlineQueue.length > 0) drainOfflineQueue();
+    if (!online && offlineQueue.length > 0) updateQueuedStatus();
+};
 
 // ---- Helpers ----
 function scrollToBottom() {

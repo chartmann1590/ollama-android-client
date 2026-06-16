@@ -32,19 +32,52 @@ test.describe('Message input UI', () => {
         await expect(page.locator('#send-btn')).toBeDisabled();
     });
 
-    test('clicking send shows status bar Sending…', async ({ page }) => {
+    test('clicking send shows status (Sending or queued when phone offline)', async ({ page }) => {
         await page.fill('#msg-input', 'Test message from Playwright');
         await page.click('#send-btn');
-        // Status bar should briefly show a status
+        // Either "Sending…" (phone online) or "queued — waiting for phone" (phone offline)
         const statusBar = page.locator('#status-bar');
-        await expect(statusBar).toContainText(/Sending|generating|Error/, { timeout: 8000 });
+        await expect(statusBar).toContainText(/Sending|generating|queued|Error/, { timeout: 8000 });
     });
 
-    test('Enter key submits message', async ({ page }) => {
+    test('Enter key submits message (shows status bar)', async ({ page }) => {
         await page.fill('#msg-input', 'Enter key test');
         await page.locator('#msg-input').press('Enter');
         const statusBar = page.locator('#status-bar');
-        await expect(statusBar).toContainText(/Sending|generating|Error/, { timeout: 8000 });
+        await expect(statusBar).toContainText(/Sending|generating|queued|Error/, { timeout: 8000 });
+    });
+
+    test('offline queue: message queued when phone offline shows queued status', async ({ page }) => {
+        // Force phone-offline via test hook exposed by chat.js
+        await page.evaluate(() => window.__testSetPhoneOnline(false));
+        await page.fill('#msg-input', 'Queued message test');
+        await page.click('#send-btn');
+        // Status bar should show "queued — waiting for phone"
+        await expect(page.locator('#status-bar')).toContainText(/queued/i, { timeout: 5000 });
+        // Input must re-enable so user can keep sending (they queue up)
+        await expect(page.locator('#msg-input')).toBeEnabled();
+    });
+
+    test('offline queue: multiple messages can be queued', async ({ page }) => {
+        await page.evaluate(() => window.__testSetPhoneOnline(false));
+        await page.fill('#msg-input', 'First queued');
+        await page.click('#send-btn');
+        await page.fill('#msg-input', 'Second queued');
+        await page.click('#send-btn');
+        // Status should reflect 2 messages queued
+        await expect(page.locator('#status-bar')).toContainText(/2 messages queued/i, { timeout: 5000 });
+    });
+
+    test('offline queue: queue drains when phone comes online', async ({ page }) => {
+        // Queue a message while offline
+        await page.evaluate(() => window.__testSetPhoneOnline(false));
+        await page.fill('#msg-input', 'Will drain when online');
+        await page.click('#send-btn');
+        await expect(page.locator('#status-bar')).toContainText(/queued/i, { timeout: 5000 });
+
+        // Simulate phone coming online — queue should dispatch (status changes to Sending…)
+        await page.evaluate(() => window.__testSetPhoneOnline(true));
+        await expect(page.locator('#status-bar')).toContainText(/Sending|generating|Error/, { timeout: 8000 });
     });
 
     test('Shift+Enter adds newline instead of submitting', async ({ page }) => {
