@@ -229,7 +229,7 @@
             ".validate": "newData.isString() && newData.val().length == 10"
           },
           "count": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100 && (!data.parent().exists() || newData.parent().child('date').val() != data.parent().child('date').val() || newData.val() >= data.val())"
           },
           "$other": {
             ".validate": false
