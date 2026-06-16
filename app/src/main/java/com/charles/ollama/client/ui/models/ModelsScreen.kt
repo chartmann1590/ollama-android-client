@@ -154,7 +154,7 @@ fun PullModelDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(if (litertMode) "Download Gemma 4 (LiteRT)" else "Pull Model")
+            Text(if (litertMode) "Download on-device model" else "Pull Model")
         },
         text = {
             if (litertMode) {
@@ -163,7 +163,7 @@ fun PullModelDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Choose a Gemma 4 bundle. Large downloads use Wi‑Fi when possible.",
+                        text = "Choose a LiteRT bundle. Large downloads use Wi-Fi when possible.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -247,4 +247,3 @@ private fun formatApproxBytes(bytes: Long): String {
         else -> "~${bytes / 1024} KB"
     }
 }
-

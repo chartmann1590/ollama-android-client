@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.onStart
+import java.util.UUID
 import javax.inject.Inject
 
 class ChatRepository @Inject constructor(
@@ -52,18 +53,21 @@ class ChatRepository @Inject constructor(
     suspend fun setThreadPinned(threadId: Long, pinned: Boolean) {
         PerformanceMonitor.measureSuspend("database_set_thread_pinned") {
             chatThreadDao.setPinned(threadId, pinned)
+            chatThreadDao.markDirty(threadId)
         }
     }
 
     suspend fun setThreadArchived(threadId: Long, archived: Boolean) {
         PerformanceMonitor.measureSuspend("database_set_thread_archived") {
             chatThreadDao.setArchived(threadId, archived)
+            chatThreadDao.markDirty(threadId)
         }
     }
 
     suspend fun setThreadLabel(threadId: Long, label: String?) {
         PerformanceMonitor.measureSuspend("database_set_thread_label") {
             chatThreadDao.setLabel(threadId, label?.takeIf { it.isNotBlank() })
+            chatThreadDao.markDirty(threadId)
         }
     }
 
@@ -83,7 +87,10 @@ class ChatRepository @Inject constructor(
                 title = title,
                 model = model,
                 serverId = serverId,
-                streamEnabled = true // Default to enabled
+                streamEnabled = true, // Default to enabled
+                syncId = UUID.randomUUID().toString(),
+                syncUpdatedAt = System.currentTimeMillis(),
+                syncDirty = true
             )
             chatThreadDao.insertThread(thread)
         }
@@ -91,15 +98,28 @@ class ChatRepository @Inject constructor(
     
     suspend fun updateThread(thread: ChatThreadEntity) {
         PerformanceMonitor.measureSuspend("database_update_thread") {
-            val updated = thread.copy(updatedAt = System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            val updated = thread.copy(
+                updatedAt = now,
+                syncId = thread.syncId ?: UUID.randomUUID().toString(),
+                syncVersion = thread.syncVersion + 1,
+                syncUpdatedAt = now,
+                syncDirty = true
+            )
             chatThreadDao.updateThread(updated)
         }
     }
     
     suspend fun deleteThread(threadId: Long) {
         PerformanceMonitor.measureSuspend("database_delete_thread") {
-            chatThreadDao.deleteThreadById(threadId)
-            chatMessageDao.deleteMessagesByThreadId(threadId)
+            val thread = chatThreadDao.getThreadById(threadId)
+            if (thread?.syncId != null) {
+                chatThreadDao.markDeletedForSync(threadId)
+                chatMessageDao.markDeletedFromForSync(threadId, 0)
+            } else {
+                chatThreadDao.deleteThreadById(threadId)
+                chatMessageDao.deleteMessagesByThreadId(threadId)
+            }
         }
     }
     
@@ -313,7 +333,9 @@ class ChatRepository @Inject constructor(
                 threadId = threadId,
                 role = "user",
                 content = content,
-                images = images
+                images = images,
+                syncId = UUID.randomUUID().toString(),
+                syncUpdatedAt = System.currentTimeMillis()
             )
             PerformanceMonitor.measureSuspend("database_insert_user_message") {
                 chatMessageDao.insertMessage(userMessageEntity)
@@ -347,7 +369,9 @@ class ChatRepository @Inject constructor(
                     threadId = threadId,
                     role = "assistant",
                     content = responseContentNs,
-                    thinking = thinkingNs
+                    thinking = thinkingNs,
+                    syncId = UUID.randomUUID().toString(),
+                    syncUpdatedAt = System.currentTimeMillis()
                 )
                 PerformanceMonitor.measureSuspend("database_insert_assistant_message") {
                     chatMessageDao.insertMessage(assistantMessageNs)
@@ -379,7 +403,9 @@ class ChatRepository @Inject constructor(
                     evalCount = chatResponse.evalCount,
                     evalDurationNs = chatResponse.evalDuration,
                     promptEvalCount = chatResponse.promptEvalCount,
-                    totalDurationNs = chatResponse.totalDuration
+                    totalDurationNs = chatResponse.totalDuration,
+                    syncId = UUID.randomUUID().toString(),
+                    syncUpdatedAt = System.currentTimeMillis()
                 )
                 PerformanceMonitor.measureSuspend("database_insert_assistant_message") {
                     chatMessageDao.insertMessage(assistantMessage)
@@ -424,7 +450,7 @@ class ChatRepository @Inject constructor(
         thread.seed?.let { options["seed"] = it }
         return options.takeIf { it.isNotEmpty() }
     }
-    
+
     fun streamMessage(
         threadId: Long,
         content: String,
@@ -479,32 +505,43 @@ class ChatRepository @Inject constructor(
                 threadId = threadId,
                 role = "user",
                 content = content,
-                images = images
+                images = images,
+                syncId = UUID.randomUUID().toString(),
+                syncUpdatedAt = System.currentTimeMillis()
             )
             PerformanceMonitor.measureSuspend("database_insert_user_message") {
                 chatMessageDao.insertMessage(userMessageEntity)
+            }
+
+            val defaultServer = serverRepository.getDefaultServerSync()
+            val backend = defaultServer?.let { ServerBackend.fromStored(it.backendType) } ?: ServerBackend.OLLAMA
+            val litertContext = if (backend == ServerBackend.LITERT_LOCAL) {
+                if (!images.isNullOrEmpty()) {
+                    throw UnsupportedOperationException("Images are not supported for on-device LiteRT in this build.")
+                }
+                val catalog = LocalModelCatalog.fromThreadModelName(model)
+                    ?: throw IllegalStateException("Select a LiteRT model from the model list.")
+                val installed = installedLitertModelDao.getById(catalog.id)
+                    ?: throw IllegalStateException("Download this model from the Models screen first.")
+                catalog to installed
+            } else {
+                null
             }
             
             // Create placeholder assistant message for streaming
             val assistantMessageEntity = ChatMessageEntity(
                 threadId = threadId,
                 role = "assistant",
-                content = ""
+                content = "",
+                syncId = UUID.randomUUID().toString(),
+                syncUpdatedAt = System.currentTimeMillis()
             )
             val assistantMessageId = PerformanceMonitor.measureSuspend("database_insert_placeholder_message") {
                 chatMessageDao.insertMessage(assistantMessageEntity)
             }
 
-            val defaultServer = serverRepository.getDefaultServerSync()
-            val backend = defaultServer?.let { ServerBackend.fromStored(it.backendType) } ?: ServerBackend.OLLAMA
             if (backend == ServerBackend.LITERT_LOCAL) {
-                if (!images.isNullOrEmpty()) {
-                    throw UnsupportedOperationException("Images are not supported for on-device LiteRT in this build.")
-                }
-                val catalog = LocalModelCatalog.fromThreadModelName(model)
-                    ?: throw IllegalStateException("Select a LiteRT model (Gemma) from the model list.")
-                val installed = installedLitertModelDao.getById(catalog.id)
-                    ?: throw IllegalStateException("Download this model from the Models screen first (can be several GB).")
+                val (_, installed) = requireNotNull(litertContext)
                 val threadRow = chatThreadDao.getThreadById(threadId)
                 val effectiveSystem = systemPrompt ?: threadRow?.systemPrompt
 
@@ -541,7 +578,11 @@ class ChatRepository @Inject constructor(
                                 role = "assistant",
                                 content = fullContent,
                                 thinking = null,
-                                timestamp = System.currentTimeMillis()
+                                timestamp = System.currentTimeMillis(),
+                                syncId = assistantMessageEntity.syncId,
+                                syncVersion = assistantMessageEntity.syncVersion + 1,
+                                syncUpdatedAt = System.currentTimeMillis(),
+                                syncDirty = true
                             )
                         )
                     }
@@ -556,7 +597,11 @@ class ChatRepository @Inject constructor(
                     role = "assistant",
                     content = fullContent,
                     thinking = null,
-                    timestamp = System.currentTimeMillis()
+                    timestamp = System.currentTimeMillis(),
+                    syncId = assistantMessageEntity.syncId,
+                    syncVersion = assistantMessageEntity.syncVersion + 1,
+                    syncUpdatedAt = System.currentTimeMillis(),
+                    syncDirty = true
                 )
                 PerformanceMonitor.measureSuspend("database_save_final_message") {
                     chatMessageDao.insertMessage(finalMessage)
@@ -631,7 +676,11 @@ class ChatRepository @Inject constructor(
                             evalDurationNs = evalDurationNs,
                             promptEvalCount = promptEvalCount,
                             totalDurationNs = totalDurationNs,
-                            timestamp = System.currentTimeMillis()
+                            timestamp = System.currentTimeMillis(),
+                            syncId = assistantMessageEntity.syncId,
+                            syncVersion = assistantMessageEntity.syncVersion + 1,
+                            syncUpdatedAt = System.currentTimeMillis(),
+                            syncDirty = true
                         )
                     )
                 }
@@ -659,7 +708,11 @@ class ChatRepository @Inject constructor(
                 evalDurationNs = evalDurationNs,
                 promptEvalCount = promptEvalCount,
                 totalDurationNs = totalDurationNs,
-                timestamp = System.currentTimeMillis()
+                timestamp = System.currentTimeMillis(),
+                syncId = assistantMessageEntity.syncId,
+                syncVersion = assistantMessageEntity.syncVersion + 1,
+                syncUpdatedAt = System.currentTimeMillis(),
+                syncDirty = true
             )
             PerformanceMonitor.measureSuspend("database_save_final_message") {
                 withContext(NonCancellable) {
@@ -680,7 +733,15 @@ class ChatRepository @Inject constructor(
     
     suspend fun insertMessage(message: ChatMessageEntity) {
         PerformanceMonitor.measureSuspend("database_insert_message") {
-            chatMessageDao.insertMessage(message)
+            val now = System.currentTimeMillis()
+            chatMessageDao.insertMessage(
+                message.copy(
+                    syncId = message.syncId ?: UUID.randomUUID().toString(),
+                    syncVersion = message.syncVersion + 1,
+                    syncUpdatedAt = now,
+                    syncDirty = true
+                )
+            )
         }
     }
     
@@ -695,7 +756,12 @@ class ChatRepository @Inject constructor(
 
     suspend fun deleteMessage(messageId: Long) {
         PerformanceMonitor.measureSuspend("database_delete_message") {
-            chatMessageDao.deleteMessageById(messageId)
+            val message = chatMessageDao.getMessageById(messageId)
+            if (message?.syncId != null) {
+                chatMessageDao.markDeletedForSync(messageId)
+            } else {
+                chatMessageDao.deleteMessageById(messageId)
+            }
         }
     }
 
@@ -706,7 +772,7 @@ class ChatRepository @Inject constructor(
      */
     suspend fun truncateThreadFrom(threadId: Long, fromTimestamp: Long) {
         PerformanceMonitor.measureSuspend("database_truncate_thread") {
-            chatMessageDao.deleteMessagesFrom(threadId, fromTimestamp)
+            chatMessageDao.markDeletedFromForSync(threadId, fromTimestamp)
         }
     }
 
@@ -733,4 +799,3 @@ class ChatRepository @Inject constructor(
         }
     }
 }
-

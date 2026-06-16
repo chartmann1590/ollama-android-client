@@ -118,10 +118,12 @@ android {
         val githubOwner = githubProp("GH_REPO_OWNER", "github.repo.owner", "chartmann1590")
         val githubRepo = githubProp("GH_REPO_NAME", "github.repo.name", "ollama-android-client")
         val githubApiToken = githubProp("GH_API_TOKEN", "github.api.token", "")
+        val googleWebClientId = githubProp("GOOGLE_WEB_CLIENT_ID", "google.webClientId", "")
 
         buildConfigField("String", "GITHUB_OWNER", "\"$githubOwner\"")
         buildConfigField("String", "GITHUB_REPO", "\"$githubRepo\"")
         buildConfigField("String", "GITHUB_API_TOKEN", "\"$githubApiToken\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
         buildConfigField("long", "BUILD_COMMIT_EPOCH_SECONDS", "${gitCommitEpochSeconds()}L")
         buildConfigField("String", "BUILD_GIT_SHA", "\"${gitShortSha()}\"")
 
@@ -324,15 +326,23 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     // LiteRT-LM (on-device Gemma / .litertlm)
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.13.1")
     
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-crashlytics-ktx")
+    implementation("com.google.firebase:firebase-database")
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-config-ktx")
     implementation("com.google.firebase:firebase-perf-ktx")
+
+    // Google sign-in via Android Credential Manager
+    implementation("androidx.credentials:credentials:1.6.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.2.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     
     // AdMob
     implementation("com.google.android.gms:play-services-ads:22.6.0")

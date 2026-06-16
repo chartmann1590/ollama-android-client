@@ -2,6 +2,7 @@ package com.charles.ollama.client.ui.settings
 
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -56,6 +57,9 @@ fun SettingsScreen(
     val themeMode by viewModel.themeMode.collectAsState()
     val dynamicColor by viewModel.dynamicColor.collectAsState()
     val isPremium by viewModel.isPremium.collectAsState()
+    val accountUiState by viewModel.accountUiState.collectAsState()
+    val authActionState by viewModel.authActionState.collectAsState()
+    val context = LocalContext.current
 
     // --- Feedback States ---
     val localBugReports by viewModel.localBugReports.collectAsState()
@@ -130,6 +134,21 @@ fun SettingsScreen(
                     onCheckedChange = viewModel::setDynamicColor
                 )
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            AccountSyncSection(
+                accountUiState = accountUiState,
+                authActionState = authActionState,
+                onCreateAccount = viewModel::createAccount,
+                onSignInEmail = viewModel::signInWithEmail,
+                onPasswordReset = viewModel::sendPasswordReset,
+                onGoogleSignIn = {
+                    (context as? Activity)?.let(viewModel::signInWithGoogle)
+                },
+                onSignOut = viewModel::signOut,
+                onSyncEnabledChange = viewModel::setWebSyncEnabled,
+                onDismissAuthMessage = viewModel::resetAuthActionState
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
             Text(
@@ -708,6 +727,164 @@ fun SettingsScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun AccountSyncSection(
+    accountUiState: AccountUiState,
+    authActionState: AuthActionState,
+    onCreateAccount: (String, String) -> Unit,
+    onSignInEmail: (String, String) -> Unit,
+    onPasswordReset: (String) -> Unit,
+    onGoogleSignIn: () -> Unit,
+    onSignOut: () -> Unit,
+    onSyncEnabledChange: (Boolean) -> Unit,
+    onDismissAuthMessage: () -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
+    Text(
+        text = "Account & web sync",
+        style = MaterialTheme.typography.titleMedium
+    )
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (accountUiState.uid == null) {
+                Text(
+                    text = "Sign in to sync chats with the future web interface.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedButton(
+                    onClick = onGoogleSignIn,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = authActionState !is AuthActionState.Loading
+                ) {
+                    Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Continue with Google")
+                }
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { onSignInEmail(email, password) },
+                        enabled = email.isNotBlank() && password.isNotBlank() && authActionState !is AuthActionState.Loading,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Sign in")
+                    }
+                    OutlinedButton(
+                        onClick = { onCreateAccount(email, password) },
+                        enabled = email.isNotBlank() && password.length >= 6 && authActionState !is AuthActionState.Loading,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Create")
+                    }
+                }
+                TextButton(
+                    onClick = { onPasswordReset(email) },
+                    enabled = email.isNotBlank() && authActionState !is AuthActionState.Loading
+                ) {
+                    Text("Send password reset")
+                }
+            } else {
+                Text(
+                    text = accountUiState.email ?: "Signed in",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "Providers: ${accountUiState.providerIds.joinToString().ifBlank { "Firebase" }}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Web sync", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = if (accountUiState.syncEnabled) {
+                                "Chats sync through Firebase Realtime Database."
+                            } else {
+                                "Off. Chats stay on this device."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = accountUiState.syncEnabled,
+                        onCheckedChange = onSyncEnabledChange
+                    )
+                }
+                if (accountUiState.lastSyncAt > 0L) {
+                    Text(
+                        text = "Last sync: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(accountUiState.lastSyncAt))}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                accountUiState.lastSyncError?.let { error ->
+                    Text(
+                        text = "Sync error: $error",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                OutlinedButton(
+                    onClick = onSignOut,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Sign out")
+                }
+            }
+
+            when (authActionState) {
+                AuthActionState.Loading -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                is AuthActionState.Success -> AssistChip(
+                    onClick = onDismissAuthMessage,
+                    label = { Text(authActionState.message) },
+                    leadingIcon = { Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                )
+                is AuthActionState.Error -> Text(
+                    text = authActionState.message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                AuthActionState.Idle -> Unit
+            }
+        }
     }
 }
 

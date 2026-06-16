@@ -57,10 +57,22 @@ fun ModelCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    model.quantizationLevel?.let {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (it.contains("crash", ignoreCase = true)) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
                     if (model.isOnDeviceLitert() && !model.isLitertDownloaded()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Not downloaded — tap Download to add this bundle",
+                            text = "Not downloaded - tap Download to add this bundle",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -106,4 +118,3 @@ private fun formatFileSize(bytes: Long): String {
         else -> "$bytes B"
     }
 }
-

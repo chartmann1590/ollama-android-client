@@ -9,6 +9,7 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.LogSeverity
 import com.google.ai.edge.litertlm.Message
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -49,35 +50,79 @@ class LiteRtChatService @Inject constructor(
             nativeLogSeverityApplied = true
         }
         val cacheDir = context.cacheDir.absolutePath
-        val engineConfig = EngineConfig(
-            modelPath = modelPath,
-            backend = Backend.CPU(),
-            cacheDir = cacheDir
-        )
-        Engine(engineConfig).use { engine ->
-            engine.initialize()
-            val initialMessages = buildInitialMessages(historyBeforeUser)
-            val convConfig = ConversationConfig(
-                systemInstruction = systemPrompt?.takeIf { it.isNotBlank() }?.let { Contents.of(it) },
-                initialMessages = initialMessages
+        val isGemma4 = modelPath.contains("gemma-4-", ignoreCase = true)
+        val backendAttempts = if (isGemma4) {
+            listOf(Backend.GPU(), Backend.CPU())
+        } else {
+            listOf(Backend.CPU())
+        }
+
+        var lastAttemptError: Exception? = null
+        for (backend in backendAttempts) {
+            val engineConfig = EngineConfig(
+                modelPath = modelPath,
+                backend = backend,
+                maxNumTokens = if (isGemma4) GEMMA4_MAX_NUM_TOKENS else null,
+                cacheDir = cacheDir
             )
-            engine.createConversation(convConfig).use { conversation ->
-                conversation.sendMessageAsync(userMessage).collect { chunk ->
-                    emit(chunk.toString())
+            try {
+                Log.i(TAG, "Starting LiteRT engine with backend=${backend.name}, maxTokens=${engineConfig.maxNumTokens}")
+                val generatedChunks = ArrayList<String>()
+                Engine(engineConfig).use { engine ->
+                    engine.initialize()
+                    val initialMessages = if (isGemma4) {
+                        emptyList()
+                    } else {
+                        buildInitialMessages(historyBeforeUser)
+                    }
+                    val convConfig = ConversationConfig(
+                        systemInstruction = systemPrompt?.takeIf { it.isNotBlank() }?.let { Contents.of(it) },
+                        initialMessages = initialMessages
+                    )
+                    engine.createConversation(convConfig).use { conversation ->
+                        conversation.sendMessageAsync(userMessage).collect { chunk ->
+                            generatedChunks.add(chunk.toString())
+                        }
+                    }
                 }
+                generatedChunks.forEach { emit(it) }
+                return@flow
+            } catch (e: Exception) {
+                lastAttemptError = e
+                Log.w(TAG, "LiteRT generation failed for backend=${backend.name}", e)
             }
         }
+        throw lastAttemptError ?: IllegalStateException("Failed to run LiteRT engine.")
     }.flowOn(Dispatchers.Default)
 
     private fun buildInitialMessages(history: List<ChatMessageEntity>): List<Message> {
-        val out = ArrayList<Message>()
+        val completePairs = ArrayList<Pair<String, String>>()
+        var pendingUser: String? = null
         for (msg in history) {
             when (msg.role) {
-                "user" -> out.add(Message.user(msg.content))
-                "assistant" -> out.add(Message.model(msg.content))
+                "user" -> pendingUser = msg.content.takeIf { it.isNotBlank() }
+                "assistant" -> {
+                    val user = pendingUser
+                    val assistant = msg.content.takeIf { it.isNotBlank() }
+                    if (user != null && assistant != null) {
+                        completePairs.add(user to assistant)
+                        pendingUser = null
+                    }
+                }
                 "system" -> { /* system handled via ConversationConfig */ }
             }
         }
+        val out = ArrayList<Message>()
+        completePairs.takeLast(MAX_HISTORY_PAIRS).forEach { (user, assistant) ->
+            out.add(Message.user(user))
+            out.add(Message.model(assistant))
+        }
         return out
+    }
+
+    private companion object {
+        const val TAG = "LiteRtChatService"
+        const val GEMMA4_MAX_NUM_TOKENS = 1024
+        const val MAX_HISTORY_PAIRS = 4
     }
 }

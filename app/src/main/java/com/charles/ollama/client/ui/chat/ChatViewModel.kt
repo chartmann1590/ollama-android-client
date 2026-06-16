@@ -362,6 +362,7 @@ class ChatViewModel @Inject constructor(
                     
                     // Log final content length for debugging
                     android.util.Log.d("ChatViewModel", "Streaming completed. Final content length: ${fullContent.length}, Final thinking length: ${fullThinking.length}")
+                    _error.value = null
                     
                     PerformanceMonitor.addMetric(trace, "stream_deltas", deltaCount)
                     PerformanceMonitor.addMetric(trace, "final_content_length", fullContent.length.toLong())
@@ -410,6 +411,9 @@ class ChatViewModel @Inject constructor(
                     if (exception !is android.database.sqlite.SQLiteBlobTooBigException) {
                         _error.value = exception.message ?: "Failed to send message"
                     }
+                }
+                result.onSuccess {
+                    _error.value = null
                 }
                 
                 _isLoading.value = false
@@ -713,4 +717,3 @@ class ChatViewModel @Inject constructor(
         }
     }
 }
-

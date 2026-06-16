@@ -4,38 +4,231 @@
     ".write": false,
     "users": {
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid",
-        "threads": {
-          ".indexOn": ["syncUpdatedAt", "syncVersion", "deleted"],
-          "$threadId": {
-            ".validate": "newData.hasChildren(['syncId', 'title', 'createdAt', 'updatedAt', 'syncVersion', 'syncUpdatedAt', 'deleted']) && newData.child('syncId').isString() && newData.child('syncId').val() === $threadId && newData.child('title').isString() && newData.child('title').val().length <= 200 && newData.child('syncVersion').isNumber() && newData.child('syncUpdatedAt').isNumber() && newData.child('deleted').isBoolean()"
-          }
-        },
-        "messages": {
-          "$threadId": {
-            ".indexOn": ["timestamp", "syncUpdatedAt", "syncVersion", "deleted"],
-            "$messageId": {
-              ".validate": "newData.hasChildren(['syncId', 'threadSyncId', 'role', 'content', 'timestamp', 'syncVersion', 'syncUpdatedAt', 'deleted']) && newData.child('syncId').isString() && newData.child('syncId').val() === $messageId && newData.child('threadSyncId').isString() && newData.child('threadSyncId').val() === $threadId && newData.child('role').isString() && (newData.child('role').val() === 'user' || newData.child('role').val() === 'assistant' || newData.child('role').val() === 'system') && newData.child('content').isString() && newData.child('timestamp').isNumber() && newData.child('syncVersion').isNumber() && newData.child('syncUpdatedAt').isNumber() && newData.child('deleted').isBoolean()"
-            }
-          }
-        },
-        "webRequests": {
-          ".indexOn": ["status", "createdAt", "claimedAt", "completedAt"],
-          "$requestId": {
-            ".validate": "newData.hasChildren(['threadSyncId', 'content', 'status', 'createdAt']) && newData.child('threadSyncId').isString() && newData.child('content').isString() && newData.child('content').val().length <= 200000 && newData.child('status').isString() && (newData.child('status').val() === 'pending' || newData.child('status').val() === 'running' || newData.child('status').val() === 'complete' || newData.child('status').val() === 'error') && newData.child('createdAt').isNumber()"
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": false,
+        "profile": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.hasChildren(['uid', 'updatedAt']) && newData.child('uid').val() == $uid && newData.child('updatedAt').isNumber()",
+          "uid": {
+            ".validate": "newData.isString() && newData.val() == $uid"
+          },
+          "androidSyncVersion": {
+            ".validate": "newData.isNumber()"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
           }
         },
         "devices": {
           "$deviceId": {
-            ".validate": "newData.hasChildren(['updatedAt']) && newData.child('updatedAt').isNumber()"
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.hasChildren(['updatedAt']) && newData.child('updatedAt').isNumber()",
+            "updatedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "online": {
+              ".validate": "newData.isBoolean()"
+            },
+            "$other": {
+              ".validate": false
+            }
           }
         },
-        "profile": {
-          ".validate": "newData.hasChildren(['uid', 'updatedAt']) && newData.child('uid').val() === $uid && newData.child('updatedAt').isNumber()"
+        "threads": {
+          ".indexOn": ["updatedAt"],
+          "$threadSyncId": {
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.hasChildren(['syncId', 'title', 'createdAt', 'updatedAt', 'syncVersion', 'syncUpdatedAt', 'deleted']) && newData.child('syncId').val() == $threadSyncId",
+            "syncId": {
+              ".validate": "newData.isString() && newData.val() == $threadSyncId"
+            },
+            "title": {
+              ".validate": "newData.isString() && newData.val().length <= 500"
+            },
+            "model": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            },
+            "serverId": {
+              ".validate": "newData.isNumber()"
+            },
+            "streamEnabled": {
+              ".validate": "newData.isBoolean()"
+            },
+            "systemPrompt": {
+              ".validate": "newData.isString() && newData.val().length <= 20000"
+            },
+            "vibrationEnabled": {
+              ".validate": "newData.isBoolean()"
+            },
+            "showThinking": {
+              ".validate": "newData.isBoolean()"
+            },
+            "isPinned": {
+              ".validate": "newData.isBoolean()"
+            },
+            "isArchived": {
+              ".validate": "newData.isBoolean()"
+            },
+            "label": {
+              ".validate": "newData.isString() && newData.val().length <= 100"
+            },
+            "temperature": {
+              ".validate": "newData.isNumber()"
+            },
+            "topP": {
+              ".validate": "newData.isNumber()"
+            },
+            "topK": {
+              ".validate": "newData.isNumber()"
+            },
+            "numCtx": {
+              ".validate": "newData.isNumber()"
+            },
+            "seed": {
+              ".validate": "newData.isNumber()"
+            },
+            "createdAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "updatedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "syncVersion": {
+              ".validate": "newData.isNumber()"
+            },
+            "syncUpdatedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "deleted": {
+              ".validate": "newData.isBoolean()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
         },
-        "settings": {
-          ".validate": true
+        "messages": {
+          "$threadSyncId": {
+            ".indexOn": ["timestamp"],
+            "$messageSyncId": {
+              ".write": "auth != null && auth.uid == $uid && root.child('users').child($uid).child('threads').child($threadSyncId).exists()",
+              ".validate": "newData.hasChildren(['syncId', 'threadSyncId', 'role', 'content', 'timestamp', 'syncVersion', 'syncUpdatedAt', 'deleted']) && newData.child('syncId').val() == $messageSyncId && newData.child('threadSyncId').val() == $threadSyncId",
+              "syncId": {
+                ".validate": "newData.isString() && newData.val() == $messageSyncId"
+              },
+              "threadSyncId": {
+                ".validate": "newData.isString() && newData.val() == $threadSyncId"
+              },
+              "role": {
+                ".validate": "newData.isString() && (newData.val() == 'user' || newData.val() == 'assistant' || newData.val() == 'system')"
+              },
+              "content": {
+                ".validate": "newData.isString() && newData.val().length <= 200000"
+              },
+              "thinking": {
+                ".validate": "newData.isString() && newData.val().length <= 200000"
+              },
+              "images": {
+                "$imageIndex": {
+                  ".validate": "newData.isString() && newData.val().length <= 1000000"
+                }
+              },
+              "evalCount": {
+                ".validate": "newData.isNumber()"
+              },
+              "evalDurationNs": {
+                ".validate": "newData.isNumber()"
+              },
+              "promptEvalCount": {
+                ".validate": "newData.isNumber()"
+              },
+              "totalDurationNs": {
+                ".validate": "newData.isNumber()"
+              },
+              "timestamp": {
+                ".validate": "newData.isNumber()"
+              },
+              "syncVersion": {
+                ".validate": "newData.isNumber()"
+              },
+              "syncUpdatedAt": {
+                ".validate": "newData.isNumber()"
+              },
+              "deleted": {
+                ".validate": "newData.isBoolean()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "webRequests": {
+          "$requestId": {
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.hasChildren(['threadSyncId', 'content', 'status', 'createdAt']) && (newData.child('status').val() == 'pending' || newData.child('status').val() == 'running' || newData.child('status').val() == 'complete' || newData.child('status').val() == 'error')",
+            "threadSyncId": {
+              ".validate": "newData.isString()"
+            },
+            "threadTitle": {
+              ".validate": "newData.isString() && newData.val().length <= 500"
+            },
+            "content": {
+              ".validate": "newData.isString() && newData.val().length <= 200000"
+            },
+            "model": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            },
+            "status": {
+              ".validate": "newData.isString() && (newData.val() == 'pending' || newData.val() == 'running' || newData.val() == 'complete' || newData.val() == 'error')"
+            },
+            "createdAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "claimedByDeviceId": {
+              ".validate": "newData.isString()"
+            },
+            "claimedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "completedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "error": {
+              ".validate": "newData.isString() && newData.val().length <= 500"
+            },
+            "images": {
+              "$imageIndex": {
+                ".validate": "newData.isString() && newData.val().length <= 1000000"
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "availableModels": {
+          ".write": "auth != null && auth.uid == $uid",
+          "$modelKey": {
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.hasChildren(['name', 'updatedAt']) && newData.child('name').isString() && newData.child('updatedAt').isNumber()",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            },
+            "updatedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".read": false,
+          ".write": false
         }
       }
     }

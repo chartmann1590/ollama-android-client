@@ -1,10 +1,13 @@
 package com.charles.ollama.client.data.database.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
-import java.util.Date
 
-@Entity(tableName = "chat_threads")
+@Entity(
+    tableName = "chat_threads",
+    indices = [Index(value = ["syncId"], unique = true)]
+)
 data class ChatThreadEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -27,6 +30,10 @@ data class ChatThreadEntity(
     val numCtx: Int? = null,
     val seed: Int? = null,
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val syncId: String? = null,
+    val syncVersion: Long = 0,
+    val syncUpdatedAt: Long? = null,
+    val syncDeleted: Boolean = false,
+    val syncDirty: Boolean = true
 )
-

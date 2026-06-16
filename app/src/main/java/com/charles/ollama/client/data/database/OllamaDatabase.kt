@@ -23,7 +23,7 @@ import com.charles.ollama.client.data.database.dao.InstalledLitertModelDao
         InstalledLitertModelEntity::class,
         PromptPresetEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 @TypeConverters(StringListConverter::class)
@@ -34,4 +34,3 @@ abstract class OllamaDatabase : RoomDatabase() {
     abstract fun installedLitertModelDao(): InstalledLitertModelDao
     abstract fun promptPresetDao(): PromptPresetDao
 }
-

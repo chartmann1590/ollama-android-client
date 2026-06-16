@@ -58,4 +58,22 @@ object Migrations {
             db.execSQL("ALTER TABLE chat_messages ADD COLUMN totalDurationNs INTEGER")
         }
     }
+
+    val MIGRATION_10_11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN syncId TEXT")
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN syncVersion INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN syncUpdatedAt INTEGER")
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN syncDeleted INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN syncDirty INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_chat_threads_syncId ON chat_threads(syncId)")
+
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN syncId TEXT")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN syncVersion INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN syncUpdatedAt INTEGER")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN syncDeleted INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN syncDirty INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_chat_messages_syncId ON chat_messages(syncId)")
+        }
+    }
 }

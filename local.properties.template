@@ -30,3 +30,8 @@
 # github.api.token=github_pat_...
 # github.repo.owner=chartmann1590
 # github.repo.name=ollama-android-client
+
+# --- Firebase Auth / Google sign-in ---
+# Web client ID from Firebase/Google Cloud OAuth client. Required for Google
+# sign-in until the downloaded google-services.json includes default_web_client_id.
+# google.webClientId=000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com

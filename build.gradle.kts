@@ -1,6 +1,6 @@
 // Top-level build file
 plugins {
-    id("com.android.application") version "8.5.2" apply false
+    id("com.android.application") version "8.6.1" apply false
     id("org.jetbrains.kotlin.android") version "2.2.0" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.0" apply false
     id("com.google.dagger.hilt.android") version "2.56.2" apply false
@@ -10,4 +10,3 @@ plugins {
     // Add the dependency for the Performance Monitoring Gradle plugin
     id("com.google.firebase.firebase-perf") version "2.0.2" apply false
 }
-

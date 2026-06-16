@@ -1,20 +1,26 @@
 package com.charles.ollama.client.ui.settings
 
+import android.app.Activity
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.charles.ollama.client.ads.AdGate
+import com.charles.ollama.client.data.auth.AuthRepository
 import com.charles.ollama.client.data.litert.LitertPreferences
 import com.charles.ollama.client.data.preferences.ThemeMode
 import com.charles.ollama.client.data.preferences.UiPreferences
 import com.charles.ollama.client.data.preferences.LocalBugReport
 import com.charles.ollama.client.data.repository.GitHubFeedbackRepository
 import com.charles.ollama.client.data.api.dto.GitHubCommentResponse
+import com.charles.ollama.client.data.sync.SyncPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -39,12 +45,30 @@ sealed interface CommentPostState {
     data class Error(val message: String) : CommentPostState
 }
 
+sealed interface AuthActionState {
+    object Idle : AuthActionState
+    object Loading : AuthActionState
+    data class Success(val message: String) : AuthActionState
+    data class Error(val message: String) : AuthActionState
+}
+
+data class AccountUiState(
+    val uid: String? = null,
+    val email: String? = null,
+    val providerIds: List<String> = emptyList(),
+    val syncEnabled: Boolean = false,
+    val lastSyncAt: Long = 0L,
+    val lastSyncError: String? = null
+)
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val litertPreferences: LitertPreferences,
     private val adGate: AdGate,
     private val uiPreferences: UiPreferences,
-    private val feedbackRepository: GitHubFeedbackRepository
+    private val feedbackRepository: GitHubFeedbackRepository,
+    private val authRepository: AuthRepository,
+    private val syncPreferences: SyncPreferences
 ) : ViewModel() {
 
     private val _huggingFaceToken = MutableStateFlow(litertPreferences.getHuggingFaceToken().orEmpty())
@@ -53,6 +77,25 @@ class SettingsViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> = uiPreferences.themeMode
     val dynamicColor: StateFlow<Boolean> = uiPreferences.dynamicColor
     val isPremium: StateFlow<Boolean> = adGate.isPremium
+
+    val accountUiState: StateFlow<AccountUiState> = combine(
+        authRepository.currentUser,
+        syncPreferences.syncEnabled,
+        syncPreferences.lastSyncAt,
+        syncPreferences.lastError
+    ) { user, syncEnabled, lastSyncAt, lastError ->
+        AccountUiState(
+            uid = user?.uid,
+            email = user?.email,
+            providerIds = user?.providerData?.mapNotNull { it.providerId }?.distinct().orEmpty(),
+            syncEnabled = syncEnabled && user != null,
+            lastSyncAt = lastSyncAt,
+            lastSyncError = lastError
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountUiState())
+
+    private val _authActionState = MutableStateFlow<AuthActionState>(AuthActionState.Idle)
+    val authActionState: StateFlow<AuthActionState> = _authActionState.asStateFlow()
 
     // --- Feedback / Bug reporting states ---
     private val _localBugReports = MutableStateFlow<List<LocalBugReport>>(emptyList())
@@ -181,5 +224,62 @@ class SettingsViewModel @Inject constructor(
 
     fun requestSetupTutorialAgain() {
         adGate.requestSetupTutorialReplay()
+    }
+
+    fun createAccount(email: String, password: String) {
+        runAuthAction("Account created") {
+            authRepository.createAccount(email, password)
+            syncPreferences.setSyncEnabled(true)
+        }
+    }
+
+    fun signInWithEmail(email: String, password: String) {
+        runAuthAction("Signed in") {
+            authRepository.signInWithEmail(email, password)
+        }
+    }
+
+    fun signInWithGoogle(activity: Activity) {
+        runAuthAction("Signed in with Google") {
+            authRepository.signInWithGoogle(activity)
+        }
+    }
+
+    fun sendPasswordReset(email: String) {
+        runAuthAction("Password reset email sent") {
+            authRepository.sendPasswordReset(email)
+        }
+    }
+
+    fun signOut() {
+        authRepository.signOut()
+        syncPreferences.setSyncEnabled(false)
+        syncPreferences.setCurrentUid(null)
+        _authActionState.value = AuthActionState.Success("Signed out")
+    }
+
+    fun setWebSyncEnabled(enabled: Boolean) {
+        if (authRepository.currentUser.value == null) {
+            _authActionState.value = AuthActionState.Error("Sign in before enabling web sync.")
+            syncPreferences.setSyncEnabled(false)
+            return
+        }
+        syncPreferences.setSyncEnabled(enabled)
+    }
+
+    fun resetAuthActionState() {
+        _authActionState.value = AuthActionState.Idle
+    }
+
+    private fun runAuthAction(successMessage: String, block: suspend () -> Unit) {
+        viewModelScope.launch {
+            _authActionState.value = AuthActionState.Loading
+            try {
+                block()
+                _authActionState.value = AuthActionState.Success(successMessage)
+            } catch (e: Exception) {
+                _authActionState.value = AuthActionState.Error(e.localizedMessage ?: "Authentication failed")
+            }
+        }
     }
 }

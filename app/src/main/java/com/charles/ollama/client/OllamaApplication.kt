@@ -12,9 +12,11 @@ import com.charles.ollama.client.R
 import com.charles.ollama.client.ads.AdGate
 import com.charles.ollama.client.ads.AppOpenAdManager
 import com.charles.ollama.client.data.billing.PremiumManager
+import com.charles.ollama.client.data.sync.ChatSyncCoordinator
 import com.google.firebase.FirebaseApp
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.perf.FirebasePerformance
 import dagger.hilt.android.HiltAndroidApp
@@ -28,6 +30,9 @@ class OllamaApplication : Application() {
     @javax.inject.Inject
     lateinit var premiumManager: PremiumManager
 
+    @javax.inject.Inject
+    lateinit var chatSyncCoordinator: ChatSyncCoordinator
+
     private lateinit var appOpenAdManager: AppOpenAdManager
 
     override fun onCreate() {
@@ -35,6 +40,11 @@ class OllamaApplication : Application() {
 
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
+        try {
+            FirebaseDatabase.getInstance().setPersistenceEnabled(true)
+        } catch (e: Exception) {
+            Log.w(TAG, "Realtime Database persistence was already configured", e)
+        }
 
         // Enable Firebase Crashlytics
         FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
@@ -57,6 +67,8 @@ class OllamaApplication : Application() {
         
         // Initialize Firebase Cloud Messaging
         initializeFCM()
+
+        chatSyncCoordinator.start()
     }
     
     private fun initializeFCM() {
@@ -146,4 +158,3 @@ internal fun isSuppressibleFrameworkBug(t: Throwable): Boolean {
             f.methodName == "offsetRectBetweenParentAndChild"
     }
 }
-

@@ -17,7 +17,10 @@ import com.charles.ollama.client.data.database.converter.StringListConverter
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["threadId"])]
+    indices = [
+        Index(value = ["threadId"]),
+        Index(value = ["syncId"], unique = true)
+    ]
 )
 @TypeConverters(StringListConverter::class)
 data class ChatMessageEntity(
@@ -34,6 +37,10 @@ data class ChatMessageEntity(
     val evalDurationNs: Long? = null,      // generation time (nanoseconds)
     val promptEvalCount: Int? = null,      // prompt tokens evaluated
     val totalDurationNs: Long? = null,     // total request time (nanoseconds)
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val syncId: String? = null,
+    val syncVersion: Long = 0,
+    val syncUpdatedAt: Long? = null,
+    val syncDeleted: Boolean = false,
+    val syncDirty: Boolean = true
 )
-
