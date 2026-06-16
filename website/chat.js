@@ -490,7 +490,18 @@ async function sendMessage() {
 
     // Enforce daily web message limit for free users
     if (!isWebSyncPremium) {
-        checkAndResetDailyUsageIfNewDay();
+        const today = getUtcDateString();
+        if (dailyMsgDate !== today) {
+            // New day — reset locally and sync to Firebase before the webRequest write
+            // so the security rule sees count=0. The listener may not have fired yet.
+            dailyMsgDate  = today;
+            dailyMsgCount = 0;
+            if (userRef) {
+                try { await userRef.child('webSyncDailyUsage').set({ date: today, count: 0 }); }
+                catch (e) { console.warn('Failed to reset daily usage:', e); }
+            }
+            updateWebSyncUI();
+        }
         if (dailyMsgCount >= WEB_DAILY_LIMIT) {
             showPremiumModal();
             return;
@@ -824,8 +835,13 @@ function startDailyUsageListener() {
             dailyMsgDate  = val.date;
             dailyMsgCount = val.count || 0;
         } else {
+            // New day (or no data) — reset locally and write to Firebase so the
+            // security rule sees count=0 before the next webRequest write.
             dailyMsgDate  = today;
             dailyMsgCount = 0;
+            if (userRef) {
+                userRef.child('webSyncDailyUsage').set({ date: today, count: 0 });
+            }
         }
         updateWebSyncUI();
     });
