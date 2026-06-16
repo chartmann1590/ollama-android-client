@@ -283,6 +283,13 @@ kapt {
     correctErrorTypes = true
 }
 
+configurations.all {
+    resolutionStrategy {
+        // reCAPTCHA Enterprise 18.1.2 has a critical security vulnerability (CVE patched in 18.4.0+)
+        force("com.google.android.recaptcha:recaptcha:18.5.0")
+    }
+}
+
 dependencies {
     // Core Android
     implementation("androidx.core:core-ktx:1.12.0")
