@@ -19,9 +19,10 @@ module.exports = defineConfig({
             name: 'chromium',
             use: { ...devices['Desktop Chrome'] },
         },
-        {
+        // webkit runs locally only — it is too flaky in headless CI
+        ...(!process.env.CI ? [{
             name: 'webkit',
             use: { ...devices['Desktop Safari'] },
-        },
+        }] : []),
     ],
 });

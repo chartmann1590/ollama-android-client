@@ -241,7 +241,6 @@ body.chat-page .navbar {
 #chat-shell.visible {
     display: grid;
     grid-template-columns: 280px 1fr;
-    min-height: 0;
 }
 
 /* Medium screens: narrow sidebar */
