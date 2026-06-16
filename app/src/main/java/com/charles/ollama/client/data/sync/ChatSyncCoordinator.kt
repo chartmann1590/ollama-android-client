@@ -11,6 +11,8 @@ import com.charles.ollama.client.data.repository.ChatRepository
 import com.charles.ollama.client.data.repository.ModelRepository
 import com.charles.ollama.client.data.repository.ServerRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import android.util.Log
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,7 +35,10 @@ class ChatSyncCoordinator @Inject constructor(
     private val modelRepository: ModelRepository,
     private val premiumManager: PremiumManager
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO +
+            CoroutineExceptionHandler { _, e -> Log.e(TAG, "Uncaught sync coordinator error", e) }
+    )
     private val deviceId: String by lazy { loadDeviceId() }
 
     fun start() {
@@ -117,7 +122,9 @@ class ChatSyncCoordinator @Inject constructor(
             syncRepository.uploadDirtyRows(uid)
             syncRepository.completeWebRequest(uid, request.requestId)
         }.onFailure { error ->
-            syncRepository.failWebRequest(uid, request.requestId, error.localizedMessage ?: "Phone execution failed")
+            runCatching {
+                syncRepository.failWebRequest(uid, request.requestId, error.localizedMessage ?: "Phone execution failed")
+            }.onFailure { e -> Log.e(TAG, "Failed to report web request failure to Firebase", e) }
         }
     }
 
@@ -133,6 +140,10 @@ class ChatSyncCoordinator @Inject constructor(
         )
         val id = chatThreadDao.insertThread(thread)
         return thread.copy(id = id)
+    }
+
+    companion object {
+        private const val TAG = "ChatSyncCoordinator"
     }
 
     private fun loadDeviceId(): String {

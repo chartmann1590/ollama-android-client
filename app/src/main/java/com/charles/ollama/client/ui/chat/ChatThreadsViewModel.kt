@@ -145,12 +145,13 @@ class ChatThreadsViewModel @Inject constructor(
         return threadId
     }
 
-    suspend fun createThreadAsync(title: String, model: String?): Long {
+    suspend fun createThreadAsync(title: String, model: String?, systemPrompt: String? = null): Long {
         val defaultServer = serverRepository.getDefaultServerSync()
         return chatRepository.createThread(
             title = title,
             model = model,
-            serverId = defaultServer?.id
+            serverId = defaultServer?.id,
+            systemPrompt = systemPrompt
         )
     }
 

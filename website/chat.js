@@ -10,6 +10,9 @@ const firebaseConfig = __FIREBASE_CONFIG__;
 let auth = null, db = null;
 try {
     firebase.initializeApp(firebaseConfig);
+    if (firebaseConfig.appCheckSiteKey && firebase.appCheck) {
+        firebase.appCheck().activate(firebaseConfig.appCheckSiteKey, true);
+    }
     auth = firebase.auth();
     db   = firebase.database();
 } catch (e) {
@@ -222,23 +225,43 @@ function renderThreadList(threads) {
         return;
     }
 
-    list.innerHTML = allThreads.map(t => `
-        <div class="thread-item ${t.syncId === activeThreadId ? 'active' : ''}"
-             data-id="${escHtml(t.syncId)}"
-             onclick="openThread('${escHtml(t.syncId)}','${escHtml(t.title || 'Chat')}','${escHtml(t.model || '')}')">
-          <div class="thread-title">${escHtml(t.title || 'Chat')}</div>
-          <div class="thread-meta">
-            ${t.model ? `<span class="thread-model">${escHtml(t.model)}</span>` : ''}
-            <span class="thread-time">${relTime(t.updatedAt)}</span>
-          </div>
-        </div>
-    `).join('');
+    list.replaceChildren(...allThreads.map(t => createThreadItem(t)));
 
     // Restore model badge for the active thread (may have no model in Firebase but one selected)
     if (activeThreadId) {
         const selectedModel = document.getElementById('model-select').value;
         if (selectedModel) updateActiveThreadModelBadge(selectedModel);
     }
+}
+
+function createThreadItem(t) {
+    const syncId = String(t.syncId || '');
+    const title = t.title || 'Chat';
+    const model = t.model || '';
+    const div = document.createElement('div');
+    div.className = 'thread-item' + (syncId === activeThreadId ? ' active' : '');
+    div.dataset.id = syncId;
+    div.addEventListener('click', () => openThread(syncId, title, model));
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'thread-title';
+    titleEl.textContent = title;
+
+    const meta = document.createElement('div');
+    meta.className = 'thread-meta';
+    if (model) {
+        const modelEl = document.createElement('span');
+        modelEl.className = 'thread-model';
+        modelEl.textContent = model;
+        meta.appendChild(modelEl);
+    }
+    const timeEl = document.createElement('span');
+    timeEl.className = 'thread-time';
+    timeEl.textContent = relTime(t.updatedAt);
+    meta.appendChild(timeEl);
+
+    div.append(titleEl, meta);
+    return div;
 }
 
 function updateActiveThreadModelBadge(model) {
@@ -259,11 +282,16 @@ function updateActiveThreadModelBadge(model) {
 function updateModelSelector() {
     const sel = document.getElementById('model-select');
     const prev = sel.value;
-    // Rebuild options — keep placeholder, add known models
-    sel.innerHTML = '<option value="">— select a model —</option>' +
-        Array.from(knownModels).sort().map(m =>
-            `<option value="${escHtml(m)}">${escHtml(m)}</option>`
-        ).join('');
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '— select a model —';
+    const options = Array.from(knownModels).sort().map(m => {
+        const option = document.createElement('option');
+        option.value = m;
+        option.textContent = m;
+        return option;
+    });
+    sel.replaceChildren(placeholder, ...options);
     // Restore previous selection if still valid
     if (prev && knownModels.has(prev)) sel.value = prev;
     // Auto-select if only one option
@@ -367,9 +395,10 @@ function renderMessages(msgs) {
         const isAssist = m.role === 'assistant';
 
         let imagesHtml = '';
-        if (m.images && m.images.length) {
+        const safeImages = Array.isArray(m.images) ? m.images.filter(isSafeBase64Image) : [];
+        if (safeImages.length) {
             imagesHtml = '<div class="message-images">' +
-                m.images.map(b64 => `<img class="message-image" src="data:image/jpeg;base64,${b64}" alt="attached image">`).join('') +
+                safeImages.map(b64 => `<img class="message-image" src="data:image/jpeg;base64,${b64}" alt="attached image">`).join('') +
                 '</div>';
         }
 
@@ -386,7 +415,7 @@ function renderMessages(msgs) {
         }
 
         const contentHtml = isAssist
-            ? marked.parse(m.content || '')
+            ? renderSafeMarkdown(m.content || '')
             : escHtml(m.content || '');
 
         return `<div class="message ${m.role}">
@@ -563,6 +592,7 @@ async function dispatchRequest(requestId, request) {
     setInputEnabled(false);
     setStatus('Sending…');
     try {
+        request.createdAt = Date.now();
         await userRef.child('webRequests/' + requestId).set(request);
     } catch (err) {
         // Firebase rule rejection shows up here for free users over the limit
@@ -668,6 +698,10 @@ document.getElementById('image-input').addEventListener('change', e => {
             const dataUrl = ev.target.result;
             // Strip the data URI prefix to get raw base64
             const base64  = dataUrl.split(',')[1];
+            if (!isSafeBase64Image(base64)) {
+                setStatus('Image could not be attached safely.', true);
+                return;
+            }
             pendingImages.push({ dataUrl, base64 });
             renderImagePreviews();
             document.getElementById('send-btn').disabled = false;
@@ -969,4 +1003,18 @@ function escHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+function renderSafeMarkdown(markdown) {
+    const text = String(markdown || '');
+    if (!window.marked || !window.DOMPurify) return escHtml(text);
+    const html = marked.parse(text, { breaks: true, gfm: true });
+    return DOMPurify.sanitize(html, {
+        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+    });
+}
+
+function isSafeBase64Image(value) {
+    if (typeof value !== 'string' || value.length === 0 || value.length > 1000000) return false;
+    return /^[A-Za-z0-9+/]+={0,2}$/.test(value) && value.length % 4 === 0;
 }

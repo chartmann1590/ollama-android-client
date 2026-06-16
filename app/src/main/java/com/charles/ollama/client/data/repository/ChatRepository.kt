@@ -81,13 +81,14 @@ class ChatRepository @Inject constructor(
         }
     }
     
-    suspend fun createThread(title: String, model: String?, serverId: Long?): Long {
+    suspend fun createThread(title: String, model: String?, serverId: Long?, systemPrompt: String? = null): Long {
         return PerformanceMonitor.measureSuspend("database_create_thread") {
             val thread = ChatThreadEntity(
                 title = title,
                 model = model,
                 serverId = serverId,
-                streamEnabled = true, // Default to enabled
+                systemPrompt = systemPrompt,
+                streamEnabled = true,
                 syncId = UUID.randomUUID().toString(),
                 syncUpdatedAt = System.currentTimeMillis(),
                 syncDirty = true

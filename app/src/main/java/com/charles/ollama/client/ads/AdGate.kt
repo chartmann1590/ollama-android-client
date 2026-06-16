@@ -174,6 +174,12 @@ class AdGate @Inject constructor(
         prefs.edit().putBoolean(KEY_WHATS_NEW_SEEN, true).apply()
     }
 
+    fun hasSeenPersonasIntro(): Boolean = prefs.getBoolean(KEY_PERSONAS_INTRO_SEEN, false)
+
+    fun markPersonasIntroSeen() {
+        prefs.edit().putBoolean(KEY_PERSONAS_INTRO_SEEN, true).apply()
+    }
+
     fun hasSeenSetupTutorial(): Boolean =
         prefs.getBoolean(KEY_SETUP_TUTORIAL_SEEN, false)
 
@@ -192,6 +198,7 @@ class AdGate @Inject constructor(
         private const val KEY_AD_FREE_UNTIL = "ad_free_until_ms"
         private const val KEY_WHATS_NEW_SEEN = "whats_new_rewards_v1_seen"
         private const val KEY_SETUP_TUTORIAL_SEEN = "setup_tutorial_v1_seen"
+        private const val KEY_PERSONAS_INTRO_SEEN = "personas_intro_v1_seen"
         private const val KEY_CREDIT_DAY = "credit_day_local"
         private const val KEY_SPENT_TODAY = "credits_spent_today"
         private const val KEY_EARNED_TODAY = "credits_earned_today"

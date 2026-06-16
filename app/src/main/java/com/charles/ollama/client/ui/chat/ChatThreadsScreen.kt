@@ -3,6 +3,7 @@ package com.charles.ollama.client.ui.chat
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import com.charles.ollama.client.domain.model.ChatThread
+import com.charles.ollama.client.domain.prompt.BuiltInPrompts
 import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
 import com.charles.ollama.client.ui.components.BannerAd
@@ -223,9 +225,9 @@ fun ChatThreadsScreen(
     if (showCreateDialog) {
         CreateThreadDialog(
             onDismiss = { showCreateDialog = false },
-            onCreate = { title ->
+            onCreate = { title, systemPrompt ->
                 scope.launch {
-                    val threadId = viewModel.createThreadAsync(title, null)
+                    val threadId = viewModel.createThreadAsync(title, null, systemPrompt)
                     if (threadId > 0) {
                         onNavigateToChat(threadId)
                     }
@@ -501,24 +503,55 @@ private fun SetLabelDialog(
 @Composable
 fun CreateThreadDialog(
     onDismiss: () -> Unit,
-    onCreate: (String) -> Unit
+    onCreate: (title: String, systemPrompt: String?) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
-    
+    var selectedPersonaId by remember { mutableStateOf<String?>(null) }
+    val personas = remember { BuiltInPrompts.personas }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("New Chat Thread") },
         text = {
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Thread Title") },
-                singleLine = true
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Thread Title") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = "Persona (optional)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item {
+                        FilterChip(
+                            selected = selectedPersonaId == null,
+                            onClick = { selectedPersonaId = null },
+                            label = { Text("None") }
+                        )
+                    }
+                    items(personas, key = { it.id }) { persona ->
+                        FilterChip(
+                            selected = selectedPersonaId == persona.id,
+                            onClick = {
+                                selectedPersonaId = if (selectedPersonaId == persona.id) null else persona.id
+                            },
+                            label = { Text(persona.title) }
+                        )
+                    }
+                }
+            }
         },
         confirmButton = {
             TextButton(
-                onClick = { onCreate(title) },
+                onClick = {
+                    val prompt = personas.firstOrNull { it.id == selectedPersonaId }?.text
+                    onCreate(title, prompt)
+                },
                 enabled = title.isNotBlank()
             ) {
                 Text("Create")

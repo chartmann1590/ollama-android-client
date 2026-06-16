@@ -40,6 +40,7 @@ class OllamaApplication : Application() {
 
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
+        AppCheckInstaller.install()
         try {
             FirebaseDatabase.getInstance().setPersistenceEnabled(true)
         } catch (e: Exception) {
@@ -151,6 +152,11 @@ class OllamaApplication : Application() {
 }
 
 internal fun isSuppressibleFrameworkBug(t: Throwable): Boolean {
+    // Firebase RTDB throws DatabaseException on the main thread when a write is denied
+    // (the default no-listener completion handler in the Java SDK calls error.toException()).
+    // Treat these as non-fatal rather than killing the process.
+    if (t is com.google.firebase.database.DatabaseException) return true
+
     if (t !is IllegalArgumentException) return false
     if (t.message?.contains("descendant of this view") != true) return false
     return t.stackTrace.any { f ->

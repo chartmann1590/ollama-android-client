@@ -26,6 +26,7 @@ import com.charles.ollama.client.ui.chat.ChatThreadsScreen
 import com.charles.ollama.client.ui.models.ModelDetailScreen
 import com.charles.ollama.client.ui.models.ModelsScreen
 import com.charles.ollama.client.ui.onboarding.FirstRunSetupTutorialSheet
+import com.charles.ollama.client.ui.onboarding.WhatsNewPersonasSheet
 import com.charles.ollama.client.ui.premium.PaywallScreen
 import com.charles.ollama.client.ui.prompts.PromptLibraryScreen
 import com.charles.ollama.client.ui.rewards.RewardsScreen
@@ -344,6 +345,10 @@ fun NavGraph(
             onNavigateToRewards = {
                 navController.navigate(Screen.Rewards.route)
             },
+        )
+        WhatsNewPersonasSheet(
+            defaultServer = defaultServer,
+            setupTutorialFinishedSignal = setupTutorialFinishedSignal,
         )
     } else {
         // Show loading indicator while waiting for defaultServer to load

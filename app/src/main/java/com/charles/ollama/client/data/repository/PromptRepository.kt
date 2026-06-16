@@ -19,6 +19,8 @@ class PromptRepository @Inject constructor(
     private val promptPresetDao: PromptPresetDao
 ) {
     val builtIns: List<PromptPreset> = BuiltInPrompts.all
+    val builtInPersonas: List<PromptPreset> = BuiltInPrompts.personas
+    val builtInUtilities: List<PromptPreset> = BuiltInPrompts.utilities
 
     val customPresets: Flow<List<PromptPreset>> =
         promptPresetDao.getAllFlow().map { list -> list.map { it.toDomain() } }

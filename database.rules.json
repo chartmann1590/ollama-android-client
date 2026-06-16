@@ -133,7 +133,7 @@
               },
               "images": {
                 "$imageIndex": {
-                  ".validate": "newData.isString() && newData.val().length <= 1000000"
+                  ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9+\\/]+={0,2}$/) && newData.val().length <= 1000000"
                 }
               },
               "evalCount": {
@@ -168,8 +168,8 @@
         },
         "webRequests": {
           "$requestId": {
-            ".write": "auth != null && auth.uid == $uid && (root.child('users').child($uid).child('subscription').child('webSyncPremium').val() == true || root.child('users').child($uid).child('webSyncDailyUsage').child('count').val() < 3)",
-            ".validate": "newData.hasChildren(['threadSyncId', 'content', 'status', 'createdAt']) && (newData.child('status').val() == 'pending' || newData.child('status').val() == 'running' || newData.child('status').val() == 'complete' || newData.child('status').val() == 'error')",
+            ".write": "auth != null && auth.uid == $uid && (!data.exists() ? (root.child('users').child($uid).child('subscription').child('webSyncPremium').val() == true || root.child('users').child($uid).child('webSyncDailyUsage').child('count').val() < 3) : true)",
+            ".validate": "newData.hasChildren(['threadSyncId', 'content', 'status', 'createdAt']) && (newData.child('status').val() == 'pending' || newData.child('status').val() == 'running' || newData.child('status').val() == 'complete' || newData.child('status').val() == 'error') && (data.exists() || (newData.child('status').val() == 'pending' && newData.child('createdAt').val() >= now - 300000 && newData.child('createdAt').val() <= now + 60000))",
             "threadSyncId": {
               ".validate": "newData.isString()"
             },
@@ -202,7 +202,7 @@
             },
             "images": {
               "$imageIndex": {
-                ".validate": "newData.isString() && newData.val().length <= 1000000"
+                ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9+\\/]+={0,2}$/) && newData.val().length <= 1000000"
               }
             },
             "$other": {

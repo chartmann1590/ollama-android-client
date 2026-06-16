@@ -89,9 +89,22 @@ fun PromptLibraryScreen(
             }
 
             item {
-                Text("Built-in", style = MaterialTheme.typography.titleMedium)
+                Text("Personas", style = MaterialTheme.typography.titleMedium)
             }
-            items(viewModel.builtIns, key = { it.id }) { preset ->
+            items(viewModel.builtInPersonas, key = { it.id }) { preset ->
+                PresetCard(
+                    preset = preset,
+                    canApply = canApply,
+                    onApply = { viewModel.applyToThread(preset) { onNavigateBack() } },
+                    onEdit = null,
+                    onDelete = null
+                )
+            }
+
+            item {
+                Text("Utilities", style = MaterialTheme.typography.titleMedium)
+            }
+            items(viewModel.builtInUtilities, key = { it.id }) { preset ->
                 PresetCard(
                     preset = preset,
                     canApply = canApply,

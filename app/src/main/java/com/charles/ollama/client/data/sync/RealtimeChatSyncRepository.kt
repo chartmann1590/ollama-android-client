@@ -10,6 +10,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -37,7 +38,10 @@ class RealtimeChatSyncRepository @Inject constructor(
     private val syncPreferences: SyncPreferences
 ) {
     private val database = FirebaseDatabase.getInstance()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO +
+            CoroutineExceptionHandler { _, e -> Log.e(TAG, "Uncaught sync error", e) }
+    )
 
     private var activeUid: String? = null
     private var activeDeviceId: String? = null
@@ -194,21 +198,21 @@ class RealtimeChatSyncRepository @Inject constructor(
         val root = userRef(uid)
         threadListener = object : SimpleChildEventListener() {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                scope.launch { importThread(snapshot) }
+                scope.launch { runCatching { importThread(snapshot) }.onFailure { Log.e(TAG, "importThread failed", it) } }
             }
 
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                scope.launch { importThread(snapshot) }
+                scope.launch { runCatching { importThread(snapshot) }.onFailure { Log.e(TAG, "importThread failed", it) } }
             }
         }.also { root.child("threads").addChildEventListener(it) }
 
         messageListener = object : SimpleChildEventListener() {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                scope.launch { importThreadMessages(snapshot) }
+                scope.launch { runCatching { importThreadMessages(snapshot) }.onFailure { Log.e(TAG, "importThreadMessages failed", it) } }
             }
 
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                scope.launch { importThreadMessages(snapshot) }
+                scope.launch { runCatching { importThreadMessages(snapshot) }.onFailure { Log.e(TAG, "importThreadMessages failed", it) } }
             }
         }.also { root.child("messages").addChildEventListener(it) }
 
@@ -231,8 +235,13 @@ class RealtimeChatSyncRepository @Inject constructor(
         if (snapshot.child("status").getValue(String::class.java) != "pending") return
         val request = snapshot.toWebChatRequest() ?: return
         scope.launch {
-            val result = webRequestHandler(request)
-            result.onFailure { failWebRequest(uid, request.requestId, it.localizedMessage ?: "Web request failed") }
+            runCatching {
+                val result = webRequestHandler(request)
+                result.onFailure {
+                    runCatching { failWebRequest(uid, request.requestId, it.localizedMessage ?: "Web request failed") }
+                        .onFailure { e -> Log.e(TAG, "Failed to mark web request failed", e) }
+                }
+            }.onFailure { e -> Log.e(TAG, "Web request handler threw unexpectedly", e) }
         }
     }
 

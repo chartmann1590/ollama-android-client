@@ -25,7 +25,8 @@ class PromptLibraryViewModel @Inject constructor(
     /** Thread to apply a chosen preset to; -1 means "manage only". */
     val threadId: Long = savedStateHandle.get<Long>("threadId") ?: -1L
 
-    val builtIns: List<PromptPreset> = promptRepository.builtIns
+    val builtInPersonas: List<PromptPreset> = promptRepository.builtInPersonas
+    val builtInUtilities: List<PromptPreset> = promptRepository.builtInUtilities
 
     val customPresets: StateFlow<List<PromptPreset>> =
         promptRepository.customPresets.stateIn(

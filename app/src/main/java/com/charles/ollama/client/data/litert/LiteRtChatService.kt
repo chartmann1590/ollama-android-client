@@ -30,6 +30,11 @@ class LiteRtChatService @Inject constructor(
      * as [historyBeforeUser] (DB rows in order, excluding the current user
      * message row just inserted).
      *
+     * History is token-budget-compacted before each attempt so the KV cache
+     * never overflows. If the engine still throws, we step down to progressively
+     * shorter history rather than immediately falling back to an empty context,
+     * preserving as much recent conversation as possible.
+     *
      * The Gemma engine runs on [Dispatchers.Default] via [flowOn]. Do not wrap
      * this body in `withContext`: a `flow { }` builder cannot emit from a
      * different dispatcher than the one that collected it, which triggers
@@ -57,45 +62,77 @@ class LiteRtChatService @Inject constructor(
             listOf(Backend.CPU())
         }
 
+        val effectiveMaxTokens = if (isGemma4) GEMMA4_MAX_NUM_TOKENS else DEFAULT_MAX_NUM_TOKENS
+
+        // Build all complete user/assistant pairs from history, then trim to
+        // what fits within the token budget so the KV cache won't overflow.
+        val allPairs = buildHistoryPairs(historyBeforeUser)
+        val compacted = compactHistoryToTokenBudget(allPairs, effectiveMaxTokens, userMessage)
+
+        // Step-down fallback: compacted → half → 1 pair → empty.
+        // This prevents a hard context-overflow crash from silently wiping all
+        // history — we always keep as much recent context as the engine can hold.
+        val half = compacted.takeLast(maxOf(1, compacted.size / 2))
+        val one = compacted.takeLast(1)
+        val historyAttempts = listOf(compacted, half, one, emptyList<Pair<String, String>>())
+            .distinctBy { it.size }
+            .map { pairs -> pairsToMessages(pairs) }
+
         var lastAttemptError: Exception? = null
         for (backend in backendAttempts) {
-            val engineConfig = EngineConfig(
-                modelPath = modelPath,
-                backend = backend,
-                maxNumTokens = if (isGemma4) GEMMA4_MAX_NUM_TOKENS else null,
-                cacheDir = cacheDir
-            )
-            try {
-                Log.i(TAG, "Starting LiteRT engine with backend=${backend.name}, maxTokens=${engineConfig.maxNumTokens}")
-                val generatedChunks = ArrayList<String>()
-                Engine(engineConfig).use { engine ->
-                    engine.initialize()
-                    val initialMessages = if (isGemma4) {
-                        emptyList()
-                    } else {
-                        buildInitialMessages(historyBeforeUser)
-                    }
-                    val convConfig = ConversationConfig(
-                        systemInstruction = systemPrompt?.takeIf { it.isNotBlank() }?.let { Contents.of(it) },
-                        initialMessages = initialMessages
+            for (history in historyAttempts) {
+                val engineConfig = EngineConfig(
+                    modelPath = modelPath,
+                    backend = backend,
+                    maxNumTokens = if (isGemma4) GEMMA4_MAX_NUM_TOKENS else null,
+                    cacheDir = cacheDir
+                )
+                try {
+                    Log.i(
+                        TAG,
+                        "Starting LiteRT engine with backend=${backend.name}, " +
+                            "historyMessages=${history.size}, maxTokens=${engineConfig.maxNumTokens}"
                     )
-                    engine.createConversation(convConfig).use { conversation ->
-                        conversation.sendMessageAsync(userMessage).collect { chunk ->
-                            generatedChunks.add(chunk.toString())
+                    val generatedChunks = ArrayList<String>()
+                    Engine(engineConfig).use { engine ->
+                        engine.initialize()
+                        val convConfig = ConversationConfig(
+                            systemInstruction = systemPrompt?.takeIf { it.isNotBlank() }?.let { Contents.of(it) },
+                            initialMessages = history
+                        )
+                        engine.createConversation(convConfig).use { conversation ->
+                            conversation.sendMessageAsync(userMessage).collect { chunk ->
+                                generatedChunks.add(chunk.toString())
+                            }
                         }
                     }
+                    generatedChunks.forEach { emit(it) }
+                    return@flow
+                } catch (e: Exception) {
+                    lastAttemptError = e
+                    Log.w(
+                        TAG,
+                        "LiteRT generation failed for backend=${backend.name}, " +
+                            "historyMessages=${history.size}",
+                        e
+                    )
                 }
-                generatedChunks.forEach { emit(it) }
-                return@flow
-            } catch (e: Exception) {
-                lastAttemptError = e
-                Log.w(TAG, "LiteRT generation failed for backend=${backend.name}", e)
             }
         }
         throw lastAttemptError ?: IllegalStateException("Failed to run LiteRT engine.")
     }.flowOn(Dispatchers.Default)
 
-    private fun buildInitialMessages(history: List<ChatMessageEntity>): List<Message> {
+    /**
+     * Converts DB history rows into LiteRT [Message] objects, capped at
+     * [MAX_HISTORY_PAIRS] complete user/assistant pairs. Kept for backward
+     * compatibility and unit tests; [streamChat] uses [compactHistoryToTokenBudget]
+     * instead for a token-aware limit.
+     */
+    internal fun buildInitialMessages(history: List<ChatMessageEntity>): List<Message> =
+        pairsToMessages(buildHistoryPairs(history).takeLast(MAX_HISTORY_PAIRS))
+
+    /** Extracts complete user/assistant pairs from DB rows (ignores system rows). */
+    private fun buildHistoryPairs(history: List<ChatMessageEntity>): List<Pair<String, String>> {
         val completePairs = ArrayList<Pair<String, String>>()
         var pendingUser: String? = null
         for (msg in history) {
@@ -112,17 +149,90 @@ class LiteRtChatService @Inject constructor(
                 "system" -> { /* system handled via ConversationConfig */ }
             }
         }
-        val out = ArrayList<Message>()
-        completePairs.takeLast(MAX_HISTORY_PAIRS).forEach { (user, assistant) ->
+        return completePairs
+    }
+
+    private fun pairsToMessages(pairs: List<Pair<String, String>>): List<Message> {
+        val out = ArrayList<Message>(pairs.size * 2)
+        pairs.forEach { (user, assistant) ->
             out.add(Message.user(user))
             out.add(Message.model(assistant))
         }
         return out
     }
 
+    /**
+     * Trims [pairs] to fit within [HISTORY_TOKEN_FRACTION] of [maxTokens], keeping
+     * the most recent pairs first. Also tries to retain the very first pair as a
+     * conversation anchor (sets topic/framing) and any pairs that share keywords
+     * with [userMessage] (lightweight relevance search). Oldest non-relevant pairs
+     * are dropped first.
+     *
+     * Token estimate: (chars / [CHARS_PER_TOKEN]) + [MESSAGE_OVERHEAD_TOKENS] per role.
+     */
+    internal fun compactHistoryToTokenBudget(
+        pairs: List<Pair<String, String>>,
+        maxTokens: Int,
+        userMessage: String = ""
+    ): List<Pair<String, String>> {
+        if (pairs.isEmpty()) return emptyList()
+        val budget = (maxTokens * HISTORY_TOKEN_FRACTION).toInt()
+        fun estimatePairTokens(p: Pair<String, String>): Int =
+            (p.first.length + p.second.length) / CHARS_PER_TOKEN + MESSAGE_OVERHEAD_TOKENS * 2
+
+        // --- Step 1: fill sliding window from newest ---
+        var spent = 0
+        val keptIndices = mutableSetOf<Int>()
+        for (i in pairs.indices.reversed()) {
+            val cost = estimatePairTokens(pairs[i])
+            if (spent + cost > budget) break
+            keptIndices.add(i)
+            spent += cost
+        }
+
+        // --- Step 2: anchor — keep first pair if budget allows ---
+        if (0 !in keptIndices) {
+            val firstCost = estimatePairTokens(pairs[0])
+            if (spent + firstCost <= budget) {
+                keptIndices.add(0)
+                spent += firstCost
+            }
+        }
+
+        // --- Step 3: keyword relevance — surface up to 2 older pairs that
+        //     share content words with the current user message ---
+        if (userMessage.isNotBlank() && spent < budget) {
+            val keywords = userMessage.lowercase()
+                .split(Regex("\\W+"))
+                .filter { it.length >= 4 }
+                .toSet()
+            if (keywords.isNotEmpty()) {
+                for (i in pairs.indices) {
+                    if (i in keptIndices) continue
+                    val pairText = (pairs[i].first + " " + pairs[i].second).lowercase()
+                    if (keywords.any { pairText.contains(it) }) {
+                        val cost = estimatePairTokens(pairs[i])
+                        if (spent + cost <= budget) {
+                            keptIndices.add(i)
+                            spent += cost
+                        }
+                    }
+                    // Limit keyword-matched inclusions to avoid over-stuffing
+                    if (keptIndices.size > pairs.size - 2) break
+                }
+            }
+        }
+
+        return keptIndices.sorted().map { pairs[it] }
+    }
+
     private companion object {
         const val TAG = "LiteRtChatService"
-        const val GEMMA4_MAX_NUM_TOKENS = 1024
+        const val GEMMA4_MAX_NUM_TOKENS = 2048
+        const val DEFAULT_MAX_NUM_TOKENS = 4096
+        const val HISTORY_TOKEN_FRACTION = 0.55
+        const val CHARS_PER_TOKEN = 4
+        const val MESSAGE_OVERHEAD_TOKENS = 10
         const val MAX_HISTORY_PAIRS = 4
     }
 }
