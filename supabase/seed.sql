@@ -1,0 +1,2 @@
+-- Seed data placeholder
+-- Add any development seed data here if needed

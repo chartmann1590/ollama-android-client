@@ -173,8 +173,7 @@ fun PaywallScreen(
                     Text("Restore purchase")
                 }
                 Text(
-                    text = "Subscriptions renew automatically until cancelled in Google Play. " +
-                        "Lifetime is a one-time payment.",
+                    text = "Subscriptions renew automatically until cancelled. Lifetime is a one-time payment.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

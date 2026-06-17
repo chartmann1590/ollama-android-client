@@ -200,6 +200,10 @@ android {
             applicationId = "com.charles.ollama.client.github"
             versionNameSuffix = "-github"
             buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_PROMPT", "true")
+            val supabaseUrl = adProp("SUPABASE_URL", "supabase.url", "")
+            val supabaseAnonKey = adProp("SUPABASE_ANON_KEY", "supabase.anonKey", "")
+            buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
         }
     }
 

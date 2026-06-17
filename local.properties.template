@@ -31,6 +31,10 @@
 # github.repo.owner=chartmann1590
 # github.repo.name=ollama-android-client
 
+# --- Supabase (required for GitHub flavor in-app purchases) ---
+# supabase.url=https://your-project-id.supabase.co
+# supabase.anonKey=eyJhbGciOiJIUzI1NiIs...
+
 # --- Firebase Auth / Google sign-in ---
 # Web client ID from Firebase/Google Cloud OAuth client. Required for Google
 # sign-in until the downloaded google-services.json includes default_web_client_id.
