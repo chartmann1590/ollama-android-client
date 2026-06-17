@@ -1035,6 +1035,8 @@ window.__testSetPhoneOnline = function(online) {
 // load after sign-in (otherwise a transient free+over-limit read can abort a
 // send via the premium modal before the listeners settle).
 window.__testSetPremium = function(premium) {
+    stopSubscriptionListener();
+    stopDailyUsageListener();
     isWebSyncPremium = !!premium;
     dailyMsgCount    = 0;
     dailyMsgDate     = getUtcDateString();
