@@ -50,11 +50,20 @@ jobs:
       - name: Deploy Firebase database rules
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
         run: |
           if [ -z "$FIREBASE_TOKEN" ]; then
             echo "FIREBASE_TOKEN not set — skipping database rules deploy"
             exit 0
           fi
+          # Inject the admin email (kept out of the public repo) into the rules.
+          # Fail closed if the secret is missing so admin access is never granted
+          # to an unintended/placeholder value.
+          if [ -z "$ADMIN_EMAIL" ]; then
+            echo "ADMIN_EMAIL not set — skipping database rules deploy to avoid deploying the placeholder"
+            exit 0
+          fi
+          python3 -c "import os; t=open('database.rules.json').read().replace('__ADMIN_EMAIL__', os.environ['ADMIN_EMAIL']); open('database.rules.json','w').write(t); print('Admin email injected into database rules')"
           npm install -g firebase-tools --silent
           firebase deploy --only database --token "$FIREBASE_TOKEN" --project ollama-android-7525f
 

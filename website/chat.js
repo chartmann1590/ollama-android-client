@@ -52,7 +52,22 @@ let dailyUsageRef      = null;
 if (!auth) {
     console.warn('Auth unavailable — Firebase config not set.');
 }
+// Admin navbar link is shown only for the administrator account. Authorization
+// is decided by the database, not the client: we probe an admin-only path and
+// reveal the link only if the security rules allow the read. The admin identity
+// is never embedded in this public script. (Visibility only — data access is
+// always rules-enforced.)
+function updateAdminNav(user) {
+    const link = document.getElementById('nav-admin');
+    if (!link) return;
+    if (!user || !db) { link.style.display = 'none'; return; }
+    db.ref('contentReports').limitToFirst(1).once('value')
+        .then(() => { link.style.display = 'inline-block'; })
+        .catch(() => { link.style.display = 'none'; });
+}
+
 (auth || { onAuthStateChanged: () => {} }).onAuthStateChanged(user => {
+    updateAdminNav(user);
     if (user) {
         uid     = user.uid;
         userRef = db.ref('users/' + uid);

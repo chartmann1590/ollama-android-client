@@ -7,7 +7,6 @@
    boundary.
    ========================================================= */
 
-const ADMIN_EMAIL = 'charles.h.hartmann1@gmail.com';
 const GH_OWNER = 'chartmann1590';
 const GH_REPO = 'ollama-android-client';
 
@@ -56,11 +55,13 @@ $('btn-refresh').addEventListener('click', () => loadAll());
 
 (auth || { onAuthStateChanged: () => {} }).onAuthStateChanged(user => {
     if (!user) { showGate('Sign in with the administrator account to continue.'); return; }
-    if (user.email !== ADMIN_EMAIL) {
-        showGate('This account (' + user.email + ') is not authorized for the admin dashboard.', true);
-        return;
-    }
-    showApp(user);
+    // Authorization is decided by the database, not the client: probe an
+    // admin-only path. Success ⇒ the security rules recognize this account as
+    // the admin. The admin identity is never embedded in this public script.
+    if (!db) { showGate('Firebase is not configured on this deployment.', true); return; }
+    db.ref('contentReports').limitToFirst(1).once('value')
+        .then(() => showApp(user))
+        .catch(() => showGate('This account (' + user.email + ') is not authorized for the admin dashboard.', true));
 });
 
 // ---- Data loading ----

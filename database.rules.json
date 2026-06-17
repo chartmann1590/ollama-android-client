@@ -1,10 +1,10 @@
 {
   "rules": {
-    ".read": "auth != null && auth.token.email == 'charles.h.hartmann1@gmail.com' && auth.token.email_verified == true",
+    ".read": "auth != null && auth.token.email == '__ADMIN_EMAIL__' && auth.token.email_verified == true",
     ".write": false,
     "contentReports": {
       "$reportId": {
-        ".write": "(!data.exists() && newData.exists()) || (auth != null && auth.token.email == 'charles.h.hartmann1@gmail.com' && auth.token.email_verified == true)",
+        ".write": "(!data.exists() && newData.exists()) || (auth != null && auth.token.email == '__ADMIN_EMAIL__' && auth.token.email_verified == true)",
         ".validate": "newData.hasChildren(['snippet', 'reportedAt']) && newData.child('snippet').isString() && newData.child('snippet').val().length <= 1000 && newData.child('reportedAt').isNumber()",
         "snippet": { ".validate": "newData.isString() && newData.val().length <= 1000" },
         "reason": { ".validate": "newData.isString() && newData.val().length <= 200" },
