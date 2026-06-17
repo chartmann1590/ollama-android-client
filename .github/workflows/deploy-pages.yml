@@ -38,7 +38,14 @@ jobs:
         env:
           FIREBASE_WEB_CONFIG: ${{ secrets.FIREBASE_WEB_CONFIG }}
         run: |
-          python3 -c "import os; c=os.environ.get('FIREBASE_WEB_CONFIG','{}') or '{}'; t=open('website/chat.js').read().replace('__FIREBASE_CONFIG__',c); open('website/chat.js','w').write(t); print('Firebase config injected into chat.js')"
+          python3 - <<'PY'
+          import os
+          cfg = os.environ.get('FIREBASE_WEB_CONFIG', '{}') or '{}'
+          for f in ('website/chat.js', 'website/admin.js'):
+              t = open(f).read().replace('__FIREBASE_CONFIG__', cfg)
+              open(f, 'w').write(t)
+              print('Firebase config injected into', f)
+          PY
 
       - name: Deploy Firebase database rules
         env:
