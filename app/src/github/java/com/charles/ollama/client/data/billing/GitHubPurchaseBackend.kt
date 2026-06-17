@@ -6,8 +6,14 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import com.charles.ollama.client.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +48,11 @@ class GitHubPurchaseBackend @Inject constructor(
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
+    // Network must never run on the main thread (NetworkOnMainThreadException),
+    // so all Supabase calls are dispatched here. SupervisorJob keeps the scope
+    // alive across individual call failures for this app-lifetime singleton.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private val supabaseUrl: String = BuildConfig.SUPABASE_URL
     private val supabaseKey: String = BuildConfig.SUPABASE_ANON_KEY
 
@@ -63,67 +74,86 @@ class GitHubPurchaseBackend @Inject constructor(
             Log.w(TAG, "Supabase not configured; using cached premium status")
             return
         }
-        try {
-            val url = "$supabaseUrl/functions/v1/get-premium-status?device_id=$deviceId"
-            val request = Request.Builder()
-                .url(url)
-                .addHeader("Authorization", "Bearer $supabaseKey")
-                .build()
-            val response = client.newCall(request).execute()
-            if (response.isSuccessful) {
-                val body = response.body?.string()
-                if (body != null) {
-                    val json = JSONObject(body)
-                    val premium = json.optBoolean("isPremium", false)
-                    val webSync = json.optBoolean("isWebSyncPremium", false)
-                    setPremium(premium)
-                    setWebSyncPremium(webSync)
+        scope.launch {
+            try {
+                val url = "$supabaseUrl/functions/v1/get-premium-status?device_id=$deviceId"
+                val request = Request.Builder()
+                    .url(url)
+                    .addHeader("Authorization", "Bearer $supabaseKey")
+                    .build()
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val body = response.body?.string()
+                    if (body != null) {
+                        val json = JSONObject(body)
+                        val premium = json.optBoolean("isPremium", false)
+                        val webSync = json.optBoolean("isWebSyncPremium", false)
+                        setPremium(premium)
+                        setWebSyncPremium(webSync)
+                    }
+                } else {
+                    Log.w(TAG, "refreshPurchases failed: ${response.code}")
                 }
-            } else {
-                Log.w(TAG, "refreshPurchases failed: ${response.code}")
+            } catch (e: Exception) {
+                Log.e(TAG, "refreshPurchases error", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "refreshPurchases error", e)
         }
     }
 
     override fun launchPurchase(activity: Activity, plan: PremiumPlan): Boolean {
         if (supabaseUrl.isBlank() || supabaseKey.isBlank()) {
             Log.w(TAG, "Supabase not configured; cannot initiate purchase")
+            toast(activity, "Purchases are not available in this build.")
             return false
         }
-        try {
-            val json = JSONObject().apply {
-                put("productId", plan.productId)
-                put("deviceId", deviceId)
-                put("successUrl", "${CALLBACK_SCHEME}://payment-success")
-                put("cancelUrl", "${CALLBACK_SCHEME}://payment-cancelled")
-            }
-            val body = json.toString().toRequestBody(JSON_MEDIA_TYPE)
-            val request = Request.Builder()
-                .url("$supabaseUrl/functions/v1/create-checkout-session")
-                .addHeader("Authorization", "Bearer $supabaseKey")
-                .post(body)
-                .build()
-            val response = client.newCall(request).execute()
-            if (response.isSuccessful) {
-                val responseBody = response.body?.string()
-                if (responseBody != null) {
-                    val resultJson = JSONObject(responseBody)
-                    val checkoutUrl = resultJson.optString("url")
-                    if (checkoutUrl.isNotBlank()) {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(checkoutUrl))
-                        activity.startActivity(intent)
-                        return true
-                    }
+        // The network round-trip to create the Stripe Checkout session runs off
+        // the main thread; the browser intent is then launched back on the main
+        // thread. The Boolean return is advisory only (the UI ignores it) since
+        // the real result is asynchronous.
+        scope.launch {
+            try {
+                val json = JSONObject().apply {
+                    put("productId", plan.productId)
+                    put("deviceId", deviceId)
+                    put("successUrl", "${CALLBACK_SCHEME}://payment-success")
+                    put("cancelUrl", "${CALLBACK_SCHEME}://payment-cancelled")
                 }
-            } else {
-                Log.w(TAG, "create-checkout-session failed: ${response.code} ${response.body?.string()}")
+                val body = json.toString().toRequestBody(JSON_MEDIA_TYPE)
+                val request = Request.Builder()
+                    .url("$supabaseUrl/functions/v1/create-checkout-session")
+                    .addHeader("Authorization", "Bearer $supabaseKey")
+                    .post(body)
+                    .build()
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                if (response.isSuccessful && responseBody != null) {
+                    val checkoutUrl = JSONObject(responseBody).optString("url")
+                    if (checkoutUrl.isNotBlank()) {
+                        withContext(Dispatchers.Main) {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(checkoutUrl))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            activity.startActivity(intent)
+                        }
+                        return@launch
+                    }
+                    Log.w(TAG, "create-checkout-session returned no url")
+                } else {
+                    Log.w(TAG, "create-checkout-session failed: ${response.code} $responseBody")
+                }
+                toast(activity, "Could not start checkout. Please try again.")
+            } catch (e: Exception) {
+                Log.e(TAG, "launchPurchase error", e)
+                toast(activity, "Could not start checkout. Please try again.")
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "launchPurchase error", e)
         }
-        return false
+        return true
+    }
+
+    // Safe to call from any thread — always shows on the main looper.
+    private fun toast(activity: Activity, message: String) {
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            Toast.makeText(activity.applicationContext, message, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun setPremium(premium: Boolean) {
