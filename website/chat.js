@@ -1030,6 +1030,17 @@ window.__testSetPhoneOnline = function(online) {
     if (!online && offlineQueue.length > 0) updateQueuedStatus();
 };
 
+// Force the daily-quota gate into a known state so the send tests are
+// deterministic regardless of how quickly the subscription/usage listeners
+// load after sign-in (otherwise a transient free+over-limit read can abort a
+// send via the premium modal before the listeners settle).
+window.__testSetPremium = function(premium) {
+    isWebSyncPremium = !!premium;
+    dailyMsgCount    = 0;
+    dailyMsgDate     = getUtcDateString();
+    if (typeof updateWebSyncUI === 'function') updateWebSyncUI();
+};
+
 // ---- Helpers ----
 function scrollToBottom() {
     const list = document.getElementById('message-list');

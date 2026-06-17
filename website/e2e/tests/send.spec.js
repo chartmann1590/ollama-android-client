@@ -17,6 +17,9 @@ async function ensureModelSelected(page) {
             // Pick the first non-placeholder option
             const real = Array.from(sel.options).find(o => o.value);
             if (real) sel.value = real.value;
+            // Fire 'change' so chat.js updates its internal model state. Without
+            // this, a value set directly on the element isn't observed.
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
         }
     });
 }
@@ -30,6 +33,12 @@ test.describe('Message input UI', () => {
         await page.fill('#auth-password', process.env.PLAYWRIGHT_TEST_PASSWORD);
         await page.click('#btn-signin');
         await expect(page.locator('#chat-shell')).toHaveClass(/visible/, { timeout: 15000 });
+        // Force a deterministic, un-quota-limited state so the send-path tests
+        // don't race the async subscription/usage listeners (a transient
+        // free+over-limit read otherwise aborts the send via the premium modal).
+        await page.evaluate(() => {
+            if (typeof window.__testSetPremium === 'function') window.__testSetPremium(true);
+        });
         // Start a new chat so input is enabled
         await page.click('#btn-new-chat');
     });
