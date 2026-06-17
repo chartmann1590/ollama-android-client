@@ -123,7 +123,7 @@
         <div class="container">
             <div class="privacy-content">
                 <h1>Privacy Policy</h1>
-                <div class="last-updated">Last Updated: June 16, 2026</div>
+                <div class="last-updated">Last Updated: June 17, 2026</div>
 
                 <h2>Introduction</h2>
                 <p>Ollama Android Client ("we", "our", or "the app") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application and the Web Chat interface.</p>
@@ -149,6 +149,7 @@
                         </ul>
                     </li>
                     <li><strong>Push Notification and Sync Token:</strong> If you allow notification permissions, Firebase Cloud Messaging (FCM) generates a unique device registration token to route push notifications and background synchronization triggers to your device. This token is unique to your specific app/device installation.</li>
+                    <li><strong>Advertising ID (AD_ID):</strong> The app displays ads via Google AdMob. AdMob may collect your device's Advertising ID (AD_ID) to serve personalized or non-personalized ads, depending on the consent you provide. In regions where consent is required (EEA, UK), you will be prompted to accept or decline ad personalization before ads are shown. If you decline, non-personalized ads may still be displayed but no AD_ID-based profiling occurs.</li>
                 </ul>
 
                 <h3>Third-Party Services</h3>
@@ -162,6 +163,8 @@
                     <li><strong>Firebase Realtime Database:</strong> For real-time Web sync, storing and syncing chat threads, messages, and metadata across your authenticated devices.</li>
                     <li><strong>Google Play Billing:</strong> In the Google Play version of the app, in-app purchases and subscriptions are processed by Google Play. Google handles your payment details; we never receive or store your card information.</li>
                     <li><strong>Stripe:</strong> In the GitHub (sideloaded) version of the app, purchases are processed by <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer">Stripe</a> via Stripe Checkout, which opens in your browser. Stripe handles your payment card details directly; we never receive or store your card information. We store only a record that an entitlement was granted, linked to your account identifier.</li>
+                    <li><strong>Google AdMob:</strong> For displaying banner, interstitial, and native ads. AdMob may use the Advertising ID and other signals to serve ads. Where required by law, ads are only initialized after you grant consent via the Google User Messaging Platform (UMP) consent dialog. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google's Privacy Policy</a> for details.</li>
+                    <li><strong>Supabase:</strong> In the GitHub (sideloaded) version of the app, billing entitlement records (account identifier, product ID, subscription status and period) are stored in a Supabase-hosted PostgreSQL database. Supabase is a cloud database platform; see <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer">Supabase's Privacy Policy</a> for details.</li>
                     <li><strong>Ollama Server:</strong> Your chat messages are sent to the Ollama server you configure. We do not control or have access to data sent to your Ollama server.</li>
                 </ul>
 
@@ -216,7 +219,8 @@
                 </ul>
 
                 <h2>AI-Generated Content</h2>
-                <p>The app sends your messages to an AI model (an Ollama server you configure, or an on-device model) and displays the model's responses. AI-generated responses may be inaccurate, incomplete, or objectionable — please verify important information independently. You can flag an inappropriate AI response from the message's overflow (⋮) menu by choosing <strong>Report</strong>; reported content is recorded for review.</p>
+                <p>The app sends your messages to an AI model (an Ollama server you configure, or an on-device model) and displays the model's responses. AI-generated responses may be inaccurate, incomplete, or objectionable — please verify important information independently.</p>
+                <p>You can flag an inappropriate AI response from the message's overflow (⋮) menu by choosing <strong>Report</strong>. Submitting a report sends the following data to our Firebase Realtime Database (<code>/contentReports</code>): a snippet of the flagged message (up to 1,000 characters), an optional reason you provide (up to 200 characters), the timestamp of the report, and the app's package name. Reports are stored securely and accessible only to the app administrator for review. No personally identifiable information beyond what is included in the snippet is attached to a content report.</p>
 
                 <h2>Children's Privacy</h2>
                 <p>Our app is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13.</p>
