@@ -8,6 +8,7 @@ import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import com.charles.ollama.client.BuildConfig
+import com.charles.ollama.client.data.auth.AuthRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +18,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -28,7 +30,8 @@ import javax.inject.Singleton
 
 @Singleton
 class GitHubPurchaseBackend @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val authRepository: AuthRepository,
 ) : PurchaseBackend {
 
     private val prefs: SharedPreferences =
@@ -43,6 +46,11 @@ class GitHubPurchaseBackend @Inject constructor(
     override val productDetails: StateFlow<Map<String, PremiumProductInfo>> =
         MutableStateFlow(hardcodedProducts()).asStateFlow()
 
+    // GitHub flavor has no platform billing account, so purchases are linked to
+    // a Firebase sign-in to stay restorable. The paywall reads this to explain
+    // why sign-in is required. (Play returns the interface default, false.)
+    override val requiresSignInToPurchase: Boolean = true
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
@@ -56,47 +64,79 @@ class GitHubPurchaseBackend @Inject constructor(
     private val supabaseUrl: String = BuildConfig.SUPABASE_URL
     private val supabaseKey: String = BuildConfig.SUPABASE_ANON_KEY
 
-    private val deviceId: String by lazy {
-        prefs.getString(KEY_DEVICE_ID, null) ?: generateDeviceId()
+    /** The Firebase account the entitlement is tied to, or null when signed out. */
+    private fun currentAccountId(): String? = authRepository.currentUser.value?.uid
+
+    init {
+        // Entitlements are tied to the signed-in Firebase account (so they
+        // restore across reinstalls and devices, matching the Play experience).
+        // Re-evaluate whenever the signed-in user changes: fetch on sign-in,
+        // lock everything down on sign-out.
+        scope.launch {
+            authRepository.currentUser.collect { user ->
+                val uid = user?.uid
+                if (uid == null) {
+                    clearAccountCache()
+                    setPremium(false)
+                    setWebSyncPremium(false)
+                } else {
+                    fetchStatus(uid)
+                }
+            }
+        }
     }
 
     override fun initialize() {
-        val cached = prefs.getBoolean(KEY_IS_PREMIUM, false)
-        val cachedWebSync = prefs.getBoolean(KEY_IS_WEB_SYNC_PREMIUM, false)
-        if (cached || cachedWebSync) {
-            _isPremium.value = cached
-            _isWebSyncPremium.value = cachedWebSync
+        // Restore cached flags only if they belong to the currently signed-in
+        // account; otherwise stay locked until a refresh confirms entitlement.
+        val uid = currentAccountId()
+        if (uid != null && uid == prefs.getString(KEY_CACHED_UID, null)) {
+            _isPremium.value = prefs.getBoolean(KEY_IS_PREMIUM, false)
+            _isWebSyncPremium.value = prefs.getBoolean(KEY_IS_WEB_SYNC_PREMIUM, false)
+        } else {
+            _isPremium.value = false
+            _isWebSyncPremium.value = false
         }
     }
 
     override fun refreshPurchases() {
+        val uid = currentAccountId()
+        if (uid == null) {
+            // Not signed in — there is no account to restore entitlements against.
+            setPremium(false)
+            setWebSyncPremium(false)
+            return
+        }
         if (supabaseUrl.isBlank() || supabaseKey.isBlank()) {
             Log.w(TAG, "Supabase not configured; using cached premium status")
             return
         }
-        scope.launch {
-            try {
-                val url = "$supabaseUrl/functions/v1/get-premium-status?device_id=$deviceId"
-                val request = Request.Builder()
-                    .url(url)
-                    .addHeader("Authorization", "Bearer $supabaseKey")
-                    .build()
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val body = response.body?.string()
-                    if (body != null) {
-                        val json = JSONObject(body)
-                        val premium = json.optBoolean("isPremium", false)
-                        val webSync = json.optBoolean("isWebSyncPremium", false)
-                        setPremium(premium)
-                        setWebSyncPremium(webSync)
-                    }
-                } else {
-                    Log.w(TAG, "refreshPurchases failed: ${response.code}")
+        scope.launch { fetchStatus(uid) }
+    }
+
+    /** Query Supabase for the entitlement status of [accountId] (a Firebase UID). */
+    private suspend fun fetchStatus(accountId: String) {
+        if (supabaseUrl.isBlank() || supabaseKey.isBlank()) return
+        try {
+            val url = "$supabaseUrl/functions/v1/get-premium-status?device_id=$accountId"
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer $supabaseKey")
+                .build()
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                val body = response.body?.string()
+                if (body != null) {
+                    val json = JSONObject(body)
+                    setPremium(json.optBoolean("isPremium", false))
+                    setWebSyncPremium(json.optBoolean("isWebSyncPremium", false))
+                    prefs.edit().putString(KEY_CACHED_UID, accountId).apply()
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "refreshPurchases error", e)
+            } else {
+                Log.w(TAG, "fetchStatus failed: ${response.code}")
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchStatus error", e)
         }
     }
 
@@ -111,10 +151,23 @@ class GitHubPurchaseBackend @Inject constructor(
         // thread. The Boolean return is advisory only (the UI ignores it) since
         // the real result is asynchronous.
         scope.launch {
+            // Purchases are tied to a Firebase account so they restore across
+            // reinstalls/devices. Require sign-in first; if the user cancels or
+            // it fails, abort without opening checkout.
+            val accountId = currentAccountId() ?: run {
+                val signedIn = try {
+                    withContext(Dispatchers.Main) { authRepository.signInWithGoogle(activity).uid }
+                } catch (e: Exception) {
+                    Log.w(TAG, "sign-in required for purchase was not completed", e)
+                    toast(activity, "Sign in with Google to purchase — this links your purchase to your account so it restores after reinstalling.")
+                    return@launch
+                }
+                signedIn
+            }
             try {
                 val json = JSONObject().apply {
                     put("productId", plan.productId)
-                    put("deviceId", deviceId)
+                    put("deviceId", accountId)
                     put("successUrl", "${CALLBACK_SCHEME}://payment-success")
                     put("cancelUrl", "${CALLBACK_SCHEME}://payment-cancelled")
                 }
@@ -168,10 +221,13 @@ class GitHubPurchaseBackend @Inject constructor(
         _isWebSyncPremium.value = webSync
     }
 
-    private fun generateDeviceId(): String {
-        val id = java.util.UUID.randomUUID().toString()
-        prefs.edit().putString(KEY_DEVICE_ID, id).apply()
-        return id
+    /** Forget the locally-cached entitlement (used on sign-out). */
+    private fun clearAccountCache() {
+        prefs.edit()
+            .remove(KEY_CACHED_UID)
+            .putBoolean(KEY_IS_PREMIUM, false)
+            .putBoolean(KEY_IS_WEB_SYNC_PREMIUM, false)
+            .apply()
     }
 
     private fun hardcodedProducts(): Map<String, PremiumProductInfo> = mapOf(
@@ -227,7 +283,7 @@ class GitHubPurchaseBackend @Inject constructor(
         private const val PREFS_NAME = "github_premium_prefs"
         private const val KEY_IS_PREMIUM = "is_premium"
         private const val KEY_IS_WEB_SYNC_PREMIUM = "is_web_sync_premium"
-        private const val KEY_DEVICE_ID = "device_id"
+        private const val KEY_CACHED_UID = "cached_account_uid"
         private const val CALLBACK_SCHEME = "ollama-github"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }

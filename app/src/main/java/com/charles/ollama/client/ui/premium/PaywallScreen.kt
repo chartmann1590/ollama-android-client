@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -61,6 +62,7 @@ fun PaywallScreen(
     val isWebSyncPremium by viewModel.isWebSyncPremium.collectAsState()
     val details by viewModel.productDetails.collectAsState()
     val options = viewModel.planOptions(details)
+    val requiresSignIn = viewModel.requiresSignInToPurchase
 
     Scaffold(
         topBar = {
@@ -134,6 +136,11 @@ fun PaywallScreen(
             } else {
                 val webSyncOptions = options.filter { it.plan.productId in PremiumProducts.webSyncIds }
                 val adFreeOptions  = options.filter { it.plan.productId !in PremiumProducts.webSyncIds }
+
+                if (requiresSignIn) {
+                    SignInRequiredNote()
+                    Spacer(Modifier.height(20.dp))
+                }
 
                 Text(
                     text = "WEB SYNC + AD FREE",
@@ -230,6 +237,37 @@ private fun PlanCard(option: PlanOption, onClick: () -> Unit) {
             ) {
                 val displayPrice = option.price ?: option.fallbackPrice
                 Text(displayPrice?.let { "Subscribe — $it" } ?: "Continue")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SignInRequiredNote() {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.padding(16.dp)) {
+            Icon(
+                Icons.Default.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.size(12.dp))
+            Column {
+                Text(
+                    text = "Sign in to purchase",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "This version isn't distributed through the Play Store, so " +
+                        "purchases are handled by Stripe and linked to your Google account " +
+                        "instead of a store account. You'll be asked to sign in before " +
+                        "checkout — that's what lets your ad-free or Web Sync upgrade restore " +
+                        "automatically when you reinstall or switch devices.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

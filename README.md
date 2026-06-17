@@ -145,7 +145,7 @@ Free accounts send up to **3 web messages per day**. The web UI shows a live cou
 
 ### Premium Plans
 
-Subscribe inside the app via **Settings → Premium** or the in-app paywall. All subscriptions are managed by Google Play and can be cancelled at any time.
+Subscribe inside the app via **Settings → Premium** or the in-app paywall.
 
 | Plan | Price | What you get |
 |---|---|---|
@@ -156,6 +156,21 @@ Subscribe inside the app via **Settings → Premium** or the in-app paywall. All
 | Lifetime Ad-Free | one-time | ✅ All ads removed forever (web limit still applies) |
 
 > **How to subscribe**: Open the app → Settings → tap **Remove Ads / Go Premium** → choose a plan.
+
+#### Two ways to buy, depending on where you got the app
+
+The app ships in two flavors, and they use **different payment processors** because they're distributed differently:
+
+| | **Play Store version** | **GitHub version** (sideloaded APK) |
+|---|---|---|
+| Payment processor | Google Play Billing | **Stripe Checkout** (opens in your browser) |
+| Sign-in to buy? | No — uses your Google Play account | **Yes — Google sign-in required** |
+| Restores after reinstall? | Yes (Play account) | Yes (your Google/Firebase account) |
+| Manage / cancel | Google Play subscriptions | The Stripe receipt emailed to you |
+
+**Why the GitHub version asks you to sign in before purchasing:** the GitHub build isn't distributed through the Play Store, so there's no Play account to attach a purchase to. Instead it uses Stripe and links your entitlement to your **Firebase (Google) account**. That sign-in is what lets your ad-free / Web Sync upgrade **restore automatically when you reinstall the app or switch to another device** — without it, a purchase could only ever live on the single install that made it. Nothing about your purchase is tied to one phone; it follows your account. (The Play Store version doesn't show this step because Google Play already handles account-linked restores for you.)
+
+> 🔒 The GitHub version's Stripe and Supabase keys are **never committed to the repo** — they're injected at build time from CI secrets / `local.properties`. Forks build and run fine without them; the purchase flow simply stays inactive until you supply your own.
 
 **How it works (Firebase Realtime Database paths):**
 ```
