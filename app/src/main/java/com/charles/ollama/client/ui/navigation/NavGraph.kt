@@ -89,8 +89,7 @@ fun NavGraph(
     
     // Wait for defaultServer to be determined (either it changes, or we wait long enough)
     LaunchedEffect(Unit) {
-        delay(400) // Give database time to load (increased from 300ms)
-        // Only mark as ready if we haven't already (i.e., defaultServer is still null after waiting)
+        delay(150) // Room emits within ~50ms; 150ms is a safe upper bound
         if (!hasWaitedForDefaultServer) {
             hasWaitedForDefaultServer = true
         }

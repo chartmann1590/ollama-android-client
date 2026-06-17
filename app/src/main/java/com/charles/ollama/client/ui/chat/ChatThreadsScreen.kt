@@ -32,7 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import com.charles.ollama.client.domain.model.ChatThread
+import com.charles.ollama.client.domain.model.ModelWithServer
 import com.charles.ollama.client.domain.prompt.BuiltInPrompts
+import com.charles.ollama.client.ui.models.displayTitle
 import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
 import com.charles.ollama.client.ui.components.BannerAd
@@ -70,6 +72,8 @@ fun ChatThreadsScreen(
     val archivedCount by viewModel.archivedCount.collectAsState()
     val labels by viewModel.labels.collectAsState()
     val selectedLabel by viewModel.selectedLabel.collectAsState()
+    val modelOptions by viewModel.modelOptions.collectAsState()
+    val isLoadingModels by viewModel.isLoadingModels.collectAsState()
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var hasWaitedForServer by remember { mutableStateOf(false) }
@@ -112,7 +116,10 @@ fun ChatThreadsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
+            FloatingActionButton(onClick = {
+                showCreateDialog = true
+                viewModel.loadModelOptions()
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "New Thread")
             }
         },
@@ -224,10 +231,17 @@ fun ChatThreadsScreen(
     
     if (showCreateDialog) {
         CreateThreadDialog(
+            models = modelOptions,
+            isLoadingModels = isLoadingModels,
             onDismiss = { showCreateDialog = false },
-            onCreate = { title, systemPrompt ->
+            onCreate = { title, systemPrompt, selectedOption ->
                 scope.launch {
-                    val threadId = viewModel.createThreadAsync(title, null, systemPrompt)
+                    val threadId = viewModel.createThreadAsync(
+                        title,
+                        selectedOption.model.name,
+                        selectedOption.serverId,
+                        systemPrompt
+                    )
                     if (threadId > 0) {
                         onNavigateToChat(threadId)
                     }
@@ -500,13 +514,18 @@ private fun SetLabelDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateThreadDialog(
+    models: List<ModelWithServer>,
+    isLoadingModels: Boolean,
     onDismiss: () -> Unit,
-    onCreate: (title: String, systemPrompt: String?) -> Unit
+    onCreate: (title: String, systemPrompt: String?, selectedModel: ModelWithServer) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var selectedPersonaId by remember { mutableStateOf<String?>(null) }
+    var selectedModelOption by remember { mutableStateOf<ModelWithServer?>(null) }
+    var modelDropdownExpanded by remember { mutableStateOf(false) }
     val personas = remember { BuiltInPrompts.personas }
 
     AlertDialog(
@@ -521,6 +540,62 @@ fun CreateThreadDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                ExposedDropdownMenuBox(
+                    expanded = modelDropdownExpanded,
+                    onExpandedChange = { modelDropdownExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedModelOption?.model?.displayTitle() ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Model") },
+                        placeholder = { Text("Select a model") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(modelDropdownExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = modelDropdownExpanded,
+                        onDismissRequest = { modelDropdownExpanded = false }
+                    ) {
+                        if (isLoadingModels) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        } else if (models.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("No models available") },
+                                onClick = {},
+                                enabled = false
+                            )
+                        } else {
+                            models.forEach { option ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(option.model.displayTitle())
+                                            Text(
+                                                text = option.serverLabel,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        selectedModelOption = option
+                                        modelDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
                 Text(
                     text = "Persona (optional)",
                     style = MaterialTheme.typography.labelMedium,
@@ -550,9 +625,9 @@ fun CreateThreadDialog(
             TextButton(
                 onClick = {
                     val prompt = personas.firstOrNull { it.id == selectedPersonaId }?.text
-                    onCreate(title, prompt)
+                    onCreate(title, prompt, selectedModelOption!!)
                 },
-                enabled = title.isNotBlank()
+                enabled = title.isNotBlank() && selectedModelOption != null
             ) {
                 Text("Create")
             }

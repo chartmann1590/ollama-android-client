@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.charles.ollama.client.data.repository.ChatRepository
 import com.charles.ollama.client.data.repository.ServerRepository
 import com.charles.ollama.client.domain.model.ChatThread
+import com.charles.ollama.client.domain.model.ModelWithServer
+import com.charles.ollama.client.domain.usecase.GetAllAvailableModelsUseCase
 import com.charles.ollama.client.domain.usecase.GetChatThreadsUseCase
 import com.charles.ollama.client.util.ThreadExporter
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,6 +21,7 @@ class ChatThreadsViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val getChatThreadsUseCase: GetChatThreadsUseCase,
     private val serverRepository: ServerRepository,
+    private val getAllAvailableModelsUseCase: GetAllAvailableModelsUseCase,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -62,6 +65,12 @@ class ChatThreadsViewModel @Inject constructor(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _modelOptions = MutableStateFlow<List<ModelWithServer>>(emptyList())
+    val modelOptions: StateFlow<List<ModelWithServer>> = _modelOptions.asStateFlow()
+
+    private val _isLoadingModels = MutableStateFlow(false)
+    val isLoadingModels: StateFlow<Boolean> = _isLoadingModels.asStateFlow()
 
     val hasServer: StateFlow<Boolean> = serverRepository.getDefaultServer()
         .map { it != null }
@@ -145,15 +154,20 @@ class ChatThreadsViewModel @Inject constructor(
         return threadId
     }
 
-    suspend fun createThreadAsync(title: String, model: String?, systemPrompt: String? = null): Long {
-        val defaultServer = serverRepository.getDefaultServerSync()
-        return chatRepository.createThread(
-            title = title,
-            model = model,
-            serverId = defaultServer?.id,
-            systemPrompt = systemPrompt
-        )
+    fun loadModelOptions() {
+        viewModelScope.launch {
+            _isLoadingModels.value = true
+            _modelOptions.value = getAllAvailableModelsUseCase()
+            _isLoadingModels.value = false
+        }
     }
+
+    suspend fun createThreadAsync(
+        title: String,
+        model: String?,
+        serverId: Long? = null,
+        systemPrompt: String? = null
+    ): Long = chatRepository.createThread(title, model, serverId, systemPrompt)
 
     fun deleteThread(threadId: Long) {
         viewModelScope.launch {
