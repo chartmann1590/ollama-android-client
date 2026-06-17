@@ -77,5 +77,5 @@ class PaywallViewModel @Inject constructor(
     fun purchase(activity: Activity, plan: PremiumPlan): Boolean =
         premiumManager.launchPurchase(activity, plan)
 
-    fun restore() = premiumManager.refreshPurchases()
+    fun restore(activity: Activity) = premiumManager.restorePurchases(activity)
 }

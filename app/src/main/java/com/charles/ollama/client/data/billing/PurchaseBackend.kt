@@ -30,4 +30,13 @@ interface PurchaseBackend {
     fun initialize()
     fun refreshPurchases()
     fun launchPurchase(activity: Activity, plan: PremiumPlan): Boolean
+
+    /**
+     * Restore previously-purchased entitlements. Platform billing (Play) just
+     * re-queries the store account, so the default simply refreshes. The
+     * GitHub/Stripe backend overrides this to first prompt sign-in when signed
+     * out (entitlements are tied to a Firebase account), using [activity] to
+     * launch the credential flow.
+     */
+    fun restorePurchases(activity: Activity) = refreshPurchases()
 }

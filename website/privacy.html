@@ -160,8 +160,18 @@
                     <li><strong>Firebase Cloud Messaging (FCM):</strong> For delivering push notifications and initiating silent background sync triggers to synchronize web chat events.</li>
                     <li><strong>Firebase Authentication:</strong> For secure user registration, email/password or Google sign-in, and session management.</li>
                     <li><strong>Firebase Realtime Database:</strong> For real-time Web sync, storing and syncing chat threads, messages, and metadata across your authenticated devices.</li>
+                    <li><strong>Google Play Billing:</strong> In the Google Play version of the app, in-app purchases and subscriptions are processed by Google Play. Google handles your payment details; we never receive or store your card information.</li>
+                    <li><strong>Stripe:</strong> In the GitHub (sideloaded) version of the app, purchases are processed by <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer">Stripe</a> via Stripe Checkout, which opens in your browser. Stripe handles your payment card details directly; we never receive or store your card information. We store only a record that an entitlement was granted, linked to your account identifier.</li>
                     <li><strong>Ollama Server:</strong> Your chat messages are sent to the Ollama server you configure. We do not control or have access to data sent to your Ollama server.</li>
                 </ul>
+
+                <h2>Payments and Subscriptions</h2>
+                <p>The app is offered in two versions that use different payment processors, depending on how you installed it:</p>
+                <ul>
+                    <li><strong>Google Play version:</strong> Purchases (ad-free and Web Sync plans) are handled by <strong>Google Play Billing</strong> and tied to your Google Play account. Manage or cancel anytime in the Google Play Store. We do not receive your payment card details.</li>
+                    <li><strong>GitHub (sideloaded) version:</strong> Purchases are handled by <strong>Stripe Checkout</strong> and require signing in with your Google (Firebase) account first. Your entitlement is linked to that account identifier — not to your device — so it restores automatically when you reinstall the app or switch devices. We store only your account identifier, the product purchased, and its status (active, cancelled, or expired) in our Supabase database; we do not receive or store your payment card details, which are handled entirely by Stripe.</li>
+                </ul>
+                <p>If you cancel a subscription, your premium features (such as ad-free browsing or unlimited Web Sync messages) remain active until the end of the period you already paid for, after which the app automatically reverts to the free, ad-supported tier. One-time "Lifetime" purchases do not expire.</p>
 
                 <h2>How We Use Your Information</h2>
                 <p>We use the information we collect to:</p>

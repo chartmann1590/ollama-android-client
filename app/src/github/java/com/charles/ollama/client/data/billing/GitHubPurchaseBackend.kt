@@ -114,6 +114,37 @@ class GitHubPurchaseBackend @Inject constructor(
         scope.launch { fetchStatus(uid) }
     }
 
+    override fun restorePurchases(activity: Activity) {
+        // Already signed in — just re-pull entitlements for the account.
+        if (currentAccountId() != null) {
+            refreshPurchases()
+            return
+        }
+        if (supabaseUrl.isBlank() || supabaseKey.isBlank()) {
+            toast(activity, "Purchases are not available in this build.")
+            return
+        }
+        // Signed out: entitlements are tied to a Firebase account, so prompt
+        // sign-in first, then fetch. This is what lets a reinstalled app recover
+        // a purchase made on another device.
+        scope.launch {
+            val uid = try {
+                withContext(Dispatchers.Main) { authRepository.signInWithGoogle(activity).uid }
+            } catch (e: Exception) {
+                Log.w(TAG, "sign-in for restore was not completed", e)
+                toast(activity, "Sign in with Google to restore your purchases.")
+                return@launch
+            }
+            fetchStatus(uid)
+            val restored = _isPremium.value || _isWebSyncPremium.value
+            toast(
+                activity,
+                if (restored) "Purchases restored."
+                else "No active purchases found for this account."
+            )
+        }
+    }
+
     /** Query Supabase for the entitlement status of [accountId] (a Firebase UID). */
     private suspend fun fetchStatus(accountId: String) {
         if (supabaseUrl.isBlank() || supabaseKey.isBlank()) return

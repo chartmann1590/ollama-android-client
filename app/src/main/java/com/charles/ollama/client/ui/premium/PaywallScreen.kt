@@ -176,7 +176,7 @@ fun PaywallScreen(
                 }
 
                 Spacer(Modifier.height(4.dp))
-                TextButton(onClick = viewModel::restore) {
+                TextButton(onClick = { activity?.let { viewModel.restore(it) } }) {
                     Text("Restore purchase")
                 }
                 Text(

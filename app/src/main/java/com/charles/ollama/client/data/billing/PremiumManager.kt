@@ -20,4 +20,5 @@ class PremiumManager @Inject constructor(
     fun refreshPurchases() = backend.refreshPurchases()
     fun launchPurchase(activity: Activity, plan: PremiumPlan): Boolean =
         backend.launchPurchase(activity, plan)
+    fun restorePurchases(activity: Activity) = backend.restorePurchases(activity)
 }

@@ -34,19 +34,15 @@ serve(async (req) => {
           break;
         }
 
-        await supabase.from("purchases").insert({
-          device_id: deviceId,
-          product_id: productId,
-          status: "completed",
-          stripe_session_id: stripeSessionId,
-        });
-
         if (session.mode === "subscription" && session.subscription) {
+          // Recurring purchase — tracked ONLY in `subscriptions` so that a later
+          // cancellation/expiry revokes access. Do NOT write a `purchases` row,
+          // which would grant permanent premium and never revert on cancel.
           const subResp = await fetch(
             "https://api.stripe.com/v1/subscriptions/" + session.subscription,
             {
               headers: {
-                "Authorization": "Bearer " + Deno.env.get("STRIPE_SECRET_KEY") ?? "",
+                "Authorization": "Bearer " + (Deno.env.get("STRIPE_SECRET_KEY") ?? ""),
               },
             }
           );
@@ -67,6 +63,14 @@ serve(async (req) => {
             },
             { onConflict: "stripe_subscription_id" }
           );
+        } else {
+          // One-time payment (lifetime ad-free) — permanent entitlement.
+          await supabase.from("purchases").insert({
+            device_id: deviceId,
+            product_id: productId,
+            status: "completed",
+            stripe_session_id: stripeSessionId,
+          });
         }
         break;
       }
