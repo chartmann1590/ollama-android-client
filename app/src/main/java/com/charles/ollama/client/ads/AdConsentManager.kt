@@ -29,11 +29,18 @@ class AdConsentManager @Inject constructor(@ApplicationContext context: Context)
         get() = consentInformation.canRequestAds()
 
     /**
-     * Refresh consent state and, if a form is required, present it. [onResolved]
-     * is invoked (on the main thread) once ads may be requested — or immediately
-     * if consent is already satisfied. It is only called when [canRequestAds].
+     * Refresh consent state and, if a form is required, present it.
+     *
+     * [onResult] receives `allowed`:
+     *  - `true`  — the app may proceed and ads may load (consent granted, not
+     *    required for this region, or the consent service is unavailable so we
+     *    fail open rather than brick the app).
+     *  - `false` — a consent form was shown and the user **declined**; the caller
+     *    should block app usage and re-prompt via [rePrompt].
+     *
+     * UMP persists the user's choice, so a consenting user is only asked once.
      */
-    fun ensureConsent(activity: Activity, onResolved: () -> Unit) {
+    fun ensureConsent(activity: Activity, onResult: (allowed: Boolean) -> Unit) {
         val params = ConsentRequestParameters.Builder().build()
         consentInformation.requestConsentInfoUpdate(
             activity,
@@ -43,16 +50,38 @@ class AdConsentManager @Inject constructor(@ApplicationContext context: Context)
                     if (formError != null) {
                         Log.w(TAG, "Consent form error: ${formError.message}")
                     }
-                    if (consentInformation.canRequestAds()) onResolved()
+                    // canRequestAds() is true when consent was granted OR isn't
+                    // required for this user; false means a form was shown and
+                    // the user declined → the caller gates the app.
+                    onResult(consentInformation.canRequestAds())
                 }
             },
             { requestError ->
-                Log.w(TAG, "Consent info update failed: ${requestError.message}")
-                // Fail-safe: if consent state can't be fetched, fall back to
-                // whatever is already stored (defaults to no ads in EEA).
-                if (consentInformation.canRequestAds()) onResolved()
+                // The update can fail for reasons unrelated to the user's choice —
+                // most commonly the publisher hasn't configured a GDPR form in
+                // AdMob yet, or a transient network error. There's no form to
+                // gate on, so fail OPEN: never brick the app or disable all ads
+                // because of a setup/network gap.
+                Log.w(TAG, "Consent info update failed; proceeding (fail-open): ${requestError.message}")
+                onResult(true)
             }
         )
+    }
+
+    /**
+     * Re-show the consent UI after a decline (drives the consent wall's retry).
+     * Prefers the privacy-options form (lets the user change a prior choice);
+     * falls back to a fresh consent request when that isn't available.
+     */
+    fun rePrompt(activity: Activity, onResult: (allowed: Boolean) -> Unit) {
+        if (isPrivacyOptionsRequired) {
+            UserMessagingPlatform.showPrivacyOptionsForm(activity) { error ->
+                if (error != null) Log.w(TAG, "Privacy options error: ${error.message}")
+                onResult(consentInformation.canRequestAds())
+            }
+        } else {
+            ensureConsent(activity, onResult)
+        }
     }
 
     /**

@@ -11,8 +11,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +63,10 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var adConsentManager: AdConsentManager
 
+    // Drives the consent wall: true once the user has been shown a consent form
+    // and declined. Compose observes this to swap the app for the wall screen.
+    private val consentBlocked = androidx.compose.runtime.mutableStateOf(false)
+
     private lateinit var firebaseAnalytics: FirebaseAnalytics
     
     private val requestPermissionLauncher = registerForActivityResult(
@@ -90,15 +97,12 @@ class MainActivity : ComponentActivity() {
         }
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, bundle)
         
-        // Obtain GDPR/UMP consent before any ads are requested. Outside the EEA
-        // this resolves immediately as "not required". Only once resolved do we
-        // initialize the Ads SDK, flip the AdGate consent flag, and preload.
-        adConsentManager.ensureConsent(this) {
-            MobileAds.initialize(this) {}
-            adGate.setAdsConsentGranted(true)
-            interstitialAdManager.loadAd(this)
-            rewardedAdManager.loadAd(this)
-        }
+        // Obtain GDPR/UMP consent. If the user is granted/not-required (or the
+        // consent service is unavailable → fail-open) we initialize ads. If the
+        // user is shown a form and DECLINES, we block the app behind a consent
+        // wall and re-prompt until they accept. UMP persists the choice, so a
+        // consenting user is only asked once.
+        requestConsent()
 
         // Register launcher shortcuts (New chat / Models / Servers).
         AppShortcuts.refresh(this)
@@ -122,15 +126,54 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NavGraph(
-                        initialThreadId = pendingThreadId,
-                        initialDest = pendingDest,
-                        onDestConsumed = { pendingDest = null }
-                    )
-                    UpdateAvailablePrompt()
+                    if (consentBlocked.value) {
+                        // User declined required consent — block the app and let
+                        // them retry. They cannot proceed until they accept.
+                        ConsentRequiredScreen(onReview = { requestConsentRetry() })
+                    } else {
+                        NavGraph(
+                            initialThreadId = pendingThreadId,
+                            initialDest = pendingDest,
+                            onDestConsumed = { pendingDest = null }
+                        )
+                        UpdateAvailablePrompt()
+                    }
                 }
             }
         }
+    }
+
+    /** Run the consent flow on launch. Declined → raise the consent wall. */
+    private fun requestConsent() {
+        adConsentManager.ensureConsent(this) { allowed ->
+            if (allowed) {
+                consentBlocked.value = false
+                enableAds()
+            } else {
+                consentBlocked.value = true
+            }
+        }
+    }
+
+    /** Re-prompt from the consent wall; on acceptance, drop the wall + enable ads. */
+    private fun requestConsentRetry() {
+        adConsentManager.rePrompt(this) { allowed ->
+            if (allowed) {
+                consentBlocked.value = false
+                enableAds()
+            }
+            // else: stay on the wall; the user can try again.
+        }
+    }
+
+    private var adsInitialized = false
+    private fun enableAds() {
+        adGate.setAdsConsentGranted(true)
+        if (adsInitialized) return
+        adsInitialized = true
+        MobileAds.initialize(this) {}
+        interstitialAdManager.loadAd(this)
+        rewardedAdManager.loadAd(this)
     }
 
     override fun onResume() {
@@ -183,6 +226,39 @@ class MainActivity : ComponentActivity() {
         const val DEST_NEW_CHAT = "new_chat"
         const val DEST_MODELS = "models"
         const val DEST_SERVERS = "servers"
+    }
+}
+
+/**
+ * Full-screen block shown when the user declines the required privacy/ads
+ * consent. They cannot use the app until they accept; [onReview] re-opens the
+ * consent form.
+ */
+@androidx.compose.runtime.Composable
+private fun ConsentRequiredScreen(onReview: () -> Unit) {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+    ) {
+        androidx.compose.material3.Text(
+            text = "Consent required",
+            style = MaterialTheme.typography.headlineSmall,
+        )
+        androidx.compose.foundation.layout.Spacer(Modifier.height(12.dp))
+        androidx.compose.material3.Text(
+            text = "This app is supported by ads and needs your consent to continue. " +
+                "Please review and accept your privacy choices to use the app.",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        androidx.compose.foundation.layout.Spacer(Modifier.height(24.dp))
+        androidx.compose.material3.Button(onClick = onReview) {
+            androidx.compose.material3.Text("Review privacy choices")
+        }
     }
 }
 
