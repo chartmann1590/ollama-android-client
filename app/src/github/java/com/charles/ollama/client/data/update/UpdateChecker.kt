@@ -16,11 +16,13 @@ import javax.inject.Singleton
 /**
  * Checks GitHub for a newer release than the currently installed build.
  *
- * "Newer" is defined as `release.published_at` being strictly after
- * [BuildConfig.BUILD_COMMIT_EPOCH_SECONDS] — the epoch of the git commit this
- * APK was built from. Using the commit timestamp keeps the comparison stable
- * across Gradle incremental builds (see `gitCommitEpochSeconds()` in
- * `app/build.gradle.kts`).
+ * "Newer" is defined by Android **versionCode**: the latest release's
+ * versionCode (parsed from the release name/tag — see [parseReleaseVersionCode])
+ * must be strictly greater than [BuildConfig.VERSION_CODE]. This guarantees a
+ * device already on an equal or higher build is never prompted to update, even
+ * if an older release happens to have been published more recently. For
+ * releases that don't encode a versionCode, it falls back to comparing
+ * `published_at` against [BuildConfig.BUILD_COMMIT_EPOCH_SECONDS].
  *
  * Results are throttled by [UpdatePreferences.lastCheckedMillis] so we hit
  * `api.github.com` at most once every few hours even if the user backgrounds
@@ -86,12 +88,26 @@ class UpdateChecker @Inject constructor(
                     return@withContext null
                 }
 
-                val installedEpoch = BuildConfig.BUILD_COMMIT_EPOCH_SECONDS
-                val isNewer = installedEpoch > 0L && publishedAtEpoch > installedEpoch
+                // Compare by Android versionCode, which increases monotonically
+                // per build (1000 + CI run number). Only prompt when the release
+                // is strictly higher than what's installed, so a device already
+                // running an equal or newer build is never told to "update".
+                val installedVersionCode = BuildConfig.VERSION_CODE
+                val releaseVersionCode = parseReleaseVersionCode(tag, name)
+                val isNewer = if (releaseVersionCode != null) {
+                    releaseVersionCode > installedVersionCode
+                } else {
+                    // The release doesn't encode a versionCode (e.g. a hand-made
+                    // release) — fall back to comparing publish time against this
+                    // build's commit epoch so manual releases still work.
+                    val installedEpoch = BuildConfig.BUILD_COMMIT_EPOCH_SECONDS
+                    installedEpoch > 0L && publishedAtEpoch > installedEpoch
+                }
                 if (!isNewer) {
                     Log.d(
                         TAG,
-                        "No newer release (installed=$installedEpoch published=$publishedAtEpoch tag=$tag)"
+                        "No newer release (installedCode=$installedVersionCode " +
+                            "releaseCode=$releaseVersionCode published=$publishedAtEpoch tag=$tag)"
                     )
                     return@withContext null
                 }
@@ -113,6 +129,24 @@ class UpdateChecker @Inject constructor(
 
     fun dismiss(tag: String) {
         preferences.dismissedTag = tag
+    }
+
+    /**
+     * Extract the release's Android versionCode so it can be compared against
+     * [BuildConfig.VERSION_CODE]. CI encodes it two ways (see
+     * `app/build.gradle.kts` and the release workflow):
+     *   - the release name as "v1.2.<n> (build <versionCode>)"
+     *   - the tag as "ci-<runNumber>-<sha>", where versionCode = 1000 + runNumber
+     * Returns `null` when neither form is present (e.g. a hand-made release).
+     */
+    private fun parseReleaseVersionCode(tag: String, name: String): Int? {
+        Regex("""build\s+(\d+)""", RegexOption.IGNORE_CASE).find(name)
+            ?.groupValues?.get(1)?.toIntOrNull()
+            ?.let { return it }
+        Regex("""ci-(\d+)""").find(tag)
+            ?.groupValues?.get(1)?.toIntOrNull()
+            ?.let { return 1000 + it }
+        return null
     }
 
     /**
