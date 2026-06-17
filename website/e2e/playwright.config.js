@@ -6,7 +6,10 @@ const BASE_URL = (process.env.BASE_URL || 'https://chartmann1590.github.io/ollam
 
 module.exports = defineConfig({
     testDir: './tests',
-    timeout: 30000,
+    // 60s so a cold-start sign-in right after deploy doesn't time out the first
+    // attempt (these tests warm up and pass on retry, but a longer budget avoids
+    // the flaky first-attempt failures entirely).
+    timeout: 60000,
     retries: process.env.CI ? 2 : 0,
     reporter: [['html', { outputFolder: 'playwright-report', open: 'never' }], ['list']],
     use: {

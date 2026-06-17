@@ -76,21 +76,25 @@ test.describe('Message input UI', () => {
         await expect(page.locator('#send-btn')).toBeDisabled();
     });
 
-    test('clicking send shows status (Sending or queued when phone offline)', async ({ page }) => {
+    test('clicking send shows status (queued when phone offline)', async ({ page }) => {
         await ensureModelSelected(page);
+        // Force offline so the message is queued locally (deterministic) instead
+        // of an online dispatch that writes a webRequest for a not-yet-synced
+        // thread, which the DB rules reject.
+        await page.evaluate(() => window.__testSetPhoneOnline(false));
         await page.fill('#msg-input', 'Test message from Playwright');
         await page.click('#send-btn');
-        // Either "Sending…" (phone online) or "queued — waiting for phone" (phone offline)
         const statusBar = page.locator('#status-bar');
-        await expect(statusBar).toContainText(/Sending|generating|queued|Error/, { timeout: 8000 });
+        await expect(statusBar).toContainText(/queued/i, { timeout: 8000 });
     });
 
     test('Enter key submits message (shows status bar)', async ({ page }) => {
         await ensureModelSelected(page);
+        await page.evaluate(() => window.__testSetPhoneOnline(false));
         await page.fill('#msg-input', 'Enter key test');
         await page.locator('#msg-input').press('Enter');
         const statusBar = page.locator('#status-bar');
-        await expect(statusBar).toContainText(/Sending|generating|queued|Error/, { timeout: 8000 });
+        await expect(statusBar).toContainText(/queued/i, { timeout: 8000 });
     });
 
     test('offline queue: message queued when phone offline shows queued status', async ({ page }) => {
@@ -124,7 +128,12 @@ test.describe('Message input UI', () => {
         await page.click('#send-btn');
         await expect(page.locator('#status-bar')).toContainText(/queued/i, { timeout: 5000 });
 
-        // Simulate phone coming online — queue should dispatch (status changes to Sending…)
+        // Re-assert premium right before draining so the dispatched webRequest's
+        // (expected) rule rejection surfaces as "Error sending" rather than the
+        // free-tier "Daily limit reached" path.
+        await page.evaluate(() => window.__testSetPremium(true));
+        // Simulate phone coming online — queue should dispatch (Sending…) and
+        // then surface an error since the thread isn't synced to the phone yet.
         await page.evaluate(() => window.__testSetPhoneOnline(true));
         await expect(page.locator('#status-bar')).toContainText(/Sending|generating|Error/, { timeout: 8000 });
     });
