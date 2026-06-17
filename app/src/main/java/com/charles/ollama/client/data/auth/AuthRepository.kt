@@ -7,6 +7,7 @@ import com.charles.ollama.client.BuildConfig
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,6 +61,28 @@ class AuthRepository @Inject constructor() {
 
     fun signOut() {
         auth.signOut()
+    }
+
+    /**
+     * Permanently delete the signed-in Firebase user. Firebase requires a recent
+     * login to delete; if the session is stale we re-authenticate first. Google
+     * accounts re-auth silently through the credential flow; email/password
+     * accounts are asked to sign in again (surfaced as an error message).
+     */
+    suspend fun deleteAccount(activity: Activity) {
+        val user = auth.currentUser ?: error("You are not signed in.")
+        try {
+            user.delete().await()
+        } catch (_: FirebaseAuthRecentLoginRequiredException) {
+            val isGoogle = user.providerData.any { it.providerId == GoogleAuthProvider.PROVIDER_ID }
+            if (!isGoogle) {
+                error("For your security, please sign out and sign back in, then delete your account.")
+            }
+            val credentialManager = CredentialManager.create(activity)
+            val idToken = requestGoogleIdToken(activity, credentialManager, filterAuthorized = true)
+            user.reauthenticate(GoogleAuthProvider.getCredential(idToken, null)).await()
+            user.delete().await()
+        }
     }
 
     private suspend fun requestGoogleIdToken(

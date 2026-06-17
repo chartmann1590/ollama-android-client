@@ -148,6 +148,9 @@ fun SettingsScreen(
                     (context as? Activity)?.let(viewModel::signInWithGoogle)
                 },
                 onSignOut = viewModel::signOut,
+                onDeleteAccount = {
+                    (context as? Activity)?.let(viewModel::deleteAccount)
+                },
                 onSyncEnabledChange = viewModel::setWebSyncEnabled,
                 onDismissAuthMessage = viewModel::resetAuthActionState,
                 onNavigateToPaywall = onNavigateToPaywall
@@ -175,6 +178,18 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Remove Ads / Go Premium")
+                }
+            }
+
+            // GDPR/UMP: let users in regulated regions change their ad-consent
+            // choice. Only shown when UMP reports a privacy-options entry point
+            // is required (i.e. EEA/UK users who saw the consent form).
+            if (viewModel.adPrivacyOptionsRequired) {
+                OutlinedButton(
+                    onClick = { (context as? Activity)?.let(viewModel::showAdPrivacyOptions) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Ad privacy options")
                 }
             }
 
@@ -743,12 +758,14 @@ private fun AccountSyncSection(
     onPasswordReset: (String) -> Unit,
     onGoogleSignIn: () -> Unit,
     onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit,
     onSyncEnabledChange: (Boolean) -> Unit,
     onDismissAuthMessage: () -> Unit,
     onNavigateToPaywall: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var showDeleteAccountConfirm by remember { mutableStateOf(false) }
 
     Text(
         text = "Account & web sync",
@@ -903,6 +920,15 @@ private fun AccountSyncSection(
                 ) {
                     Text("Sign out")
                 }
+                TextButton(
+                    onClick = { showDeleteAccountConfirm = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete account")
+                }
             }
 
             when (authActionState) {
@@ -920,6 +946,35 @@ private fun AccountSyncSection(
                 AuthActionState.Idle -> Unit
             }
         }
+    }
+
+    if (showDeleteAccountConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountConfirm = false },
+            title = { Text("Delete account?") },
+            text = {
+                Text(
+                    "This permanently deletes your account and all synced data (chats, " +
+                        "messages, devices). Any active subscription will be cancelled. " +
+                        "This cannot be undone.\n\nIf you subscribed through Google Play, " +
+                        "also cancel it in the Play Store to stop future billing."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteAccountConfirm = false
+                        onDeleteAccount()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) { Text("Delete account") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAccountConfirm = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 

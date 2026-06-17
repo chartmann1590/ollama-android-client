@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.charles.ollama.client.data.database.entity.ChatThreadEntity
 import com.charles.ollama.client.data.database.entity.ChatMessageEntity
+import com.charles.ollama.client.data.preferences.ContentReportStorage
 import com.charles.ollama.client.data.repository.ChatRepository
 import com.charles.ollama.client.data.repository.ServerRepository
 import com.charles.ollama.client.domain.model.ChatMessage
@@ -32,6 +33,7 @@ class ChatViewModel @Inject constructor(
     private val serverRepository: ServerRepository,
     private val getModelsUseCase: GetModelsUseCase,
     private val vibrationHelper: VibrationHelper,
+    private val contentReportStorage: ContentReportStorage,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
     
@@ -607,6 +609,22 @@ class ChatViewModel @Inject constructor(
      * messages that came after also fall away — they are no longer well-grounded.
      * For an assistant message, only that message is removed.
      */
+    /**
+     * Report an AI-generated assistant reply as objectionable. Required by
+     * Google Play's AI-Generated Content policy (in-app flagging of offensive
+     * output). The reported snippet is persisted via [ContentReportStorage].
+     */
+    fun reportMessage(messageId: Long) {
+        viewModelScope.launch {
+            try {
+                val msg = chatRepository.getMessageById(messageId) ?: return@launch
+                contentReportStorage.report(msg.content, reason = null)
+            } catch (_: Exception) {
+                // Reporting is best-effort; the UI already confirmed to the user.
+            }
+        }
+    }
+
     fun deleteSingleMessage(messageId: Long) {
         val id = _threadId.value ?: return
         viewModelScope.launch {

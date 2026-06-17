@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.charles.ollama.client.ads.AdConsentManager
 import com.charles.ollama.client.ads.AdGate
 import com.charles.ollama.client.data.auth.AuthRepository
 import com.charles.ollama.client.data.billing.PremiumManager
@@ -14,6 +15,7 @@ import com.charles.ollama.client.data.preferences.UiPreferences
 import com.charles.ollama.client.data.preferences.LocalBugReport
 import com.charles.ollama.client.data.repository.GitHubFeedbackRepository
 import com.charles.ollama.client.data.api.dto.GitHubCommentResponse
+import com.charles.ollama.client.data.sync.RealtimeChatSyncRepository
 import com.charles.ollama.client.data.sync.SyncPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,8 +72,23 @@ class SettingsViewModel @Inject constructor(
     private val feedbackRepository: GitHubFeedbackRepository,
     private val authRepository: AuthRepository,
     private val syncPreferences: SyncPreferences,
-    private val premiumManager: PremiumManager
+    private val premiumManager: PremiumManager,
+    private val realtimeChatSyncRepository: RealtimeChatSyncRepository,
+    private val adConsentManager: AdConsentManager
 ) : ViewModel() {
+
+    /** Whether to surface the "Ad privacy options" entry (UMP-required regions). */
+    val adPrivacyOptionsRequired: Boolean
+        get() = adConsentManager.isPrivacyOptionsRequired
+
+    /** Re-open the UMP privacy options form so users can change ad consent. */
+    fun showAdPrivacyOptions(activity: Activity) {
+        adConsentManager.showPrivacyOptions(activity) { error ->
+            if (error != null) {
+                _authActionState.value = AuthActionState.Error(error)
+            }
+        }
+    }
 
     private val _huggingFaceToken = MutableStateFlow(litertPreferences.getHuggingFaceToken().orEmpty())
     val huggingFaceToken: StateFlow<String> = _huggingFaceToken.asStateFlow()
@@ -259,6 +276,25 @@ class SettingsViewModel @Inject constructor(
         syncPreferences.setSyncEnabled(false)
         syncPreferences.setCurrentUid(null)
         _authActionState.value = AuthActionState.Success("Signed out")
+    }
+
+    /**
+     * Permanently delete the user's account and all associated data, satisfying
+     * Google Play's account-deletion requirement. Order matters: revoke billing
+     * and wipe synced data while still authenticated, then delete the Firebase
+     * user, then clear local sync state.
+     */
+    fun deleteAccount(activity: Activity) {
+        val uid = authRepository.currentUser.value?.uid
+        runAuthAction("Account deleted") {
+            runCatching { premiumManager.deleteRemoteEntitlements() }
+            if (uid != null) {
+                runCatching { realtimeChatSyncRepository.deleteAllUserData(uid) }
+            }
+            authRepository.deleteAccount(activity)
+            syncPreferences.setSyncEnabled(false)
+            syncPreferences.setCurrentUid(null)
+        }
     }
 
     fun setWebSyncEnabled(enabled: Boolean) {

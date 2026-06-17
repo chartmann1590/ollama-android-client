@@ -19,9 +19,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.charles.ollama.client.ads.AdConsentManager
+import com.charles.ollama.client.ads.AdGate
 import com.charles.ollama.client.ads.InterstitialAdManager
 import com.charles.ollama.client.ads.RewardedAdManager
 import com.charles.ollama.client.data.billing.PremiumManager
+import com.google.android.gms.ads.MobileAds
 import com.charles.ollama.client.data.preferences.UiPreferences
 import com.charles.ollama.client.ui.navigation.NavGraph
 import com.charles.ollama.client.ui.theme.OllamaAndroidTheme
@@ -50,6 +53,12 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var premiumManager: PremiumManager
+
+    @Inject
+    lateinit var adGate: AdGate
+
+    @Inject
+    lateinit var adConsentManager: AdConsentManager
 
     private lateinit var firebaseAnalytics: FirebaseAnalytics
     
@@ -81,11 +90,15 @@ class MainActivity : ComponentActivity() {
         }
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, bundle)
         
-        // Load initial interstitial ad
-        interstitialAdManager.loadAd(this)
-
-        // Preload a rewarded ad so the rewards screen feels instant.
-        rewardedAdManager.loadAd(this)
+        // Obtain GDPR/UMP consent before any ads are requested. Outside the EEA
+        // this resolves immediately as "not required". Only once resolved do we
+        // initialize the Ads SDK, flip the AdGate consent flag, and preload.
+        adConsentManager.ensureConsent(this) {
+            MobileAds.initialize(this) {}
+            adGate.setAdsConsentGranted(true)
+            interstitialAdManager.loadAd(this)
+            rewardedAdManager.loadAd(this)
+        }
 
         // Register launcher shortcuts (New chat / Models / Servers).
         AppShortcuts.refresh(this)

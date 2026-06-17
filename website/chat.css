@@ -321,6 +321,24 @@ body.chat-page .navbar {
     color: #ef4444;
 }
 
+.btn-delete-account {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    color: #ef4444;
+    cursor: pointer;
+    font-family: inherit;
+    flex-shrink: 0;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.btn-delete-account:hover {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+}
+
 .btn-new-chat {
     display: flex;
     align-items: center;

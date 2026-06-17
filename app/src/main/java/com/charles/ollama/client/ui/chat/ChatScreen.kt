@@ -383,6 +383,7 @@ fun ChatScreen(
                                 onEditAndResend = { messageId, newContent ->
                                     viewModel.editAndResend(messageId, newContent)
                                 },
+                                onReport = { messageId -> viewModel.reportMessage(messageId) },
                             )
                         }
                         is ChatRow.Ad -> NativeAdCard()
@@ -448,6 +449,16 @@ fun ChatScreen(
                 }
             }
             
+            // AI-content disclaimer (Google Play AI-Generated Content policy).
+            Text(
+                text = "AI responses may be inaccurate — verify important information. Long-press the ⋮ menu on a reply to report it.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

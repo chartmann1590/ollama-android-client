@@ -282,6 +282,16 @@ class RealtimeChatSyncRepository @Inject constructor(
     private fun userRef(uid: String): DatabaseReference =
         database.reference.child("users").child(uid)
 
+    /**
+     * Permanently remove all of this user's synced data (`/users/{uid}`):
+     * threads, messages, web requests, device heartbeats, available models and
+     * subscription flag. Called as part of account deletion. Must run while the
+     * user is still authenticated (DB rules require auth on the uid).
+     */
+    suspend fun deleteAllUserData(uid: String) {
+        userRef(uid).removeValue().await()
+    }
+
     companion object {
         private const val TAG = "RealtimeChatSync"
     }

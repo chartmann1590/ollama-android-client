@@ -84,8 +84,20 @@ class AdGate @Inject constructor(
     /** True if the user has paid to remove ads permanently. */
     val isPremium: StateFlow<Boolean> = premiumManager.isPremium
 
+    // GDPR/UMP consent gate. Ads must not be requested until consent has been
+    // resolved (granted, or not-required outside the EEA). Defaults to false so
+    // no ad loads before MainActivity runs the consent flow on launch.
+    private val _adsConsentGranted = MutableStateFlow(false)
+    val adsConsentGranted: StateFlow<Boolean> = _adsConsentGranted.asStateFlow()
+
+    fun setAdsConsentGranted(granted: Boolean) {
+        _adsConsentGranted.value = granted
+    }
+
     fun adsCurrentlyDisabled(): Boolean =
-        premiumManager.isPremium.value || _adFreeUntilMs.value > System.currentTimeMillis()
+        !_adsConsentGranted.value ||
+            premiumManager.isPremium.value ||
+            _adFreeUntilMs.value > System.currentTimeMillis()
 
     fun adFreeRemainingMs(): Long {
         val left = _adFreeUntilMs.value - System.currentTimeMillis()

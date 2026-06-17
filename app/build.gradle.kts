@@ -359,6 +359,8 @@ dependencies {
     
     // AdMob
     implementation("com.google.android.gms:play-services-ads:22.6.0")
+    // User Messaging Platform — GDPR/EEA ad consent (Google-certified CMP)
+    implementation("com.google.android.ump:user-messaging-platform:2.2.0")
 
     // Google Play Billing (Remove-Ads / Premium)
     implementation("com.android.billingclient:billing-ktx:7.1.1")

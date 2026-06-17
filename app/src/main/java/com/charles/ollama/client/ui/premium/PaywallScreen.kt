@@ -41,10 +41,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.charles.ollama.client.R
 import com.charles.ollama.client.data.billing.PremiumPlan
 import com.charles.ollama.client.data.billing.PremiumProducts
 import com.charles.ollama.client.ui.theme.BrandGradientEnd
@@ -260,11 +262,11 @@ private fun SignInRequiredNote() {
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "This version isn't distributed through the Play Store, so " +
-                        "purchases are handled by Stripe and linked to your Google account " +
-                        "instead of a store account. You'll be asked to sign in before " +
-                        "checkout — that's what lets your ad-free or Web Sync upgrade restore " +
-                        "automatically when you reinstall or switch devices.",
+                    // Flavor-specific: the GitHub flavor explains Stripe; the Play
+                    // flavor never renders this note (requiresSignInToPurchase=false)
+                    // and its string omits any external-payment wording so the Play
+                    // binary contains no such reference.
+                    text = stringResource(R.string.paywall_signin_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

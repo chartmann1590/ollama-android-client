@@ -37,6 +37,8 @@ fun BannerAd(
     if (isPremium) return
     val adFreeUntil by adGate.adFreeUntilMs.collectAsState()
     if (adFreeUntil > System.currentTimeMillis()) return
+    val adsConsented by adGate.adsConsentGranted.collectAsState()
+    if (!adsConsented) return // wait for GDPR/UMP consent before requesting ads
     val lifecycleOwner = LocalLifecycleOwner.current
     
     val adView: AdView = remember {

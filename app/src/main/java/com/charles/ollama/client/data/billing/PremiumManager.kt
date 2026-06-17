@@ -21,4 +21,5 @@ class PremiumManager @Inject constructor(
     fun launchPurchase(activity: Activity, plan: PremiumPlan): Boolean =
         backend.launchPurchase(activity, plan)
     fun restorePurchases(activity: Activity) = backend.restorePurchases(activity)
+    suspend fun deleteRemoteEntitlements() = backend.deleteRemoteEntitlements()
 }

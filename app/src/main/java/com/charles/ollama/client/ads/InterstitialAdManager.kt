@@ -22,12 +22,22 @@ class InterstitialAdManager @Inject constructor(
     private var interstitialAd: InterstitialAd? = null
     private var isLoading = false
     private val adUnitId = BuildConfig.ADMOB_INTERSTITIAL_AD_UNIT_ID
-    
+
     // Probability of showing an ad (30% chance)
     private val showAdProbability = 0.3f
-    
+
+    // Hard frequency cap: never show two interstitials within this window, and
+    // suppress them entirely for a short grace period after process start. This
+    // keeps ads at natural transition points and avoids the "unexpected /
+    // disruptive interstitial" category in Google Play's Ads policy. The 30%
+    // probability above is an additional softener on top of this hard guard.
+    private var lastShownAtMs = 0L
+    private val processStartMs = System.currentTimeMillis()
+
     companion object {
         private const val TAG = "InterstitialAdManager"
+        private const val MIN_INTERVAL_MS = 120_000L
+        private const val STARTUP_GRACE_MS = 60_000L
     }
     
     /**
@@ -98,22 +108,35 @@ class InterstitialAdManager @Inject constructor(
         if (adGate.adsCurrentlyDisabled()) return false
         val trace = PerformanceMonitor.startAdTrace("show_interstitial")
         val ad = interstitialAd
-        
+
+        val now = System.currentTimeMillis()
+        val withinStartupGrace = now - processStartMs < STARTUP_GRACE_MS
+        val withinInterval = now - lastShownAtMs < MIN_INTERVAL_MS
+        if (withinStartupGrace || withinInterval) {
+            PerformanceMonitor.addAttribute(trace, "shown", "false")
+            PerformanceMonitor.addAttribute(
+                trace, "reason", if (withinStartupGrace) "startup_grace" else "interval_filtered"
+            )
+            PerformanceMonitor.stopTrace(trace)
+            return false
+        }
+
         if (ad != null && Random.nextFloat() < showAdProbability) {
             PerformanceMonitor.addAttribute(trace, "shown", "true")
+            lastShownAtMs = now
             ad.show(activity)
             PerformanceMonitor.stopTrace(trace)
             return true
         }
-        
+
         PerformanceMonitor.addAttribute(trace, "shown", "false")
         PerformanceMonitor.addAttribute(trace, "reason", if (ad == null) "no_ad_loaded" else "probability_filtered")
-        
+
         // If ad wasn't shown but we don't have one loaded, try to load one
         if (ad == null && !isLoading) {
             loadAd(activity)
         }
-        
+
         PerformanceMonitor.stopTrace(trace)
         return false
     }
@@ -126,6 +149,7 @@ class InterstitialAdManager @Inject constructor(
         if (force) {
             val ad = interstitialAd
             if (ad != null) {
+                lastShownAtMs = System.currentTimeMillis()
                 ad.show(activity)
                 return true
             }

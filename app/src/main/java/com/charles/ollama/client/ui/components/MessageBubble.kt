@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -114,6 +115,7 @@ fun MessageBubble(
     onReadAloud: ((String) -> Unit)? = null,
     onRegenerate: ((Long) -> Unit)? = null,
     onEditAndResend: ((Long, String) -> Unit)? = null,
+    onReport: ((Long) -> Unit)? = null,
 ) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
@@ -125,6 +127,7 @@ fun MessageBubble(
     var menuExpanded by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showReportConfirm by remember { mutableStateOf(false) }
     
     // Try to load images on-demand if they're missing for a user message
     LaunchedEffect(message.id, message.images) {
@@ -329,7 +332,8 @@ fun MessageBubble(
             // wired up at least one action callback and the message has been
             // persisted (id > 0 so id-based actions like delete/regen work).
             val hasActions = (onShare != null || onDelete != null || onReadAloud != null ||
-                onRegenerate != null || onEditAndResend != null) && message.id > 0
+                onRegenerate != null || onEditAndResend != null ||
+                (onReport != null && !isUser)) && message.id > 0
             if (hasActions) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -417,6 +421,16 @@ fun MessageBubble(
                                     },
                                 )
                             }
+                            if (!isUser && onReport != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Report") },
+                                    leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showReportConfirm = true
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -459,6 +473,33 @@ fun MessageBubble(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (showReportConfirm && onReport != null) {
+        AlertDialog(
+            onDismissRequest = { showReportConfirm = false },
+            title = { Text("Report this response?") },
+            text = {
+                Text(
+                    "Flag this AI-generated reply as offensive, harmful, or otherwise " +
+                        "inappropriate. Our team will review reported content."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showReportConfirm = false
+                    onReport(message.id)
+                    Toast.makeText(
+                        context,
+                        "Thanks — this response has been reported for review.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }) { Text("Report") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReportConfirm = false }) { Text("Cancel") }
             },
         )
     }

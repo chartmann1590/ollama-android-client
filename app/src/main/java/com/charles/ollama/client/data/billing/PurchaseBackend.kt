@@ -39,4 +39,12 @@ interface PurchaseBackend {
      * launch the credential flow.
      */
     fun restorePurchases(activity: Activity) = refreshPurchases()
+
+    /**
+     * Best-effort revoke of server-side entitlements during account deletion.
+     * Play purchases are owned by the Google account (nothing to delete here),
+     * so the default is a no-op. The GitHub/Stripe backend overrides this to
+     * cancel any live subscription and remove the account's purchase rows.
+     */
+    suspend fun deleteRemoteEntitlements() {}
 }

@@ -140,6 +140,45 @@ document.getElementById('btn-signout').addEventListener('click', () => {
     if (auth) auth.signOut();
 });
 
+// Delete account — permanently removes the Firebase user and all synced data.
+// Satisfies Google Play's account-deletion requirement (web deletion path).
+document.getElementById('btn-delete-account').addEventListener('click', async () => {
+    if (!auth || !auth.currentUser) return;
+    const ok = window.confirm(
+        'Permanently delete your account and all synced data (chats, messages, ' +
+        'devices)? This cannot be undone.\n\nIf you subscribed through the Google ' +
+        'Play app, also cancel it in the Play Store to stop future billing.'
+    );
+    if (!ok) return;
+
+    const user = auth.currentUser;
+    const uid = user.uid;
+    try {
+        // Remove synced data first (DB rules require auth on this uid).
+        await db.ref('users/' + uid).remove();
+        try {
+            await user.delete();
+        } catch (err) {
+            if (err && err.code === 'auth/requires-recent-login') {
+                // Re-authenticate, then retry. Google accounts can reauth via popup.
+                const isGoogle = (user.providerData || []).some(p => p.providerId === 'google.com');
+                if (isGoogle) {
+                    await user.reauthenticateWithPopup(new firebase.auth.GoogleAuthProvider());
+                    await user.delete();
+                } else {
+                    window.alert('For your security, please sign out and sign back in, then delete your account.');
+                    return;
+                }
+            } else {
+                throw err;
+            }
+        }
+        window.alert('Your account has been deleted.');
+    } catch (err) {
+        window.alert('Could not delete account: ' + (err && err.message ? err.message : err));
+    }
+});
+
 function showAuthError(msg, isError = true) {
     const el = document.getElementById('auth-error');
     el.textContent = msg;

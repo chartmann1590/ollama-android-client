@@ -233,6 +233,29 @@ class GitHubPurchaseBackend @Inject constructor(
         return true
     }
 
+    override suspend fun deleteRemoteEntitlements() {
+        val uid = currentAccountId() ?: return
+        if (supabaseUrl.isBlank() || supabaseKey.isBlank()) return
+        try {
+            val body = JSONObject().put("accountId", uid).toString().toRequestBody(JSON_MEDIA_TYPE)
+            val request = Request.Builder()
+                .url("$supabaseUrl/functions/v1/delete-account")
+                .addHeader("Authorization", "Bearer $supabaseKey")
+                .post(body)
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "delete-account failed: ${response.code}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "deleteRemoteEntitlements error", e)
+        }
+        setPremium(false)
+        setWebSyncPremium(false)
+        clearAccountCache()
+    }
+
     // Safe to call from any thread — always shows on the main looper.
     private fun toast(activity: Activity, message: String) {
         android.os.Handler(android.os.Looper.getMainLooper()).post {

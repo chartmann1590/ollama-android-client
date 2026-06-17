@@ -143,6 +143,12 @@ Enable real-time 2-way sync between your phone and browser:
 
 Free accounts send up to **3 web messages per day**. The web UI shows a live counter and resets at midnight UTC. Upgrade to **Web Sync Premium** for unlimited sends (see [Premium plans](#premium-plans) below).
 
+### Account control & privacy
+
+- **Delete your account** anytime — in the app via **Settings → Account & web sync → Delete account**, or on the [Web Chat](https://chartmann1590.github.io/ollama-android-client/chat.html) page via **Delete account**. This permanently removes your Firebase account and all synced data (`/users/{uid}`) and cancels any active subscription.
+- **AI-content reporting** — assistant replies are AI-generated and may be inaccurate; flag an inappropriate response from the message's ⋮ menu → **Report**.
+- **Ad consent (EEA/UK)** — the app uses Google's User Messaging Platform to obtain GDPR consent before serving ads; consent can be changed later via **Settings → Ad privacy options**.
+
 ### Premium Plans
 
 Subscribe inside the app via **Settings → Premium** or the in-app paywall.

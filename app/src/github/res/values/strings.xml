@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown on the paywall for the GitHub (sideloaded) flavor, which uses
+         Stripe and ties entitlements to a Firebase account. -->
+    <string name="paywall_signin_note">This version isn\'t distributed through the Play Store, so purchases are handled by Stripe and linked to your Google account instead of a store account. You\'ll be asked to sign in before checkout — that\'s what lets your ad-free or Web Sync upgrade restore automatically when you reinstall or switch devices.</string>
+</resources>
