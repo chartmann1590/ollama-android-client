@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { verifyFirebaseUid, unauthorized } from "../_shared/firebaseAuth.ts";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 
@@ -16,11 +17,20 @@ serve(async (req) => {
   }
 
   try {
-    const { productId, deviceId, successUrl, cancelUrl } = await req.json();
+    // The account is taken from the verified Firebase ID token so a checkout
+    // session (and the resulting entitlement) is always bound to the caller.
+    let deviceId: string;
+    try {
+      deviceId = await verifyFirebaseUid(req.headers.get("x-firebase-token"));
+    } catch (e) {
+      return unauthorized(String((e as Error).message ?? e));
+    }
 
-    if (!productId || !deviceId) {
+    const { productId, successUrl, cancelUrl } = await req.json();
+
+    if (!productId) {
       return new Response(
-        JSON.stringify({ error: "Missing productId or deviceId" }),
+        JSON.stringify({ error: "Missing productId" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }

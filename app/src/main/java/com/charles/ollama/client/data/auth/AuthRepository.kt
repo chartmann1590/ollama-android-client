@@ -64,6 +64,14 @@ class AuthRepository @Inject constructor() {
     }
 
     /**
+     * The current user's Firebase ID token (a short-lived signed JWT), or null
+     * if signed out. Sent to the billing backend so it can verify *who* is
+     * calling — the public Supabase anon key alone doesn't prove identity.
+     */
+    suspend fun currentIdToken(): String? =
+        auth.currentUser?.getIdToken(false)?.await()?.token
+
+    /**
      * Permanently delete the signed-in Firebase user. Firebase requires a recent
      * login to delete; if the session is stale we re-authenticate first. Google
      * accounts re-auth silently through the credential flow; email/password

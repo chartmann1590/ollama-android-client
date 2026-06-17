@@ -148,11 +148,13 @@ class GitHubPurchaseBackend @Inject constructor(
     /** Query Supabase for the entitlement status of [accountId] (a Firebase UID). */
     private suspend fun fetchStatus(accountId: String) {
         if (supabaseUrl.isBlank() || supabaseKey.isBlank()) return
+        val idToken = authRepository.currentIdToken() ?: return
         try {
             val url = "$supabaseUrl/functions/v1/get-premium-status?device_id=$accountId"
             val request = Request.Builder()
                 .url(url)
                 .addHeader("Authorization", "Bearer $supabaseKey")
+                .addHeader("X-Firebase-Token", idToken)
                 .build()
             val response = client.newCall(request).execute()
             if (response.isSuccessful) {
@@ -184,21 +186,24 @@ class GitHubPurchaseBackend @Inject constructor(
         scope.launch {
             // Purchases are tied to a Firebase account so they restore across
             // reinstalls/devices. Require sign-in first; if the user cancels or
-            // it fails, abort without opening checkout.
-            val accountId = currentAccountId() ?: run {
-                val signedIn = try {
-                    withContext(Dispatchers.Main) { authRepository.signInWithGoogle(activity).uid }
+            // it fails, abort without opening checkout. The server derives the
+            // account from the verified ID token below.
+            if (currentAccountId() == null) {
+                try {
+                    withContext(Dispatchers.Main) { authRepository.signInWithGoogle(activity) }
                 } catch (e: Exception) {
                     Log.w(TAG, "sign-in required for purchase was not completed", e)
                     toast(activity, "Sign in with Google to purchase — this links your purchase to your account so it restores after reinstalling.")
                     return@launch
                 }
-                signedIn
+            }
+            val idToken = authRepository.currentIdToken() ?: run {
+                toast(activity, "Could not verify your account. Please try again.")
+                return@launch
             }
             try {
                 val json = JSONObject().apply {
                     put("productId", plan.productId)
-                    put("deviceId", accountId)
                     put("successUrl", "${CALLBACK_SCHEME}://payment-success")
                     put("cancelUrl", "${CALLBACK_SCHEME}://payment-cancelled")
                 }
@@ -206,6 +211,7 @@ class GitHubPurchaseBackend @Inject constructor(
                 val request = Request.Builder()
                     .url("$supabaseUrl/functions/v1/create-checkout-session")
                     .addHeader("Authorization", "Bearer $supabaseKey")
+                    .addHeader("X-Firebase-Token", idToken)
                     .post(body)
                     .build()
                 val response = client.newCall(request).execute()
@@ -234,13 +240,17 @@ class GitHubPurchaseBackend @Inject constructor(
     }
 
     override suspend fun deleteRemoteEntitlements() {
-        val uid = currentAccountId() ?: return
+        if (currentAccountId() == null) return
         if (supabaseUrl.isBlank() || supabaseKey.isBlank()) return
+        val idToken = authRepository.currentIdToken() ?: return
         try {
-            val body = JSONObject().put("accountId", uid).toString().toRequestBody(JSON_MEDIA_TYPE)
+            // The server derives the account from the verified token; the body is
+            // intentionally empty.
+            val body = "{}".toRequestBody(JSON_MEDIA_TYPE)
             val request = Request.Builder()
                 .url("$supabaseUrl/functions/v1/delete-account")
                 .addHeader("Authorization", "Bearer $supabaseKey")
+                .addHeader("X-Firebase-Token", idToken)
                 .post(body)
                 .build()
             client.newCall(request).execute().use { response ->

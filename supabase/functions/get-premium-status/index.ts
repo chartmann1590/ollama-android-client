@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyFirebaseUid, unauthorized } from "../_shared/firebaseAuth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -22,14 +23,13 @@ const WS_IDS = ["websync_monthly", "websync_yearly"];
 
 serve(async (req) => {
   try {
-    const url = new URL(req.url);
-    const deviceId = url.searchParams.get("device_id");
-
-    if (!deviceId) {
-      return new Response(
-        JSON.stringify({ error: "Missing device_id" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+    // Identify the account from the verified Firebase ID token, not the query
+    // string — so a caller can only read their own entitlement status.
+    let deviceId: string;
+    try {
+      deviceId = await verifyFirebaseUid(req.headers.get("x-firebase-token"));
+    } catch (e) {
+      return unauthorized(String((e as Error).message ?? e));
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
