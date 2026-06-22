@@ -156,21 +156,23 @@ class MainActivity : ComponentActivity() {
             throw e
         }
 
-        // Obtain GDPR/UMP consent. Deferred to the next main-thread frame so
-        // Compose finishes laying out the initial view hierarchy before UMP does
-        // any work (UMP's WebView init on first install can block the main thread
-        // and prevent the ComposeView from being rendered). A timeout is applied
-        // so the app never hangs on consent.
-        mainHandler.post { requestConsent() }
+        // Obtain GDPR/UMP consent. Deferred to when the window's decor view is
+        // fully attached to the Window Manager so the app's view hierarchy is
+        // stable before UMP runs (preventing timing crashes like "Window couldn't
+        // find content container view"). A timeout is applied so the app never hangs.
+        window.decorView.post { requestConsent() }
     }
 
     /** Run the consent flow on launch. Declined → raise the consent wall. */
     private fun requestConsent() {
+        if (isFinishing || isDestroyed) return
+
         // Timeout: if UMP doesn't resolve consent within CONSENT_TIMEOUT_MS,
         // proceed without waiting (fail-open). Prevents the black-screen-first-
         // install problem caused by UMP's WebView init blocking the main thread.
         mainHandler.postDelayed({
             if (!consentTimeoutFired) {
+                if (isFinishing || isDestroyed) return@postDelayed
                 consentTimeoutFired = true
                 Log.w(TAG, "Consent timed out after ${CONSENT_TIMEOUT_MS}ms — proceeding")
                 enableAds()
@@ -178,6 +180,7 @@ class MainActivity : ComponentActivity() {
         }, CONSENT_TIMEOUT_MS)
 
         adConsentManager.ensureConsent(this) { allowed ->
+            if (isFinishing || isDestroyed) return@ensureConsent
             if (consentTimeoutFired) return@ensureConsent
             consentTimeoutFired = true
             if (allowed) {
@@ -191,7 +194,9 @@ class MainActivity : ComponentActivity() {
 
     /** Re-prompt from the consent wall; on acceptance, drop the wall + enable ads. */
     private fun requestConsentRetry() {
+        if (isFinishing || isDestroyed) return
         adConsentManager.rePrompt(this) { allowed ->
+            if (isFinishing || isDestroyed) return@rePrompt
             if (allowed) {
                 consentBlocked.value = false
                 enableAds()
@@ -202,6 +207,7 @@ class MainActivity : ComponentActivity() {
 
     private var adsInitialized = false
     private fun enableAds() {
+        if (isFinishing || isDestroyed) return
         adGate.setAdsConsentGranted(true)
         if (adsInitialized) return
         adsInitialized = true
