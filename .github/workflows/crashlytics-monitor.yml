@@ -76,16 +76,20 @@ jobs:
               return `https://console.firebase.google.com/project/${projectId}/crashlytics/app/android:com.charles.ollama.client.play/issues/${issueId}`;
             }
 
-            // v1alpha wraps each entry as { issue: { id, title, ... }, eventCount, ... }
-            const rawIssues = data.issues || [];
-            const crashlyticsIssues = rawIssues.map(entry => {
+            // v1alpha returns { groups: [ { issue: {...}, metrics: [{eventsCount, ...}] } ] }
+            const rawGroups = data.groups || data.issues || [];
+            const crashlyticsIssues = rawGroups.map(entry => {
               const inner = entry.issue || entry;
+              const eventsCount = entry.metrics?.[0]?.eventsCount
+                || inner.eventCount
+                || entry.eventCount
+                || '0';
               return {
                 id:         inner.id || inner.issueId,
                 title:      inner.title    || 'Unknown crash',
                 subtitle:   inner.subtitle || '',
                 state:     (inner.state    || 'OPEN').toUpperCase(),
-                eventCount: parseInt(String(inner.eventCount || entry.eventCount || '0'), 10),
+                eventCount: parseInt(String(eventsCount), 10),
               };
             }).filter(i => i.id);
 
