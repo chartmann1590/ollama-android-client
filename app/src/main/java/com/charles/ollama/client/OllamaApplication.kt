@@ -158,9 +158,25 @@ internal fun isSuppressibleFrameworkBug(t: Throwable): Boolean {
     if (t is com.google.firebase.database.DatabaseException) return true
 
     if (t !is IllegalArgumentException) return false
-    if (t.message?.contains("descendant of this view") != true) return false
-    return t.stackTrace.any { f ->
-        f.className == "android.view.ViewGroup" &&
-            f.methodName == "offsetRectBetweenParentAndChild"
+    val msg = t.message ?: return false
+
+    // ViewGroup.offsetRectBetweenParentAndChild race: focused view detaches between
+    // focus search and scroll in ViewRootImpl.scrollToRectOrFocus.
+    if (msg.contains("descendant of this view")) {
+        return t.stackTrace.any { f ->
+            f.className == "android.view.ViewGroup" &&
+                f.methodName == "offsetRectBetweenParentAndChild"
+        }
     }
+
+    // WindowManagerGlobal race on Android 16: the DecorView is removed from the window
+    // manager between a resume transaction and the subsequent updateViewLayout call.
+    if (msg.contains("not attached to window manager")) {
+        return t.stackTrace.any { f ->
+            f.className == "android.view.WindowManagerGlobal" &&
+                f.methodName == "findViewLocked"
+        }
+    }
+
+    return false
 }
