@@ -1,6 +1,7 @@
 package com.charles.ollama.client.data.api
 
 import com.charles.ollama.client.data.api.dto.ChatRequest
+import com.charles.ollama.client.data.preferences.UiPreferences
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +19,8 @@ import java.util.concurrent.TimeUnit
 
 class OllamaStreamingService(
     private val okHttpClient: OkHttpClient,
-    private val gson: Gson
+    private val gson: Gson,
+    private val uiPreferences: UiPreferences
 ) {
     data class StreamDelta(
         val content: String,
@@ -52,7 +54,13 @@ class OllamaStreamingService(
             .post(requestBody)
             .build()
         
-        val call = okHttpClient.newCall(httpRequest)
+        val timeoutSecs = uiPreferences.requestTimeoutSeconds.value.toLong()
+        val client = okHttpClient.newBuilder()
+            .connectTimeout(timeoutSecs, TimeUnit.SECONDS)
+            .readTimeout(timeoutSecs, TimeUnit.SECONDS)
+            .writeTimeout(timeoutSecs, TimeUnit.SECONDS)
+            .build()
+        val call = client.newCall(httpRequest)
         
         // Use withContext for blocking I/O in coroutine context
         try {

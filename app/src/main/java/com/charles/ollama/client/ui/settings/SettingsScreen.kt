@@ -56,6 +56,7 @@ fun SettingsScreen(
     val huggingFaceToken by viewModel.huggingFaceToken.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
     val dynamicColor by viewModel.dynamicColor.collectAsState()
+    val requestTimeoutSeconds by viewModel.requestTimeoutSeconds.collectAsState()
     val isPremium by viewModel.isPremium.collectAsState()
     val isWebSyncPremium by viewModel.isWebSyncPremium.collectAsState()
     val accountUiState by viewModel.accountUiState.collectAsState()
@@ -228,6 +229,21 @@ fun SettingsScreen(
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "Ollama connection",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = "Increase this if Ollama times out on large models or slow hardware.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            TimeoutSelector(
+                selectedSeconds = requestTimeoutSeconds,
+                onSelect = viewModel::setRequestTimeoutSeconds
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -1000,6 +1016,54 @@ private fun ThemeModeSelector(
                 label = { Text(label) },
                 modifier = Modifier.weight(1f)
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimeoutSelector(
+    selectedSeconds: Int,
+    onSelect: (Int) -> Unit
+) {
+    val options = com.charles.ollama.client.data.preferences.UiPreferences.TIMEOUT_OPTIONS
+    var expanded by remember { mutableStateOf(false) }
+
+    fun label(s: Int) = when {
+        s < 60 -> "${s}s"
+        s % 60 == 0 -> "${s / 60} min"
+        else -> "${s}s (${s / 60}m ${s % 60}s)"
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = label(selectedSeconds),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Request timeout") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { seconds ->
+                DropdownMenuItem(
+                    text = { Text(label(seconds)) },
+                    onClick = {
+                        onSelect(seconds)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                )
+            }
         }
     }
 }

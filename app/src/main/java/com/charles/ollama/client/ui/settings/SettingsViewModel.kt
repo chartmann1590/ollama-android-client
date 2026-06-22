@@ -95,6 +95,7 @@ class SettingsViewModel @Inject constructor(
 
     val themeMode: StateFlow<ThemeMode> = uiPreferences.themeMode
     val dynamicColor: StateFlow<Boolean> = uiPreferences.dynamicColor
+    val requestTimeoutSeconds: StateFlow<Int> = uiPreferences.requestTimeoutSeconds
     val isPremium: StateFlow<Boolean> = adGate.isPremium
     val isWebSyncPremium: StateFlow<Boolean> = premiumManager.isWebSyncPremium
 
@@ -231,6 +232,8 @@ class SettingsViewModel @Inject constructor(
     fun setThemeMode(mode: ThemeMode) = uiPreferences.setThemeMode(mode)
 
     fun setDynamicColor(enabled: Boolean) = uiPreferences.setDynamicColor(enabled)
+
+    fun setRequestTimeoutSeconds(seconds: Int) = uiPreferences.setRequestTimeoutSeconds(seconds)
 
     fun updateHuggingFaceToken(token: String) {
         _huggingFaceToken.value = token

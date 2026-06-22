@@ -1,26 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Base configuration: HTTPS only by default. -->
-    <base-config cleartextTrafficPermitted="false">
+    <!-- Allow cleartext globally — Ollama servers run HTTP by default on user-controlled
+         local networks, so a global HTTPS-only policy is too restrictive here. -->
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
-            <!-- Trust system certificates -->
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    
-    <!-- Domain-specific configurations -->
-    <!-- Allow cleartext for localhost and local network -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="false">127.0.0.1</domain>
-        <domain includeSubdomains="false">10.0.2.2</domain>
-        <!-- Raw LAN IP HTTP is intentionally not allowed by the release base config.
-             Use HTTPS or a local hostname such as ollama.local. -->
-    </domain-config>
-    
-    <!-- Allow cleartext for common local development domains -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">.local</domain>
-        <domain includeSubdomains="true">.lan</domain>
-    </domain-config>
 </network-security-config>

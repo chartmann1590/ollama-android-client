@@ -39,6 +39,9 @@ class UiPreferences @Inject constructor(
     private val _dynamicColor = MutableStateFlow(prefs.getBoolean(KEY_DYNAMIC_COLOR, false))
     val dynamicColor: StateFlow<Boolean> = _dynamicColor.asStateFlow()
 
+    private val _requestTimeoutSeconds = MutableStateFlow(prefs.getInt(KEY_REQUEST_TIMEOUT, DEFAULT_TIMEOUT_SECONDS))
+    val requestTimeoutSeconds: StateFlow<Int> = _requestTimeoutSeconds.asStateFlow()
+
     fun setThemeMode(mode: ThemeMode) {
         if (_themeMode.value == mode) return
         prefs.edit().putString(KEY_THEME_MODE, mode.name).apply()
@@ -51,9 +54,18 @@ class UiPreferences @Inject constructor(
         _dynamicColor.value = enabled
     }
 
+    fun setRequestTimeoutSeconds(seconds: Int) {
+        if (_requestTimeoutSeconds.value == seconds) return
+        prefs.edit().putInt(KEY_REQUEST_TIMEOUT, seconds).apply()
+        _requestTimeoutSeconds.value = seconds
+    }
+
     companion object {
         private const val PREFS_NAME = "ui_prefs"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
+        private const val KEY_REQUEST_TIMEOUT = "request_timeout_seconds"
+        const val DEFAULT_TIMEOUT_SECONDS = 90
+        val TIMEOUT_OPTIONS = listOf(60, 90, 120, 180, 300, 600)
     }
 }

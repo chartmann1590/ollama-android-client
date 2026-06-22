@@ -355,7 +355,7 @@ class ChatRepository @Inject constructor(
                     return Result.failure(UnsupportedOperationException("Images are not supported for on-device LiteRT in this build."))
                 }
                 val catalogNs = LocalModelCatalog.fromThreadModelName(model)
-                    ?: return Result.failure(IllegalStateException("Select a LiteRT model from the catalog."))
+                    ?: return Result.failure(IllegalStateException("To use Ollama models, go to Servers and set an Ollama server as your default."))
                 val installedNs = installedLitertModelDao.getById(catalogNs.id)
                     ?: return Result.failure(IllegalStateException("Download this model from the Models screen first."))
                 val full = StringBuilder()
@@ -521,7 +521,7 @@ class ChatRepository @Inject constructor(
                     throw UnsupportedOperationException("Images are not supported for on-device LiteRT in this build.")
                 }
                 val catalog = LocalModelCatalog.fromThreadModelName(model)
-                    ?: throw IllegalStateException("Select a LiteRT model from the model list.")
+                    ?: throw IllegalStateException("To use Ollama models, go to Servers and set an Ollama server as your default.")
                 val installed = installedLitertModelDao.getById(catalog.id)
                     ?: throw IllegalStateException("Download this model from the Models screen first.")
                 catalog to installed

@@ -10,6 +10,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import com.charles.ollama.client.data.api.PerformanceInterceptor
+import com.charles.ollama.client.data.preferences.UiPreferences
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -78,18 +79,20 @@ object NetworkModule {
     @Singleton
     fun provideOllamaApiFactory(
         okHttpClient: OkHttpClient,
-        gson: Gson
+        gson: Gson,
+        uiPreferences: UiPreferences
     ): com.charles.ollama.client.data.api.OllamaApiFactory {
-        return com.charles.ollama.client.data.api.OllamaApiFactory(okHttpClient, gson)
+        return com.charles.ollama.client.data.api.OllamaApiFactory(okHttpClient, gson, uiPreferences)
     }
-    
+
     @Provides
     @Singleton
     fun provideOllamaStreamingService(
         okHttpClient: OkHttpClient,
-        gson: Gson
+        gson: Gson,
+        uiPreferences: UiPreferences
     ): com.charles.ollama.client.data.api.OllamaStreamingService {
-        return com.charles.ollama.client.data.api.OllamaStreamingService(okHttpClient, gson)
+        return com.charles.ollama.client.data.api.OllamaStreamingService(okHttpClient, gson, uiPreferences)
     }
 
     @Provides
