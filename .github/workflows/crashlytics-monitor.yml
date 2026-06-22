@@ -23,10 +23,12 @@ jobs:
         id: auth
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_OAUTH_CLIENT_ID: ${{ secrets.FIREBASE_OAUTH_CLIENT_ID }}
+          FIREBASE_OAUTH_CLIENT_SECRET: ${{ secrets.FIREBASE_OAUTH_CLIENT_SECRET }}
         run: |
           RESPONSE=$(curl -s -X POST "https://oauth2.googleapis.com/token" \
-            --data-urlencode "client_id=563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com" \
-            --data-urlencode "client_secret=j9iVZfS8ggvrCV37cFGU2rRV" \
+            --data-urlencode "client_id=${FIREBASE_OAUTH_CLIENT_ID}" \
+            --data-urlencode "client_secret=${FIREBASE_OAUTH_CLIENT_SECRET}" \
             --data-urlencode "refresh_token=${FIREBASE_TOKEN}" \
             --data-urlencode "grant_type=refresh_token")
           ACCESS_TOKEN=$(echo "$RESPONSE" | jq -r '.access_token')
