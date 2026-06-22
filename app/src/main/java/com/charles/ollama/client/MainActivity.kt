@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -68,6 +70,12 @@ class MainActivity : ComponentActivity() {
     // and declined. Compose observes this to swap the app for the wall screen.
     private val consentBlocked = androidx.compose.runtime.mutableStateOf(false)
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    // Guards against double-dispatch between the timeout runnable and the UMP
+    // callback in requestConsent(). Whoever runs first wins; the other is a no-op.
+    private var consentTimeoutFired = false
+
     private lateinit var firebaseAnalytics: FirebaseAnalytics
     
     private val requestPermissionLauncher = registerForActivityResult(
@@ -98,13 +106,6 @@ class MainActivity : ComponentActivity() {
         }
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN, bundle)
         
-        // Obtain GDPR/UMP consent. If the user is granted/not-required (or the
-        // consent service is unavailable → fail-open) we initialize ads. If the
-        // user is shown a form and DECLINES, we block the app behind a consent
-        // wall and re-prompt until they accept. UMP persists the choice, so a
-        // consenting user is only asked once.
-        requestConsent()
-
         // Register launcher shortcuts (New chat / Models / Servers).
         AppShortcuts.refresh(this)
 
@@ -145,7 +146,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-        } } catch (e: RuntimeException) {
+        }         } catch (e: RuntimeException) {
             if (!contentSetupRetried && e.message?.contains("content container view") == true) {
                 contentSetupRetried = true
                 runCatching { FirebaseCrashlytics.getInstance().recordException(e) }
@@ -154,11 +155,31 @@ class MainActivity : ComponentActivity() {
             }
             throw e
         }
+
+        // Obtain GDPR/UMP consent. Deferred to the next main-thread frame so
+        // Compose finishes laying out the initial view hierarchy before UMP does
+        // any work (UMP's WebView init on first install can block the main thread
+        // and prevent the ComposeView from being rendered). A timeout is applied
+        // so the app never hangs on consent.
+        mainHandler.post { requestConsent() }
     }
 
     /** Run the consent flow on launch. Declined → raise the consent wall. */
     private fun requestConsent() {
+        // Timeout: if UMP doesn't resolve consent within CONSENT_TIMEOUT_MS,
+        // proceed without waiting (fail-open). Prevents the black-screen-first-
+        // install problem caused by UMP's WebView init blocking the main thread.
+        mainHandler.postDelayed({
+            if (!consentTimeoutFired) {
+                consentTimeoutFired = true
+                Log.w(TAG, "Consent timed out after ${CONSENT_TIMEOUT_MS}ms — proceeding")
+                enableAds()
+            }
+        }, CONSENT_TIMEOUT_MS)
+
         adConsentManager.ensureConsent(this) { allowed ->
+            if (consentTimeoutFired) return@ensureConsent
+            consentTimeoutFired = true
             if (allowed) {
                 consentBlocked.value = false
                 enableAds()
@@ -242,6 +263,9 @@ class MainActivity : ComponentActivity() {
 
         // Guards against infinite recreate loop on persistent OEM window bug.
         private var contentSetupRetried = false
+
+        /** Max time to wait for UMP to resolve consent before proceeding anyway. */
+        private const val CONSENT_TIMEOUT_MS = 2_000L
     }
 }
 
