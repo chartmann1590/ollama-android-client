@@ -29,6 +29,7 @@ import com.charles.ollama.client.ads.RewardedAdManager
 import com.charles.ollama.client.data.billing.PremiumManager
 import com.google.android.gms.ads.MobileAds
 import com.charles.ollama.client.data.preferences.UiPreferences
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.charles.ollama.client.ui.navigation.NavGraph
 import com.charles.ollama.client.ui.theme.OllamaAndroidTheme
 import com.charles.ollama.client.ui.update.UpdateAvailablePrompt
@@ -110,7 +111,11 @@ class MainActivity : ComponentActivity() {
         val initialThreadId = readShortcutThreadId(intent)
         val initialDest = intent?.getStringExtra(EXTRA_DEST)
 
-        setContent {
+        // OEM PhoneWindow bug on certain Android 11 devices: PhoneWindow.generateLayout
+        // throws RuntimeException("Window couldn't find content container view") when the
+        // OEM's decor layout lacks android.R.id.content. Catch it, record as non-fatal, and
+        // recreate the activity once — the transient window state clears on restart.
+        try { setContent {
             val themeMode by uiPreferences.themeMode.collectAsState()
             val dynamicColor by uiPreferences.dynamicColor.collectAsState()
             OllamaAndroidTheme(themeMode = themeMode, dynamicColor = dynamicColor) {
@@ -140,6 +145,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        } } catch (e: RuntimeException) {
+            if (!contentSetupRetried && e.message?.contains("content container view") == true) {
+                contentSetupRetried = true
+                runCatching { FirebaseCrashlytics.getInstance().recordException(e) }
+                recreate()
+                return
+            }
+            throw e
         }
     }
 
@@ -226,6 +239,9 @@ class MainActivity : ComponentActivity() {
         const val DEST_NEW_CHAT = "new_chat"
         const val DEST_MODELS = "models"
         const val DEST_SERVERS = "servers"
+
+        // Guards against infinite recreate loop on persistent OEM window bug.
+        private var contentSetupRetried = false
     }
 }
 
