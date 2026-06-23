@@ -60,6 +60,7 @@ jobs:
         env:
           FIREBASE_PROJECT_ID: ${{ env.FIREBASE_PROJECT_ID }}
           FIREBASE_APP_ID: ${{ env.FIREBASE_APP_ID }}
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -67,7 +68,33 @@ jobs:
             const data = JSON.parse(fs.readFileSync('crashlytics_issues.json', 'utf8'));
 
             const { owner, repo } = context.repo;
-            const projectId = process.env.FIREBASE_PROJECT_ID;
+            const projectId   = process.env.FIREBASE_PROJECT_ID;
+            const today       = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+            const SILENCE_DAYS = 5;
+            const LAST_EVENT_RE = /<!-- crashlytics-last-event:(\d{4}-\d{2}-\d{2}) -->/;
+
+            function daysSince(dateStr) {
+              const then = new Date(dateStr + 'T00:00:00Z');
+              return Math.floor((Date.now() - then.getTime()) / 86_400_000);
+            }
+
+            // Close a Crashlytics issue via the REST API (best-effort; errors are logged, not fatal).
+            async function closeInCrashlytics(crashlyticsId) {
+              const projectNumber = process.env.FIREBASE_PROJECT_NUMBER;
+              const appId         = process.env.FIREBASE_APP_ID;
+              const token         = process.env.ACCESS_TOKEN;
+              const url = `https://firebasecrashlytics.googleapis.com/v1alpha/projects/${projectNumber}/apps/${appId}/issues/${crashlyticsId}?updateMask=state`;
+              const resp = await fetch(url, {
+                method:  'PATCH',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ state: 'CLOSED' }),
+              });
+              if (!resp.ok) {
+                const txt = await resp.text();
+                throw new Error(`HTTP ${resp.status}: ${txt.slice(0, 200)}`);
+              }
+              return resp.json();
+            }
 
             // v1alpha returns { groups: [ { issue: {...}, metrics: [{eventsCount, impactedUsersCount, ...}] } ] }
             const rawGroups = data.groups || data.issues || [];
@@ -124,6 +151,7 @@ jobs:
                 `[🔥 View in Firebase Console](${url})`,
                 ``,
                 `<!-- crashlytics-events:${ci.eventCount} -->`,
+                `<!-- crashlytics-last-event:${today} -->`,
               ].filter(l => l !== '').join('\n');
             }
 
@@ -207,35 +235,97 @@ jobs:
                       `*Checked: ${new Date().toISOString()}*`,
                     ].join('\n'),
                   });
-                  const newBody = (existing.body || '').replace(
+                  // Refresh both the event count and the last-event date stamp.
+                  let newBody = (existing.body || '').replace(
                     /<!-- crashlytics-events:\d+ -->/,
                     `<!-- crashlytics-events:${ci.eventCount} -->`
                   );
+                  if (LAST_EVENT_RE.test(newBody)) {
+                    newBody = newBody.replace(LAST_EVENT_RE, `<!-- crashlytics-last-event:${today} -->`);
+                  } else {
+                    newBody += `\n<!-- crashlytics-last-event:${today} -->`;
+                  }
                   await github.rest.issues.update({
                     owner, repo,
                     issue_number: existing.number,
                     body: newBody,
                   });
-                  console.log(`Updated #${existing.number}: ${prev} → ${ci.eventCount} events`);
+                  console.log(`Updated #${existing.number}: ${prev} → ${ci.eventCount} events (last-event: ${today})`);
                 } else {
                   console.log(`Issue #${existing.number} unchanged at ${ci.eventCount} events`);
                 }
               }
             }
 
-            // Auto-close GitHub issues whose Crashlytics issue is resolved / gone
+            // ── Auto-close stale / resolved issues ───────────────────────────
+            // Two closing conditions:
+            //   A) Issue is no longer in the Crashlytics open list → already resolved upstream.
+            //   B) Issue is still open in Crashlytics but has had no new events for SILENCE_DAYS
+            //      days → proactively close here and in Crashlytics.
             for (const [cid, gh] of Object.entries(ghMap)) {
-              if (!openIds.has(cid)) {
-                await github.rest.issues.createComment({
-                  owner, repo,
-                  issue_number: gh.number,
-                  body: `✅ Crashlytics issue \`${cid}\` is no longer in the open list — auto-closing.\n\n*Checked: ${new Date().toISOString()}*`,
-                });
-                await github.rest.issues.update({
-                  owner, repo,
-                  issue_number: gh.number,
-                  state: 'closed',
-                });
-                console.log(`Auto-closed #${gh.number} (Crashlytics ${cid} resolved)`);
+              const resolvedUpstream = !openIds.has(cid);
+              let silentDays = null;
+
+              if (!resolvedUpstream) {
+                // Check last-event stamp for 5-day silence rule.
+                const m = (gh.body || '').match(LAST_EVENT_RE);
+                if (m) {
+                  silentDays = daysSince(m[1]);
+                }
+              }
+
+              const shouldClose = resolvedUpstream || (silentDays !== null && silentDays >= SILENCE_DAYS);
+              if (!shouldClose) {
+                if (silentDays !== null) {
+                  console.log(`Issue #${gh.number} (${cid}): ${silentDays} day(s) silent — watching (closes at ${SILENCE_DAYS})`);
+                }
+                continue;
+              }
+
+              // Build a human-readable close reason.
+              let reason, detail;
+              if (resolvedUpstream) {
+                reason = 'Crashlytics issue is no longer in the open list — it has been resolved upstream.';
+                detail = '';
+              } else {
+                reason = `No new crash events have been recorded for **${silentDays} consecutive days** (threshold: ${SILENCE_DAYS} days).`;
+                detail = '\n\nThis issue is also being closed in the Firebase Crashlytics console.';
+              }
+
+              await github.rest.issues.createComment({
+                owner, repo,
+                issue_number: gh.number,
+                body: [
+                  `## ✅ Auto-closed — crash no longer active`,
+                  ``,
+                  reason + detail,
+                  ``,
+                  `| Field | Value |`,
+                  `|-------|-------|`,
+                  `| **Crashlytics ID** | \`${cid}\` |`,
+                  `| **Days since last event** | ${silentDays !== null ? silentDays : '—'} |`,
+                  `| **Closed by** | Crashlytics monitor (automated) |`,
+                  `| **Checked** | ${new Date().toISOString()} |`,
+                  ``,
+                  `If this crash reappears in a future version, Crashlytics will reopen it automatically.`,
+                ].join('\n'),
+              });
+
+              await github.rest.issues.update({
+                owner, repo,
+                issue_number: gh.number,
+                state: 'closed',
+              });
+              console.log(`Auto-closed #${gh.number} (${cid}) — ${resolvedUpstream ? 'resolved upstream' : `${silentDays}d silent`})`);
+
+              // For condition B, also close the Crashlytics issue so it doesn't keep
+              // appearing in the Firebase console.
+              if (!resolvedUpstream) {
+                try {
+                  await closeInCrashlytics(cid);
+                  console.log(`  → Closed ${cid} in Crashlytics`);
+                } catch (e) {
+                  console.log(`  → Warning: could not close ${cid} in Crashlytics: ${e.message}`);
+                }
               }
             }
