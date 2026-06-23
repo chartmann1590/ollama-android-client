@@ -1,0 +1,266 @@
+name: Crash Fix Checker
+
+# Runs once a day and checks every open Crashlytics GitHub issue to see whether
+# a recent fix commit has landed for it.  If one is found and no fix comment
+# has been posted yet, it leaves a detailed comment explaining what was fixed
+# and that the release is pending Play Store review.
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # 09:00 UTC daily
+  workflow_dispatch:       # allow manual runs from the Actions tab
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  check-fixes:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Full history is required so git log can reach commits from the past 90 days
+      - name: Checkout full git history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Dump every commit from the last 90 days together with the files it touched.
+      # Format: each commit starts with a :::COMMIT::: sentinel line, followed by
+      # one file path per line, then a blank line before the next commit.
+      - name: Collect recent commits with changed files
+        run: |
+          git log \
+            --since="90 days ago" \
+            --format=":::COMMIT:::%H|%ad|%s" \
+            --date=short \
+            --name-only \
+            > recent_commits.txt
+          echo "Collected $(grep -c ':::COMMIT:::' recent_commits.txt) commits in the last 90 days"
+
+      - name: Post fix comments on unnotified open issues
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+
+            // Hidden marker appended to every comment we post so future runs
+            // skip the issue without re-reading every comment body.
+            const FIX_MARKER = '<!-- fix-comment-posted -->';
+
+            // Commit messages that indicate a bug/crash fix.
+            const FIX_KEYWORDS = [
+              /^fix[\s:(]/i,                              // conventional-commit fix: / fix( or plain "Fix …"
+              /\bfix(es|ed)?\b.*\bcrash\b/i,             // "fixes crash", "fixed crash in …"
+              /\bcrash\b.*\bfix(es|ed)?\b/i,             // "crash … fixed"
+              /\b(NPE|NullPointer|RuntimeException)\b/i, // explicit exception class names
+              /\b(PhoneWindow|lifecycle.?guard)\b/i,      // project-specific crash keywords
+              /\b(UMP|consent).*(crash|fix|guard)\b/i,   // UMP / consent flow fixes
+            ];
+
+            // ── 1. Parse recent_commits.txt ───────────────────────────────────
+            // Build an array of { hash, date, subject, files[] } objects.
+            const raw = fs.readFileSync('recent_commits.txt', 'utf8');
+            const allCommits = [];
+            let cur = null;
+            for (const line of raw.split('\n')) {
+              if (line.startsWith(':::COMMIT:::')) {
+                const rest      = line.slice(':::COMMIT:::'.length);
+                const pipe1     = rest.indexOf('|');
+                const pipe2     = rest.indexOf('|', pipe1 + 1);
+                const hash      = rest.slice(0, pipe1).trim();
+                const date      = rest.slice(pipe1 + 1, pipe2).trim();
+                const subject   = rest.slice(pipe2 + 1).trim();
+                cur = { hash, date, subject, files: [] };
+                allCommits.push(cur);
+              } else if (cur && line.trim()) {
+                cur.files.push(line.trim());
+              }
+            }
+
+            // Keep only commits whose message looks like a crash fix.
+            const fixCommits = allCommits.filter(c =>
+              FIX_KEYWORDS.some(re => re.test(c.subject))
+            );
+
+            console.log(
+              `Parsed ${allCommits.length} total commits — ` +
+              `${fixCommits.length} match fix keywords`
+            );
+            for (const c of fixCommits)
+              console.log(`  ${c.hash.slice(0,7)} [${c.date}] ${c.subject}  (${c.files.length} file(s))`);
+
+            if (fixCommits.length === 0) {
+              console.log('No fix commits found — nothing to do.');
+              return;
+            }
+
+            // ── 2. Load every open GitHub issue tagged "crashlytics" ──────────
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner, repo,
+              labels: 'crashlytics',
+              state:  'open',
+              per_page: 100,
+            });
+            console.log(`\nFound ${openIssues.length} open Crashlytics issue(s) to check`);
+
+            // ── 3. Process each issue ─────────────────────────────────────────
+            for (const issue of openIssues) {
+              const body = issue.body || '';
+              console.log(`\n── Issue #${issue.number}: ${issue.title}`);
+
+              // Skip if a fix/pending comment already exists on this issue.
+              const { data: comments } = await github.rest.issues.listComments({
+                owner, repo,
+                issue_number: issue.number,
+                per_page: 100,
+              });
+              const alreadyNoted = comments.some(c =>
+                c.body.includes(FIX_MARKER) ||
+                c.body.toLowerCase().includes('pending play store review') ||
+                c.body.toLowerCase().includes('fix shipped')
+              );
+              if (alreadyNoted) {
+                console.log('  → Fix comment already exists, skipping');
+                continue;
+              }
+
+              // ── Parse blame frame from the issue body ─────────────────────
+              // The crashlytics-monitor writes:
+              //   | **Blame frame** | `com.charles.ollama.client.MainActivity.setUiPreferences` |
+              const blameMatch = body.match(/\*\*Blame frame\*\*\s*\|\s*`([^`]+)`/);
+              if (!blameMatch) {
+                console.log('  → No blame frame found in issue body, skipping');
+                continue;
+              }
+              const blameFrame = blameMatch[1].trim();
+
+              // Derive the source file from the FQCN.
+              // e.g. com.charles.ollama.client.MainActivity.onCreate$lambda$20
+              //   → classIdx: index of first PascalCase segment
+              //   → className: 'MainActivity'  (strip any $inner/$lambda suffix)
+              //   → filePath:  'app/src/main/java/com/charles/ollama/client/MainActivity.kt'
+              const fqcnParts = blameFrame.split('.');
+              const classIdx  = fqcnParts.findIndex(p => /^[A-Z]/.test(p));
+              if (classIdx < 0) {
+                console.log(`  → Cannot derive class name from '${blameFrame}', skipping`);
+                continue;
+              }
+              const className  = fqcnParts[classIdx].split('$')[0]; // strip $lambda/$inner
+              const pkgPath    = fqcnParts.slice(0, classIdx).join('/');
+              const filePath   = `app/src/main/java/${pkgPath}/${className}.kt`;
+              const methodRaw  = fqcnParts[classIdx + 1] || '';
+              const methodName = methodRaw.split('$')[0];
+              console.log(`  → Blame: ${className}.${methodName}  →  ${filePath}`);
+
+              // ── Find fix commits that touch this class's source file ───────
+              const relevantFixes = fixCommits.filter(c =>
+                c.files.some(f => f.endsWith(`${className}.kt`) || f === filePath)
+              );
+
+              if (relevantFixes.length === 0) {
+                console.log(`  → No fix commits touch ${className}.kt — skipping`);
+                continue;
+              }
+              console.log(`  → ${relevantFixes.length} relevant fix commit(s) found:`);
+              relevantFixes.forEach(c =>
+                console.log(`     ${c.hash.slice(0,7)} [${c.date}] ${c.subject}`)
+              );
+
+              // ── Extract crash details from the issue body for the comment ──
+              const field = label => {
+                const m = body.match(
+                  new RegExp(`\\*\\*${label}\\*\\*\\s*\\|\\s*([^|\\n]+)\\|`)
+                );
+                return m ? m[1].trim() : '—';
+              };
+              const exception = field('Exception');
+              const firstSeen = field('First seen');
+              const lastSeen  = field('Last seen');
+              const users     = field('Impacted users');
+              const sessions  = field('Sessions affected');
+
+              // ── Build the commit list for the comment ─────────────────────
+              const commitLines = relevantFixes.map(c => {
+                const shortHash = c.hash.slice(0, 7);
+                const ktFiles   = c.files.filter(f => f.endsWith('.kt') || f.endsWith('.java'));
+                const fileNote  = ktFiles.length > 0
+                  ? `\n  _Files changed: \`${ktFiles.join('`, `')}\`_`
+                  : '';
+                return (
+                  `- **[\`${shortHash}\`](https://github.com/${owner}/${repo}/commit/${c.hash})** ` +
+                  `· ${c.date} · ${c.subject}` +
+                  fileNote
+                );
+              }).join('\n');
+
+              const plural = relevantFixes.length > 1;
+
+              // ── Compose the full comment ──────────────────────────────────
+              const commentBody = [
+                `## Fix shipped — pending Play Store review`,
+                ``,
+                `This crash has been addressed by ${plural ? `${relevantFixes.length} recent commits` : 'a recent commit'} ` +
+                  `that modified \`${className}.kt\` — the source file containing the crash blame frame (\`${blameFrame}\`).`,
+                ``,
+                `---`,
+                ``,
+                `### Crash summary`,
+                ``,
+                `| Field | Value |`,
+                `|-------|-------|`,
+                `| **Exception** | \`${exception}\` |`,
+                `| **Blame frame** | \`${blameFrame}\` |`,
+                `| **First seen** | ${firstSeen} |`,
+                `| **Last seen** | ${lastSeen} |`,
+                `| **Impacted users** | ${users} |`,
+                `| **Sessions affected** | ${sessions} |`,
+                ``,
+                `---`,
+                ``,
+                `### Fix ${plural ? 'commits' : 'commit'}`,
+                ``,
+                commitLines,
+                ``,
+                `---`,
+                ``,
+                `### What was changed`,
+                ``,
+                `The ${plural ? 'commits above modify' : 'commit above modifies'} ` +
+                  `\`${filePath}\` to address the root cause of this crash. ` +
+                  `See each commit's diff for the full details of what changed and why.`,
+                ``,
+                `---`,
+                ``,
+                `### Current status`,
+                ``,
+                `| Step | Status |`,
+                `|------|--------|`,
+                `| Fix committed to \`master\` | ✅ Complete |`,
+                `| Play Store review | ⏳ Pending |`,
+                `| Fix live for all users | ⏳ Awaiting rollout |`,
+                ``,
+                `Once the update passes Play Store review and rolls out to users, ` +
+                  `Crashlytics event counts for this crash should drop to zero. ` +
+                  `The issue will be **auto-closed** by the ` +
+                  `[Crashlytics monitor](https://github.com/${owner}/${repo}/actions/workflows/crashlytics-monitor.yml) ` +
+                  `when Firebase confirms the issue has resolved.`,
+                ``,
+                `---`,
+                ``,
+                `*Auto-detected by [crash-fix-checker](https://github.com/${owner}/${repo}/actions/workflows/crash-fix-checker.yml) · ${new Date().toISOString()}*`,
+                ``,
+                FIX_MARKER,
+              ].join('\n');
+
+              await github.rest.issues.createComment({
+                owner, repo,
+                issue_number: issue.number,
+                body: commentBody,
+              });
+              console.log(`  → ✅ Posted fix comment on issue #${issue.number}`);
+            }
+
+            console.log('\nDone.');
