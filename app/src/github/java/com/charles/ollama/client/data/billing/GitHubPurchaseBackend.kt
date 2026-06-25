@@ -229,6 +229,13 @@ class GitHubPurchaseBackend @Inject constructor(
                     Log.w(TAG, "create-checkout-session returned no url")
                 } else {
                     Log.w(TAG, "create-checkout-session failed: ${response.code} $responseBody")
+                    val serverMessage = responseBody
+                        ?.let { runCatching { JSONObject(it).optString("error") }.getOrNull() }
+                        ?.takeIf { it.isNotBlank() }
+                    if (serverMessage != null) {
+                        toast(activity, serverMessage)
+                        return@launch
+                    }
                 }
                 toast(activity, "Could not start checkout. Please try again.")
             } catch (e: Exception) {

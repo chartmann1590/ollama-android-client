@@ -1,7 +1,10 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyFirebaseUid, unauthorized } from "../_shared/firebaseAuth.ts";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const PRODUCT_PRICES: Record<string, { amount: number; currency: string; name: string; type: "subscription" | "one_time"; interval?: "month" | "year" }> = {
   websync_yearly: { amount: 1499, currency: "usd", name: "Web Sync Yearly", type: "subscription", interval: "year" },
@@ -10,6 +13,10 @@ const PRODUCT_PRICES: Record<string, { amount: number; currency: string; name: s
   premium_monthly: { amount: 99, currency: "usd", name: "Ad-Free Monthly", type: "subscription", interval: "month" },
   premium_lifetime: { amount: 1999, currency: "usd", name: "Lifetime Ad-Free", type: "one_time" },
 };
+
+const LIFETIME_PRODUCT_ID = "premium_lifetime";
+const AD_FREE_ONLY_PRODUCT_IDS = ["premium_lifetime", "premium_monthly", "premium_yearly"];
+const ACTIVE_SUBSCRIPTION_STATUSES = ["active", "trialing"];
 
 serve(async (req) => {
   if (req.method !== "POST") {
@@ -40,6 +47,15 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Unknown product: " + productId }),
         { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const blockReason = await purchaseBlockReason(supabase, deviceId, productId, config.type);
+    if (blockReason) {
+      return new Response(
+        JSON.stringify({ error: blockReason }),
+        { status: 409, headers: { "Content-Type": "application/json" } }
       );
     }
 
@@ -89,3 +105,47 @@ serve(async (req) => {
     );
   }
 });
+
+async function purchaseBlockReason(
+  supabase: ReturnType<typeof createClient>,
+  deviceId: string,
+  productId: string,
+  productType: "subscription" | "one_time",
+): Promise<string | null> {
+  const now = new Date().toISOString();
+
+  if (AD_FREE_ONLY_PRODUCT_IDS.includes(productId)) {
+    const { data: lifetimePurchases, error: lifetimeError } = await supabase
+      .from("purchases")
+      .select("id")
+      .eq("device_id", deviceId)
+      .eq("product_id", LIFETIME_PRODUCT_ID)
+      .eq("status", "completed")
+      .limit(1);
+
+    if (lifetimeError) throw lifetimeError;
+    if (lifetimePurchases && lifetimePurchases.length > 0) {
+      return "Lifetime ad-free is already active for this account.";
+    }
+  }
+
+  const { data: activeSubscriptions, error: subscriptionError } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("device_id", deviceId)
+    .in("status", ACTIVE_SUBSCRIPTION_STATUSES)
+    .gte("current_period_end", now)
+    .limit(1);
+
+  if (subscriptionError) throw subscriptionError;
+  if (activeSubscriptions && activeSubscriptions.length > 0) {
+    if (productType === "subscription") {
+      return "You already have an active subscription. Cancel it before buying another subscription.";
+    }
+    if (productId === LIFETIME_PRODUCT_ID) {
+      return "Cancel your active subscription before buying lifetime ad-free.";
+    }
+  }
+
+  return null;
+}

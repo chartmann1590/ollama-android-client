@@ -39,6 +39,11 @@ class RewardedAdManager @Inject constructor(
 
     fun loadAd(activity: Activity) {
         if (!BuildConfig.ADS_ENABLED) return
+        if (adGate.isPremium.value) {
+            rewardedAd = null
+            _state.value = RewardedAdState.IDLE
+            return
+        }
         if (isLoading || rewardedAd != null) return
 
         val trace = PerformanceMonitor.startAdTrace("load_rewarded")
@@ -82,6 +87,12 @@ class RewardedAdManager @Inject constructor(
         onReward: () -> Unit,
         onClosed: () -> Unit
     ): Boolean {
+        if (adGate.isPremium.value) {
+            rewardedAd = null
+            _state.value = RewardedAdState.IDLE
+            onClosed()
+            return false
+        }
         if (!BuildConfig.ADS_ENABLED) {
             // For dev / test builds with ADS_ENABLED=false, still grant the
             // reward so the redemption flow can be exercised end-to-end.

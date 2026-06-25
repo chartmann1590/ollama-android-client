@@ -73,8 +73,8 @@ fun RewardsScreen(
     }
 
     // Make sure an ad is queued up when the screen opens.
-    LaunchedEffect(activity) {
-        if (activity != null) viewModel.rewardedManager().loadAd(activity)
+    LaunchedEffect(activity, isPremium) {
+        if (activity != null && !isPremium) viewModel.rewardedManager().loadAd(activity)
     }
 
     val remainingMs = (adFreeUntil - now).coerceAtLeast(0L)
@@ -114,31 +114,33 @@ fun RewardsScreen(
 
             AdFreeStatusCard(isActive = isAdFree, remainingMs = remainingMs)
 
-            EarnSection(
-                rewardedState = rewardedState,
-                creditsPerAd = viewModel.creditsPerAd,
-                earnableToday = earnableToday,
-                maxPerDay = maxPerDay,
-                onWatchAd = {
-                    if (earnableToday <= 0) {
-                        viewModel.showEarnLimitToast()
-                    } else if (activity != null) {
-                        viewModel.rewardedManager().showAd(
-                            activity = activity,
-                            onReward = {},
-                            onClosed = {}
-                        )
+            if (!isPremium) {
+                EarnSection(
+                    rewardedState = rewardedState,
+                    creditsPerAd = viewModel.creditsPerAd,
+                    earnableToday = earnableToday,
+                    maxPerDay = maxPerDay,
+                    onWatchAd = {
+                        if (earnableToday <= 0) {
+                            viewModel.showEarnLimitToast()
+                        } else if (activity != null) {
+                            viewModel.rewardedManager().showAd(
+                                activity = activity,
+                                onReward = {},
+                                onClosed = {}
+                            )
+                        }
                     }
-                }
-            )
+                )
 
-            RedeemSection(
-                tiers = viewModel.tiers,
-                credits = credits,
-                redeemableToday = redeemableToday,
-                maxPerDay = maxPerDay,
-                onRedeem = viewModel::redeem
-            )
+                RedeemSection(
+                    tiers = viewModel.tiers,
+                    credits = credits,
+                    redeemableToday = redeemableToday,
+                    maxPerDay = maxPerDay,
+                    onRedeem = viewModel::redeem
+                )
+            }
 
             HowItWorksCard(maxPerDay = maxPerDay)
 

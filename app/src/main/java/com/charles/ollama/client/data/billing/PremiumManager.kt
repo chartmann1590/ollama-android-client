@@ -13,7 +13,7 @@ class PremiumManager @Inject constructor(
     val isWebSyncPremium: StateFlow<Boolean> = backend.isWebSyncPremium
     val productDetails: StateFlow<Map<String, PremiumProductInfo>> = backend.productDetails
 
-    /** True when the active backend requires sign-in before purchase (GitHub/Stripe). */
+    /** True when the active backend requires sign-in before purchase. */
     val requiresSignInToPurchase: Boolean = backend.requiresSignInToPurchase
 
     fun initialize() = backend.initialize()

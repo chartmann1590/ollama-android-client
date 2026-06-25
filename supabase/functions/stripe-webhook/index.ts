@@ -2,8 +2,13 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
+const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+const LIFETIME_PRODUCT_ID = "premium_lifetime";
+const AD_FREE_ONLY_PRODUCT_IDS = ["premium_lifetime", "premium_monthly", "premium_yearly"];
+const ACTIVE_SUBSCRIPTION_STATUSES = ["active", "trialing"];
 
 serve(async (req) => {
   try {
@@ -35,16 +40,38 @@ serve(async (req) => {
         }
 
         if (session.mode === "subscription" && session.subscription) {
-          // Recurring purchase — tracked ONLY in `subscriptions` so that a later
-          // cancellation/expiry revokes access. Do NOT write a `purchases` row,
-          // which would grant permanent premium and never revert on cancel.
+          if (
+            AD_FREE_ONLY_PRODUCT_IDS.includes(productId) &&
+            await hasCompletedLifetimePurchase(supabase, deviceId, stripeSessionId)
+          ) {
+            console.error("Blocking ad-free subscription because lifetime is active", {
+              deviceId,
+              productId,
+              stripeSubscriptionId: session.subscription,
+            });
+            await cancelStripeSubscription(session.subscription);
+            break;
+          }
+
+          if (await hasActiveSubscription(supabase, deviceId, session.subscription)) {
+            console.error("Blocking duplicate active subscription", {
+              deviceId,
+              productId,
+              stripeSubscriptionId: session.subscription,
+            });
+            await cancelStripeSubscription(session.subscription);
+            break;
+          }
+
+          // Recurring purchases live only in `subscriptions`; cancellation or
+          // expiry then correctly revokes access.
           const subResp = await fetch(
             "https://api.stripe.com/v1/subscriptions/" + session.subscription,
             {
               headers: {
-                "Authorization": "Bearer " + (Deno.env.get("STRIPE_SECRET_KEY") ?? ""),
+                "Authorization": "Bearer " + STRIPE_SECRET_KEY,
               },
-            }
+            },
           );
           const subscription = await subResp.json();
 
@@ -55,16 +82,33 @@ serve(async (req) => {
               stripe_subscription_id: session.subscription,
               status: subscription.status,
               current_period_start: new Date(
-                (subscription.current_period_start || 0) * 1000
+                (subscription.current_period_start || 0) * 1000,
               ).toISOString(),
               current_period_end: new Date(
-                (subscription.current_period_end || 0) * 1000
+                (subscription.current_period_end || 0) * 1000,
               ).toISOString(),
             },
-            { onConflict: "stripe_subscription_id" }
+            { onConflict: "stripe_subscription_id" },
           );
         } else {
-          // One-time payment (lifetime ad-free) — permanent entitlement.
+          if (productId === LIFETIME_PRODUCT_ID) {
+            if (await hasCompletedLifetimePurchase(supabase, deviceId, stripeSessionId)) {
+              console.error("Blocking duplicate lifetime entitlement", {
+                deviceId,
+                stripeSessionId,
+              });
+              break;
+            }
+
+            if (await hasActiveSubscription(supabase, deviceId, null)) {
+              console.error("Blocking lifetime entitlement while subscription is active", {
+                deviceId,
+                stripeSessionId,
+              });
+              break;
+            }
+          }
+
           await supabase.from("purchases").insert({
             device_id: deviceId,
             product_id: productId,
@@ -94,13 +138,13 @@ serve(async (req) => {
               stripe_subscription_id: subId,
               status: subscription.status,
               current_period_start: new Date(
-                (subscription.current_period_start || 0) * 1000
+                (subscription.current_period_start || 0) * 1000,
               ).toISOString(),
               current_period_end: new Date(
-                (subscription.current_period_end || 0) * 1000
+                (subscription.current_period_end || 0) * 1000,
               ).toISOString(),
             },
-            { onConflict: "stripe_subscription_id" }
+            { onConflict: "stripe_subscription_id" },
           );
         }
         break;
@@ -120,9 +164,65 @@ serve(async (req) => {
   }
 });
 
+async function hasCompletedLifetimePurchase(
+  supabase: ReturnType<typeof createClient>,
+  deviceId: string,
+  stripeSessionId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("purchases")
+    .select("id")
+    .eq("device_id", deviceId)
+    .eq("product_id", LIFETIME_PRODUCT_ID)
+    .eq("status", "completed")
+    .neq("stripe_session_id", stripeSessionId)
+    .limit(1);
+
+  if (error) throw error;
+  return Boolean(data && data.length > 0);
+}
+
+async function hasActiveSubscription(
+  supabase: ReturnType<typeof createClient>,
+  deviceId: string,
+  stripeSubscriptionId: string | null,
+): Promise<boolean> {
+  let query = supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("device_id", deviceId)
+    .in("status", ACTIVE_SUBSCRIPTION_STATUSES)
+    .gte("current_period_end", new Date().toISOString())
+    .limit(1);
+
+  if (stripeSubscriptionId) {
+    query = query.neq("stripe_subscription_id", stripeSubscriptionId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return Boolean(data && data.length > 0);
+}
+
+async function cancelStripeSubscription(stripeSubscriptionId: string): Promise<void> {
+  if (!STRIPE_SECRET_KEY) return;
+  const response = await fetch(
+    "https://api.stripe.com/v1/subscriptions/" + stripeSubscriptionId,
+    {
+      method: "DELETE",
+      headers: {
+        "Authorization": "Bearer " + STRIPE_SECRET_KEY,
+      },
+    },
+  );
+  if (!response.ok) {
+    console.error("Failed to cancel duplicate Stripe subscription", await response.text());
+  }
+}
+
 async function verifyStripeSignature(
   body: string,
-  signature: string
+  signature: string,
 ): Promise<boolean> {
   if (!STRIPE_WEBHOOK_SECRET) {
     console.warn("STRIPE_WEBHOOK_SECRET not set; skipping verification");
@@ -136,7 +236,7 @@ async function verifyStripeSignature(
       enc.encode(STRIPE_WEBHOOK_SECRET),
       algo,
       false,
-      ["verify"]
+      ["verify"],
     );
     const parts = signature.split(",");
     const timestampPart = parts.find((p) => p.startsWith("t="));

@@ -28,6 +28,7 @@ import com.charles.ollama.client.ads.AdConsentManager
 import com.charles.ollama.client.ads.AdGate
 import com.charles.ollama.client.ads.InterstitialAdManager
 import com.charles.ollama.client.ads.RewardedAdManager
+import com.charles.ollama.client.data.billing.PaymentReturnHandler
 import com.charles.ollama.client.data.billing.PremiumManager
 import com.google.android.gms.ads.MobileAds
 import com.charles.ollama.client.data.preferences.UiPreferences
@@ -59,6 +60,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var premiumManager: PremiumManager
+
+    @Inject
+    lateinit var paymentReturnHandler: PaymentReturnHandler
 
     @Inject
     lateinit var adGate: AdGate
@@ -111,6 +115,7 @@ class MainActivity : ComponentActivity() {
 
         val initialThreadId = readShortcutThreadId(intent)
         val initialDest = intent?.getStringExtra(EXTRA_DEST)
+        paymentReturnHandler.handle(intent)
 
         // OEM PhoneWindow bug on certain Android 11 devices: PhoneWindow.generateLayout
         // throws RuntimeException("Window couldn't find content container view") when the
@@ -225,6 +230,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        paymentReturnHandler.handle(intent)
         val newThreadId = readShortcutThreadId(intent)
         if (newThreadId > 0L) {
             pendingShortcutHandler?.invoke(newThreadId)
@@ -307,4 +313,3 @@ private fun ConsentRequiredScreen(onReview: () -> Unit) {
         }
     }
 }
-

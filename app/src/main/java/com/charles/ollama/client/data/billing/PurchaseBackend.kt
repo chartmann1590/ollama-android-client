@@ -21,9 +21,10 @@ interface PurchaseBackend {
     /**
      * Whether the user must sign in before a purchase can be made. Platform
      * billing (Play) ties purchases to the store account automatically, so it
-     * stays false. The GitHub/Stripe backend overrides this to true because it
-     * links entitlements to a Firebase account for cross-device restore.
-     * Defaulted here so non-Stripe backends need no change.
+     * stays false. Account-linked external billing backends override this
+     * because they link entitlements to a Firebase account for cross-device
+     * restore.
+     * Defaulted here so platform billing backends need no change.
      */
     val requiresSignInToPurchase: Boolean get() = false
 
@@ -34,7 +35,7 @@ interface PurchaseBackend {
     /**
      * Restore previously-purchased entitlements. Platform billing (Play) just
      * re-queries the store account, so the default simply refreshes. The
-     * GitHub/Stripe backend overrides this to first prompt sign-in when signed
+     * External billing backends may override this to first prompt sign-in when signed
      * out (entitlements are tied to a Firebase account), using [activity] to
      * launch the credential flow.
      */
@@ -43,7 +44,7 @@ interface PurchaseBackend {
     /**
      * Best-effort revoke of server-side entitlements during account deletion.
      * Play purchases are owned by the Google account (nothing to delete here),
-     * so the default is a no-op. The GitHub/Stripe backend overrides this to
+     * so the default is a no-op. External billing backends may override this to
      * cancel any live subscription and remove the account's purchase rows.
      */
     suspend fun deleteRemoteEntitlements() {}

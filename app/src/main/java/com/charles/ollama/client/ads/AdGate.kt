@@ -99,6 +99,19 @@ class AdGate @Inject constructor(
             premiumManager.isPremium.value ||
             _adFreeUntilMs.value > System.currentTimeMillis()
 
+    /**
+     * Temporarily suppress ads after a successful external checkout return while
+     * the entitlement refresh catches up.
+     */
+    fun grantTemporaryAdFree(durationMs: Long) {
+        if (durationMs <= 0L) return
+        val now = System.currentTimeMillis()
+        val baseline = if (_adFreeUntilMs.value > now) _adFreeUntilMs.value else now
+        val newExpiry = baseline + durationMs
+        prefs.edit().putLong(KEY_AD_FREE_UNTIL, newExpiry).apply()
+        _adFreeUntilMs.value = newExpiry
+    }
+
     fun adFreeRemainingMs(): Long {
         val left = _adFreeUntilMs.value - System.currentTimeMillis()
         return if (left > 0) left else 0L

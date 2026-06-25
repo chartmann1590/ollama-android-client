@@ -262,7 +262,7 @@ private fun SignInRequiredNote() {
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    // Flavor-specific: the GitHub flavor explains Stripe; the Play
+                    // Flavor-specific: the GitHub flavor explains external billing; the Play
                     // flavor never renders this note (requiresSignInToPurchase=false)
                     // and its string omits any external-payment wording so the Play
                     // binary contains no such reference.

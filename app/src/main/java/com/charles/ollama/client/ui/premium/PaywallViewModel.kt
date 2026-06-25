@@ -27,7 +27,7 @@ class PaywallViewModel @Inject constructor(
     val isWebSyncPremium: StateFlow<Boolean> = premiumManager.isWebSyncPremium
     val productDetails: StateFlow<Map<String, PremiumProductInfo>> = premiumManager.productDetails
 
-    /** GitHub/Stripe backend requires Google sign-in before checkout; Play does not. */
+    /** Some backends require Google sign-in before purchase; Play does not. */
     val requiresSignInToPurchase: Boolean = premiumManager.requiresSignInToPurchase
 
     init {
