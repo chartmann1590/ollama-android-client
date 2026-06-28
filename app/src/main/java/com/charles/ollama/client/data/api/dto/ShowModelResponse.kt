@@ -4,13 +4,13 @@ import com.google.gson.annotations.SerializedName
 
 data class ShowModelResponse(
     @SerializedName("modelfile")
-    val modelfile: String,
+    val modelfile: String? = null,
     @SerializedName("parameters")
-    val parameters: String,
+    val parameters: String? = null,
     @SerializedName("template")
-    val template: String,
+    val template: String? = null,
     @SerializedName("details")
-    val details: ModelDetails,
+    val details: ModelDetails? = null,
     @SerializedName("license")
     val license: String? = null,
     @SerializedName("system")

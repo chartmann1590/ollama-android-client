@@ -64,10 +64,10 @@ fun ModelDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     DetailsCard(detail)
-                    detail.parameters.takeIf { it.isNotBlank() }?.let {
+                    detail.parameters?.takeIf { it.isNotBlank() }?.let {
                         CodeSection(title = "Parameters", body = it)
                     }
-                    detail.template.takeIf { it.isNotBlank() }?.let {
+                    detail.template?.takeIf { it.isNotBlank() }?.let {
                         CodeSection(title = "Template", body = it)
                     }
                     detail.system?.takeIf { it.isNotBlank() }?.let {
@@ -76,7 +76,7 @@ fun ModelDetailScreen(
                     detail.license?.takeIf { it.isNotBlank() }?.let {
                         CodeSection(title = "License", body = it, collapsible = true)
                     }
-                    detail.modelfile.takeIf { it.isNotBlank() }?.let {
+                    detail.modelfile?.takeIf { it.isNotBlank() }?.let {
                         CodeSection(title = "Modelfile", body = it, collapsible = true)
                     }
                 }
@@ -100,12 +100,20 @@ private fun DetailsCard(detail: ShowModelResponse) {
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text("Details", style = MaterialTheme.typography.titleMedium)
-            DetailRow("Family", d.family)
-            DetailRow("Families", d.families?.joinToString(", "))
-            DetailRow("Parameter size", d.parameterSize)
-            DetailRow("Quantization", d.quantizationLevel)
-            DetailRow("Format", d.format)
-            DetailRow("Parent model", d.parentModel)
+            if (d == null) {
+                Text(
+                    text = "No detailed metadata reported by the server",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                DetailRow("Family", d.family)
+                DetailRow("Families", d.families?.joinToString(", "))
+                DetailRow("Parameter size", d.parameterSize)
+                DetailRow("Quantization", d.quantizationLevel)
+                DetailRow("Format", d.format)
+                DetailRow("Parent model", d.parentModel)
+            }
         }
     }
 }

@@ -126,14 +126,16 @@ fun NavGraph(
                 
                 // Skip this override if we deep-linked into a specific chat via the
                 // "Resume last chat" shortcut — we want to stay on that chat route.
-                if ((currentRoute == Screen.Servers.route || currentRoute == null) &&
+                if (currentRoute == Screen.Servers.route &&
                     initialThreadId <= 0L
                 ) {
-                    // Now it's safe to access navController.graph because NavHost has been created
+                    val startDestinationId = navController.startDestinationIdOrNull()
                     navController.navigate(Screen.ChatThreads.route) {
                         // Clear the back stack and set ChatThreads as the new root
-                        popUpTo(navController.graph.startDestinationId) {
-                            inclusive = true
+                        if (startDestinationId != null) {
+                            popUpTo(startDestinationId) {
+                                inclusive = true
+                            }
                         }
                     }
                 }
@@ -164,7 +166,7 @@ fun NavGraph(
         LaunchedEffect(initialThreadId) {
             if (initialThreadId > 0L &&
                 defaultServer != null &&
-                navController.graph.findNode(Screen.Chat.route) != null
+                navController.hasRoute(Screen.Chat.route)
             ) {
                 val current = navController.currentBackStackEntry?.destination?.route
                 val target = Screen.Chat.createRoute(initialThreadId)
@@ -185,7 +187,7 @@ fun NavGraph(
                 "new_chat" -> Screen.ChatThreads.route
                 else -> null
             }
-            if (targetRoute != null && navController.graph.findNode(targetRoute) != null) {
+            if (targetRoute != null && navController.hasRoute(targetRoute)) {
                 val current = navController.currentBackStackEntry?.destination?.route
                 if (current != targetRoute) {
                     navController.navigate(targetRoute) { launchSingleTop = true }
@@ -361,3 +363,8 @@ fun NavGraph(
     }
 }
 
+private fun NavHostController.startDestinationIdOrNull(): Int? =
+    runCatching { graph.startDestinationId }.getOrNull()
+
+private fun NavHostController.hasRoute(route: String): Boolean =
+    runCatching { graph.findNode(route) != null }.getOrDefault(false)
