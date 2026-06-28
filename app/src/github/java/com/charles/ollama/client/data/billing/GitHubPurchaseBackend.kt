@@ -37,10 +37,10 @@ class GitHubPurchaseBackend @Inject constructor(
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    private val _isPremium = MutableStateFlow(prefs.getBoolean(KEY_IS_PREMIUM, false))
+    private val _isPremium = MutableStateFlow(readPremiumFlag())
     override val isPremium: StateFlow<Boolean> = _isPremium.asStateFlow()
 
-    private val _isWebSyncPremium = MutableStateFlow(prefs.getBoolean(KEY_IS_WEB_SYNC_PREMIUM, false))
+    private val _isWebSyncPremium = MutableStateFlow(readWebSyncPremiumFlag())
     override val isWebSyncPremium: StateFlow<Boolean> = _isWebSyncPremium.asStateFlow()
 
     override val productDetails: StateFlow<Map<String, PremiumProductInfo>> =
@@ -74,6 +74,7 @@ class GitHubPurchaseBackend @Inject constructor(
         // lock everything down on sign-out.
         scope.launch {
             authRepository.currentUser.collect { user ->
+                if (applyDebugForcedEntitlements()) return@collect
                 val uid = user?.uid
                 if (uid == null) {
                     clearAccountCache()
@@ -87,6 +88,7 @@ class GitHubPurchaseBackend @Inject constructor(
     }
 
     override fun initialize() {
+        if (applyDebugForcedEntitlements()) return
         // Restore cached flags only if they belong to the currently signed-in
         // account; otherwise stay locked until a refresh confirms entitlement.
         val uid = currentAccountId()
@@ -100,6 +102,7 @@ class GitHubPurchaseBackend @Inject constructor(
     }
 
     override fun refreshPurchases() {
+        if (applyDebugForcedEntitlements()) return
         val uid = currentAccountId()
         if (uid == null) {
             // Not signed in — there is no account to restore entitlements against.
@@ -292,6 +295,29 @@ class GitHubPurchaseBackend @Inject constructor(
         _isWebSyncPremium.value = webSync
     }
 
+    private fun readPremiumFlag(): Boolean =
+        prefs.getBoolean(KEY_IS_PREMIUM, false) || debugForcePremium()
+
+    private fun readWebSyncPremiumFlag(): Boolean =
+        prefs.getBoolean(KEY_IS_WEB_SYNC_PREMIUM, false) || debugForceWebSyncPremium()
+
+    private fun applyDebugForcedEntitlements(): Boolean {
+        if (!BuildConfig.DEBUG) return false
+        val premium = debugForcePremium()
+        val webSync = debugForceWebSyncPremium()
+        if (!premium && !webSync) return false
+        setPremium(premium || webSync)
+        setWebSyncPremium(webSync)
+        prefs.edit().putString(KEY_CACHED_UID, currentAccountId() ?: DEBUG_FORCED_UID).apply()
+        return true
+    }
+
+    private fun debugForcePremium(): Boolean =
+        BuildConfig.DEBUG && prefs.getBoolean(KEY_DEBUG_FORCE_PREMIUM, false)
+
+    private fun debugForceWebSyncPremium(): Boolean =
+        BuildConfig.DEBUG && prefs.getBoolean(KEY_DEBUG_FORCE_WEB_SYNC_PREMIUM, false)
+
     /** Forget the locally-cached entitlement (used on sign-out). */
     private fun clearAccountCache() {
         prefs.edit()
@@ -355,6 +381,9 @@ class GitHubPurchaseBackend @Inject constructor(
         private const val KEY_IS_PREMIUM = "is_premium"
         private const val KEY_IS_WEB_SYNC_PREMIUM = "is_web_sync_premium"
         private const val KEY_CACHED_UID = "cached_account_uid"
+        private const val KEY_DEBUG_FORCE_PREMIUM = "debug_force_premium"
+        private const val KEY_DEBUG_FORCE_WEB_SYNC_PREMIUM = "debug_force_web_sync_premium"
+        private const val DEBUG_FORCED_UID = "debug-forced-entitlement"
         private const val CALLBACK_SCHEME = "ollama-github"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }

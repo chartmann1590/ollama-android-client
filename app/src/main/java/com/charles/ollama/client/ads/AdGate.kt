@@ -5,12 +5,18 @@ import android.content.SharedPreferences
 import com.charles.ollama.client.data.billing.PremiumManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,6 +32,8 @@ class AdGate @Inject constructor(
     @ApplicationContext context: Context,
     private val premiumManager: PremiumManager,
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -81,8 +89,18 @@ class AdGate @Inject constructor(
         return (now + offset) / 86_400_000L
     }
 
+    /** True if any paid entitlement should remove ads. */
+    val hasAdFreeEntitlement: StateFlow<Boolean> =
+        combine(premiumManager.isPremium, premiumManager.isWebSyncPremium) { isPremium, isWebSyncPremium ->
+            isPremium || isWebSyncPremium
+        }.stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = premiumManager.isPremium.value || premiumManager.isWebSyncPremium.value,
+        )
+
     /** True if the user has paid to remove ads permanently. */
-    val isPremium: StateFlow<Boolean> = premiumManager.isPremium
+    val isPremium: StateFlow<Boolean> = hasAdFreeEntitlement
 
     // GDPR/UMP consent gate. Ads must not be requested until consent has been
     // resolved (granted, or not-required outside the EEA). Defaults to false so
@@ -96,7 +114,7 @@ class AdGate @Inject constructor(
 
     fun adsCurrentlyDisabled(): Boolean =
         !_adsConsentGranted.value ||
-            premiumManager.isPremium.value ||
+            hasAdFreeEntitlement.value ||
             _adFreeUntilMs.value > System.currentTimeMillis()
 
     /**

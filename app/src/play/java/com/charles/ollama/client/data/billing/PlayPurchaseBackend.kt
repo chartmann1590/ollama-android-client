@@ -32,10 +32,10 @@ class PlayPurchaseBackend @Inject constructor(
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    private val _isPremium = MutableStateFlow(prefs.getBoolean(KEY_IS_PREMIUM, false))
+    private val _isPremium = MutableStateFlow(readPremiumFlag())
     override val isPremium: StateFlow<Boolean> = _isPremium.asStateFlow()
 
-    private val _isWebSyncPremium = MutableStateFlow(prefs.getBoolean(KEY_IS_WEB_SYNC_PREMIUM, false))
+    private val _isWebSyncPremium = MutableStateFlow(readWebSyncPremiumFlag())
     override val isWebSyncPremium: StateFlow<Boolean> = _isWebSyncPremium.asStateFlow()
 
     private val _productDetails = MutableStateFlow<Map<String, PremiumProductInfo>>(emptyMap())
@@ -53,6 +53,7 @@ class PlayPurchaseBackend @Inject constructor(
     private var connecting = false
 
     override fun initialize() {
+        if (applyDebugForcedEntitlements()) return
         if (billingClient.isReady || connecting) return
         connecting = true
         runCatching { billingClient.startConnection(this) }
@@ -77,6 +78,7 @@ class PlayPurchaseBackend @Inject constructor(
     }
 
     override fun refreshPurchases() {
+        if (applyDebugForcedEntitlements()) return
         if (!billingClient.isReady) {
             initialize()
             return
@@ -202,6 +204,28 @@ class PlayPurchaseBackend @Inject constructor(
         _isWebSyncPremium.value = webSync
     }
 
+    private fun readPremiumFlag(): Boolean =
+        prefs.getBoolean(KEY_IS_PREMIUM, false) || debugForcePremium()
+
+    private fun readWebSyncPremiumFlag(): Boolean =
+        prefs.getBoolean(KEY_IS_WEB_SYNC_PREMIUM, false) || debugForceWebSyncPremium()
+
+    private fun applyDebugForcedEntitlements(): Boolean {
+        if (!BuildConfig.DEBUG) return false
+        val premium = debugForcePremium()
+        val webSync = debugForceWebSyncPremium()
+        if (!premium && !webSync) return false
+        setPremium(premium || webSync)
+        setWebSyncPremium(webSync)
+        return true
+    }
+
+    private fun debugForcePremium(): Boolean =
+        BuildConfig.DEBUG && prefs.getBoolean(KEY_DEBUG_FORCE_PREMIUM, false)
+
+    private fun debugForceWebSyncPremium(): Boolean =
+        BuildConfig.DEBUG && prefs.getBoolean(KEY_DEBUG_FORCE_WEB_SYNC_PREMIUM, false)
+
     private fun ProductDetails.toPremiumProductInfo(): PremiumProductInfo {
         val subscriptionPrice = subscriptionOfferDetails
             ?.firstOrNull()
@@ -225,5 +249,7 @@ class PlayPurchaseBackend @Inject constructor(
         private const val PREFS_NAME = "premium_prefs"
         private const val KEY_IS_PREMIUM = "is_premium"
         private const val KEY_IS_WEB_SYNC_PREMIUM = "is_web_sync_premium"
+        private const val KEY_DEBUG_FORCE_PREMIUM = "debug_force_premium"
+        private const val KEY_DEBUG_FORCE_WEB_SYNC_PREMIUM = "debug_force_web_sync_premium"
     }
 }
