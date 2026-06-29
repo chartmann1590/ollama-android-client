@@ -277,6 +277,9 @@ jobs:
             printf '%s' '{"project_info":{"project_number":"000000000000","project_id":"ollama-android-ci","storage_bucket":"ollama-android-ci.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000000000","android_client_info":{"package_name":"com.charles.ollama.client.play"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}},{"client_info":{"mobilesdk_app_id":"1:000000000000:android:1111111111111111111111","android_client_info":{"package_name":"com.charles.ollama.client.github"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyA-placeholder-placeholder-placeholder000"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
           fi
 
+      - name: Build Play release universal APK from AAB
+        run: ./gradlew :app:packagePlayReleaseUniversalApk --stacktrace
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -315,7 +318,19 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -no-snapshot
           disable-animations: true
-          script: ./gradlew :app:connectedPlayDebugAndroidTest --stacktrace
+          script: |
+            set -euo pipefail
+            ./gradlew :app:connectedPlayDebugAndroidTest --stacktrace
+            adb uninstall com.charles.ollama.client.play >/dev/null 2>&1 || true
+            adb install -r app/build/outputs/apk_from_bundle/playRelease/app-play-release-universal.apk
+            adb logcat -c
+            adb shell monkey -p com.charles.ollama.client.play -c android.intent.category.LAUNCHER 1
+            sleep 8
+            adb shell pidof com.charles.ollama.client.play >/dev/null
+            if adb logcat -d -t 1000 | grep -E "FATAL EXCEPTION|AndroidRuntime" >/tmp/release-crash.log; then
+              cat /tmp/release-crash.log
+              exit 1
+            fi
 
       - name: Upload instrumented test report
         if: always()
@@ -323,6 +338,14 @@ jobs:
         with:
           name: instrumented-test-report
           path: app/build/reports/androidTests/connected
+          if-no-files-found: ignore
+
+      - name: Upload Play release universal APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-play-release-universal-apk
+          path: app/build/outputs/apk_from_bundle/playRelease/app-play-release-universal.apk
           if-no-files-found: ignore
 
   release:

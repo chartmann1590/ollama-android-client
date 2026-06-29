@@ -13,11 +13,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,10 +66,6 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var adConsentManager: AdConsentManager
-
-    // Drives the consent wall: true once the user has been shown a consent form
-    // and declined. Compose observes this to swap the app for the wall screen.
-    private val consentBlocked = androidx.compose.runtime.mutableStateOf(false)
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -137,18 +130,12 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    if (consentBlocked.value) {
-                        // User declined required consent — block the app and let
-                        // them retry. They cannot proceed until they accept.
-                        ConsentRequiredScreen(onReview = { requestConsentRetry() })
-                    } else {
-                        NavGraph(
-                            initialThreadId = pendingThreadId,
-                            initialDest = pendingDest,
-                            onDestConsumed = { pendingDest = null }
-                        )
-                        UpdateAvailablePrompt()
-                    }
+                    NavGraph(
+                        initialThreadId = pendingThreadId,
+                        initialDest = pendingDest,
+                        onDestConsumed = { pendingDest = null }
+                    )
+                    UpdateAvailablePrompt()
                 }
             }
         }         } catch (e: RuntimeException) {
@@ -168,7 +155,7 @@ class MainActivity : ComponentActivity() {
         window.decorView.post { requestConsent() }
     }
 
-    /** Run the consent flow on launch. Declined → raise the consent wall. */
+    /** Run the consent flow on launch. Declined consent disables ads, not the app. */
     private fun requestConsent() {
         if (isFinishing || isDestroyed) return
 
@@ -189,24 +176,11 @@ class MainActivity : ComponentActivity() {
             if (consentTimeoutFired) return@ensureConsent
             consentTimeoutFired = true
             if (allowed) {
-                consentBlocked.value = false
                 enableAds()
             } else {
-                consentBlocked.value = true
+                Log.i(TAG, "Ads consent not granted; continuing with ads disabled")
+                adGate.setAdsConsentGranted(false)
             }
-        }
-    }
-
-    /** Re-prompt from the consent wall; on acceptance, drop the wall + enable ads. */
-    private fun requestConsentRetry() {
-        if (isFinishing || isDestroyed) return
-        adConsentManager.rePrompt(this) { allowed ->
-            if (isFinishing || isDestroyed) return@rePrompt
-            if (allowed) {
-                consentBlocked.value = false
-                enableAds()
-            }
-            // else: stay on the wall; the user can try again.
         }
     }
 
@@ -278,38 +252,5 @@ class MainActivity : ComponentActivity() {
 
         /** Max time to wait for UMP to resolve consent before proceeding anyway. */
         private const val CONSENT_TIMEOUT_MS = 2_000L
-    }
-}
-
-/**
- * Full-screen block shown when the user declines the required privacy/ads
- * consent. They cannot use the app until they accept; [onReview] re-opens the
- * consent form.
- */
-@androidx.compose.runtime.Composable
-private fun ConsentRequiredScreen(onReview: () -> Unit) {
-    androidx.compose.foundation.layout.Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
-        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-    ) {
-        androidx.compose.material3.Text(
-            text = "Consent required",
-            style = MaterialTheme.typography.headlineSmall,
-        )
-        androidx.compose.foundation.layout.Spacer(Modifier.height(12.dp))
-        androidx.compose.material3.Text(
-            text = "This app is supported by ads and needs your consent to continue. " +
-                "Please review and accept your privacy choices to use the app.",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        androidx.compose.foundation.layout.Spacer(Modifier.height(24.dp))
-        androidx.compose.material3.Button(onClick = onReview) {
-            androidx.compose.material3.Text("Review privacy choices")
-        }
     }
 }

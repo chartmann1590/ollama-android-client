@@ -35,8 +35,8 @@ class AdConsentManager @Inject constructor(@ApplicationContext context: Context)
      *  - `true`  — the app may proceed and ads may load (consent granted, not
      *    required for this region, or the consent service is unavailable so we
      *    fail open rather than brick the app).
-     *  - `false` — a consent form was shown and the user **declined**; the caller
-     *    should block app usage and re-prompt via [rePrompt].
+     *  - `false` — a consent form was shown and the user declined; the caller
+     *    should keep the app usable and skip ad requests.
      *
      * UMP persists the user's choice, so a consenting user is only asked once.
      */
@@ -52,7 +52,7 @@ class AdConsentManager @Inject constructor(@ApplicationContext context: Context)
                     }
                     // canRequestAds() is true when consent was granted OR isn't
                     // required for this user; false means a form was shown and
-                    // the user declined → the caller gates the app.
+                    // the user declined, so the app continues without ads.
                     onResult(consentInformation.canRequestAds())
                 }
             },
