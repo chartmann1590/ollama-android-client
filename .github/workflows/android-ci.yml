@@ -319,7 +319,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -no-snapshot
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             ./gradlew :app:connectedPlayDebugAndroidTest --stacktrace
             adb uninstall com.charles.ollama.client.play >/dev/null 2>&1 || true
             adb install -r app/build/outputs/apk_from_bundle/playRelease/app-play-release-universal.apk
