@@ -327,10 +327,10 @@ jobs:
             adb shell monkey -p com.charles.ollama.client.play -c android.intent.category.LAUNCHER 1
             sleep 8
             adb shell pidof com.charles.ollama.client.play >/dev/null
-            if adb logcat -d -t 1000 | grep -E "FATAL EXCEPTION|AndroidRuntime" >/tmp/release-crash.log; then
-              cat /tmp/release-crash.log
-              exit 1
-            fi
+            adb logcat -d -t 1000 > /tmp/release-logcat.txt
+            grep -E "FATAL EXCEPTION| E AndroidRuntime|ANR in com.charles.ollama.client.play" /tmp/release-logcat.txt > /tmp/release-crash.log || true
+            cat /tmp/release-crash.log
+            test ! -s /tmp/release-crash.log
 
       - name: Upload instrumented test report
         if: always()
