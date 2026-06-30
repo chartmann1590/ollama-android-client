@@ -232,9 +232,17 @@ class MainActivity : ComponentActivity() {
                     Log.d(TAG, "Notification permission already granted")
                 }
                 else -> {
-                    // Request the permission
+                    // Request the permission.
+                    // Android 16 throws NPE inside Parcel.createExceptionOrNull when
+                    // requestPermissions is IPC'd during Activity launch; catch and
+                    // record as non-fatal so the app still starts.
                     Log.d(TAG, "Requesting notification permission")
-                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    try {
+                        requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "requestPermissions failed (Android ${Build.VERSION.SDK_INT}): ${e.message}")
+                        runCatching { FirebaseCrashlytics.getInstance().recordException(e) }
+                    }
                 }
             }
         }
