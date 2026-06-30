@@ -279,7 +279,7 @@ class ChatViewModel @Inject constructor(
         val currentThreadId = _threadId.value
         val model = _selectedModel.value
         
-        android.util.Log.d("ChatViewModel", "sendMessage called: content='$content', images=${images?.size ?: 0}, isLoading=${_isLoading.value}, threadId=$currentThreadId, model=$model")
+        android.util.Log.d("ChatViewModel", "sendMessage called: content='<REDACTED>', images=${images?.size ?: 0}, isLoading=${_isLoading.value}, threadId=$currentThreadId, model=$model")
         
         if (currentThreadId == null) {
             _error.value = "No thread selected"
