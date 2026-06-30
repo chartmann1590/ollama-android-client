@@ -84,7 +84,7 @@ class OllamaApplication : Application() {
 
             // Get new FCM registration token
             val token = task.result
-            Log.d(TAG, "FCM Registration Token: $token")
+            Log.d(TAG, "FCM Registration Token: [REDACTED]")
             
             // TODO: Send token to your server if needed
             // sendRegistrationToServer(token)
