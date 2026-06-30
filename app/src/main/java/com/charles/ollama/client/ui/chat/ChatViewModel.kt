@@ -198,17 +198,17 @@ class ChatViewModel @Inject constructor(
                         val (content, thinking) = if (isLastAssistant && streamingContent != null && streamingContent.isNotEmpty()) {
                             // Use streaming content if available (it's the most up-to-date)
                             // streamingContent is already the parsed response, streamingThinking is already the parsed thinking
-                            android.util.Log.d("ChatViewModel", "Using streaming content for message ${entity.id}: thinking=${streamingThinking != null} (${streamingThinking?.length ?: 0} chars)")
+                            android.util.Log.d("ChatViewModel", "Using streaming content for message ${entity.id}: thinking=${streamingThinking != null} ([REDACTED] chars)")
                             Pair(streamingContent, streamingThinking)
                         } else {
                             // Use database content
-                            android.util.Log.d("ChatViewModel", "Using database content for message ${entity.id}: thinking=${entity.thinking != null} (${entity.thinking?.length ?: 0} chars)")
+                            android.util.Log.d("ChatViewModel", "Using database content for message ${entity.id}: thinking=${entity.thinking != null} ([REDACTED] chars)")
                             Pair(entity.content, entity.thinking)
                         }
                         
                         // Debug logging
                         if (thinking != null) {
-                            android.util.Log.d("ChatViewModel", "Message ${entity.id} has thinking: ${thinking.length} chars, content: ${content.length} chars")
+                            android.util.Log.d("ChatViewModel", "Message ${entity.id} has thinking: [REDACTED] chars, content: [REDACTED] chars")
                         } else if (isLastAssistant) {
                             android.util.Log.d("ChatViewModel", "Message ${entity.id} has NO thinking (isLastAssistant=$isLastAssistant)")
                         }
@@ -279,7 +279,7 @@ class ChatViewModel @Inject constructor(
         val currentThreadId = _threadId.value
         val model = _selectedModel.value
         
-        android.util.Log.d("ChatViewModel", "sendMessage called: content='$content', images=${images?.size ?: 0}, isLoading=${_isLoading.value}, threadId=$currentThreadId, model=$model")
+        android.util.Log.d("ChatViewModel", "sendMessage called: content='[REDACTED]', images=${images?.size ?: 0}, isLoading=${_isLoading.value}, threadId=$currentThreadId, model=$model")
         
         if (currentThreadId == null) {
             _error.value = "No thread selected"
@@ -343,7 +343,7 @@ class ChatViewModel @Inject constructor(
                             fullContent += streamDelta.content
                             streamDelta.thinking?.let { thinkingDelta ->
                                 fullThinking += thinkingDelta
-                                android.util.Log.d("ChatViewModel", "Received thinking delta: ${thinkingDelta.length} chars, total: ${fullThinking.length}")
+                                android.util.Log.d("ChatViewModel", "Received thinking delta: [REDACTED] chars, total: [REDACTED]")
                             }
                             
                             _streamingContent.value = fullContent
@@ -351,7 +351,7 @@ class ChatViewModel @Inject constructor(
                             
                             // Debug logging
                             if (fullThinking.isNotEmpty()) {
-                                android.util.Log.d("ChatViewModel", "Streaming thinking: ${fullThinking.length} chars, content: ${fullContent.length} chars")
+                                android.util.Log.d("ChatViewModel", "Streaming thinking: [REDACTED] chars, content: [REDACTED] chars")
                             }
                             
                             // Vibrate on each delta if enabled
@@ -363,7 +363,7 @@ class ChatViewModel @Inject constructor(
                         }
                     
                     // Log final content length for debugging
-                    android.util.Log.d("ChatViewModel", "Streaming completed. Final content length: ${fullContent.length}, Final thinking length: ${fullThinking.length}")
+                    android.util.Log.d("ChatViewModel", "Streaming completed. Final content length: [REDACTED], Final thinking length: [REDACTED]")
                     _error.value = null
                     
                     PerformanceMonitor.addMetric(trace, "stream_deltas", deltaCount)

@@ -644,9 +644,9 @@ class ChatRepository @Inject constructor(
                     fullContent += streamDelta.content
                     streamDelta.thinking?.let { thinkingDelta ->
                         fullThinking += thinkingDelta
-                        android.util.Log.d("ChatRepository", "Received thinking delta: ${thinkingDelta.length} chars, total thinking: ${fullThinking.length}")
+                        android.util.Log.d("ChatRepository", "Received thinking delta: [REDACTED] chars, total thinking: [REDACTED]")
                     }
-                    android.util.Log.d("ChatRepository", "Received delta $deltaCount: content=${streamDelta.content.length} chars, total content: ${fullContent.length}")
+                    android.util.Log.d("ChatRepository", "Received delta $deltaCount: content=[REDACTED] chars, total content: [REDACTED]")
                     
                     // Update the message in database as we stream (throttle to avoid too many DB writes)
                     if (deltaCount % 5 == 0 || streamDelta.content.length > 100 || streamDelta.thinking != null) {
@@ -664,7 +664,7 @@ class ChatRepository @Inject constructor(
                 }
             } catch (e: CancellationException) {
                 // User stopped — persist whatever was generated so far so it isn't lost.
-                android.util.Log.d("ChatRepository", "Stream cancelled, saving partial content: ${fullContent.length} chars")
+                android.util.Log.d("ChatRepository", "Stream cancelled, saving partial content: [REDACTED] chars")
                 withContext(NonCancellable) {
                     chatMessageDao.insertMessage(
                         ChatMessageEntity(
@@ -690,15 +690,15 @@ class ChatRepository @Inject constructor(
                 android.util.Log.e("ChatRepository", "Error collecting stream: ${e.message}", e)
                 // Even if there's an error, save what we have
                 if (fullContent.isNotEmpty()) {
-                    android.util.Log.d("ChatRepository", "Saving partial content due to error: ${fullContent.length} chars")
+                    android.util.Log.d("ChatRepository", "Saving partial content due to error: [REDACTED] chars")
                 }
                 throw e
             }
             
-            android.util.Log.d("ChatRepository", "Stream collection completed. Total deltas: $deltaCount, Final content length: ${fullContent.length}, Final thinking length: ${fullThinking.length}")
+            android.util.Log.d("ChatRepository", "Stream collection completed. Total deltas: $deltaCount, Final content length: [REDACTED], Final thinking length: [REDACTED]")
             
             // CRITICAL: Always save the final complete message - this MUST happen
-            android.util.Log.d("ChatRepository", "Streaming complete. Saving final message with ${fullContent.length} chars content, ${fullThinking.length} chars thinking")
+            android.util.Log.d("ChatRepository", "Streaming complete. Saving final message with [REDACTED] chars content, [REDACTED] chars thinking")
             val finalMessage = ChatMessageEntity(
                 id = assistantMessageId,
                 threadId = threadId,
@@ -720,7 +720,7 @@ class ChatRepository @Inject constructor(
                     chatMessageDao.insertMessage(finalMessage)
                 }
             }
-            android.util.Log.d("ChatRepository", "Final message saved to database with ${finalMessage.content.length} chars")
+            android.util.Log.d("ChatRepository", "Final message saved to database with [REDACTED] chars")
 
             // Update thread timestamp
             ollamaThread?.let {
