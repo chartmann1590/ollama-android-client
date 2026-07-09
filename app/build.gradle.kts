@@ -106,9 +106,11 @@ android {
         // gradle outputs aren't churned on every commit.
         val baseVersionCode = 4
         val baseVersionName = "1.2"
+        val envVersionCode = System.getenv("ANDROID_VERSION_CODE")?.toIntOrNull()
+        val envVersionName = System.getenv("ANDROID_VERSION_NAME")?.takeIf { it.isNotBlank() }
         val ciRunNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
-        versionCode = if (ciRunNumber != null) 1000 + ciRunNumber else baseVersionCode
-        versionName = if (ciRunNumber != null) "$baseVersionName.$ciRunNumber" else baseVersionName
+        versionCode = envVersionCode ?: if (ciRunNumber != null) 1000 + ciRunNumber else baseVersionCode
+        versionName = envVersionName ?: if (ciRunNumber != null) "$baseVersionName.$ciRunNumber" else baseVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

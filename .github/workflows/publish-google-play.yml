@@ -105,6 +105,17 @@ jobs:
             echo "keyPassword=$RELEASE_KEY_PASSWORD"
           } > keystore.properties
 
+      - name: Compute Play version
+        run: |
+          version_code="$(date -u +'%y%j%H%M')"
+          version_name="1.2.$(date -u +'%Y%m%d.%H%M')"
+          {
+            echo "ANDROID_VERSION_CODE=$version_code"
+            echo "ANDROID_VERSION_NAME=$version_name"
+          } >> "$GITHUB_ENV"
+          echo "Using versionCode=$version_code"
+          echo "Using versionName=$version_name"
+
       - name: Run Play unit tests
         run: ./gradlew :app:testPlayDebugUnitTest --stacktrace
 
