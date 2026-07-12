@@ -16,6 +16,7 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.appopen.AppOpenAd
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 /**
  * Loads and shows AdMob App Open ads when the app returns to the foreground.
@@ -108,7 +109,18 @@ class AppOpenAdManager(
                 isShowing = true
             }
         }
-        ad.show(activity)
+        try {
+            ad.show(activity)
+        } catch (e: Exception) {
+            // AdMob can throw ActivityNotFoundException on some devices when
+            // Play Services is stale or mid-update, even though AdActivity is
+            // correctly declared in the merged manifest (see GitHub #30).
+            // Nothing we can do but survive it instead of crashing the app.
+            Log.w(TAG, "App open ad failed to show: ${e.message}")
+            runCatching { FirebaseCrashlytics.getInstance().recordException(e) }
+            appOpenAd = null
+            isShowing = false
+        }
     }
 
     // --- ActivityLifecycleCallbacks: track the foreground activity ---

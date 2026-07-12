@@ -11,6 +11,7 @@ import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.OnUserEarnedRewardListener
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -132,11 +133,23 @@ class RewardedAdManager @Inject constructor(
             }
         }
 
-        ad.show(activity, OnUserEarnedRewardListener {
-            adGate.addCredits(AdGate.CREDITS_PER_AD)
-            onReward()
-        })
-        return true
+        return try {
+            ad.show(activity, OnUserEarnedRewardListener {
+                adGate.addCredits(AdGate.CREDITS_PER_AD)
+                onReward()
+            })
+            true
+        } catch (e: Exception) {
+            // AdMob can throw ActivityNotFoundException on some devices when
+            // Play Services is stale or mid-update, even though AdActivity is
+            // correctly declared in the merged manifest (see GitHub #30).
+            Log.w(TAG, "Rewarded ad failed to show: ${e.message}")
+            runCatching { FirebaseCrashlytics.getInstance().recordException(e) }
+            rewardedAd = null
+            _state.value = RewardedAdState.FAILED
+            onClosed()
+            false
+        }
     }
 
     companion object {

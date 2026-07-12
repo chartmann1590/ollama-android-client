@@ -10,6 +10,7 @@ import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.charles.ollama.client.util.PerformanceMonitor
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlin.random.Random
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -122,11 +123,11 @@ class InterstitialAdManager @Inject constructor(
         }
 
         if (ad != null && Random.nextFloat() < showAdProbability) {
-            PerformanceMonitor.addAttribute(trace, "shown", "true")
             lastShownAtMs = now
-            ad.show(activity)
+            val shown = safeShow(ad, activity)
+            PerformanceMonitor.addAttribute(trace, "shown", shown.toString())
             PerformanceMonitor.stopTrace(trace)
-            return true
+            return shown
         }
 
         PerformanceMonitor.addAttribute(trace, "shown", "false")
@@ -150,15 +151,32 @@ class InterstitialAdManager @Inject constructor(
             val ad = interstitialAd
             if (ad != null) {
                 lastShownAtMs = System.currentTimeMillis()
-                ad.show(activity)
-                return true
+                return safeShow(ad, activity)
             }
         } else {
             return showAdIfAvailable(activity)
         }
         return false
     }
-    
+
+    /**
+     * Shows [ad], swallowing the ActivityNotFoundException AdMob can throw on
+     * some devices when Play Services is stale or mid-update, even though
+     * AdActivity is correctly declared in the merged manifest (see GitHub #30).
+     * Returns whether the ad was actually shown.
+     */
+    private fun safeShow(ad: InterstitialAd, activity: Activity): Boolean {
+        return try {
+            ad.show(activity)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Interstitial ad failed to show: ${e.message}")
+            runCatching { FirebaseCrashlytics.getInstance().recordException(e) }
+            interstitialAd = null
+            false
+        }
+    }
+
     /**
      * Check if an ad is loaded
      */
