@@ -338,6 +338,9 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
+    // On-device UI translation
+    implementation("com.google.mlkit:translate:17.0.3")
+
     // LiteRT-LM (on-device Gemma / .litertlm)
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.13.1")
     

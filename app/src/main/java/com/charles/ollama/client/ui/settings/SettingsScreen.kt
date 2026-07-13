@@ -37,7 +37,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.charles.ollama.client.R
 import com.charles.ollama.client.data.preferences.ThemeMode
 import com.charles.ollama.client.data.preferences.LocalBugReport
+import com.charles.ollama.client.data.translation.AppLanguages
+import com.charles.ollama.client.data.translation.TranslationStatus
 import com.charles.ollama.client.ui.components.BannerAd
+import com.charles.ollama.client.ui.localization.translated
+import com.charles.ollama.client.ui.onboarding.LanguageSelector
+import com.charles.ollama.client.ui.onboarding.TranslationStatusText
 import com.charles.ollama.client.util.PerformanceMonitor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,6 +62,8 @@ fun SettingsScreen(
     val themeMode by viewModel.themeMode.collectAsState()
     val dynamicColor by viewModel.dynamicColor.collectAsState()
     val requestTimeoutSeconds by viewModel.requestTimeoutSeconds.collectAsState()
+    val languageTag by viewModel.languageTag.collectAsState()
+    val translationStatus by viewModel.translationStatus.collectAsState()
     val isPremium by viewModel.isPremium.collectAsState()
     val isWebSyncPremium by viewModel.isWebSyncPremium.collectAsState()
     val accountUiState by viewModel.accountUiState.collectAsState()
@@ -88,10 +95,10 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(translated("Settings")) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = translated("Back"))
                     }
                 }
             )
@@ -108,7 +115,7 @@ fun SettingsScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Appearance",
+                text = translated("Appearance"),
                 style = MaterialTheme.typography.titleMedium
             )
             ThemeModeSelector(
@@ -122,11 +129,11 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Material You colors",
+                        text = translated("Material You colors"),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "Use your wallpaper's colors instead of the app's brand palette (Android 12+).",
+                        text = translated("Use your wallpaper's colors instead of the app's brand palette (Android 12+)."),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -136,6 +143,23 @@ fun SettingsScreen(
                     onCheckedChange = viewModel::setDynamicColor
                 )
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = translated("Language"),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = translated("Menu text and app messages are translated on this device. Translations may not always be accurate, so be careful with important information."),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LanguageSelector(
+                languages = viewModel.supportedLanguages,
+                selected = AppLanguages.find(languageTag),
+                onSelect = viewModel::setLanguage
+            )
+            TranslationStatusText(translationStatus)
 
             Spacer(modifier = Modifier.height(24.dp))
             AccountSyncSection(
@@ -159,18 +183,18 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "Premium",
+                text = translated("Premium"),
                 style = MaterialTheme.typography.titleMedium
             )
             if (isPremium) {
                 Text(
-                    text = "Premium active ✓ — all ads are removed. Thanks for your support!",
+                    text = translated("Premium active - all ads are removed. Thanks for your support!"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
                 Text(
-                    text = "Remove every ad in the app with a subscription or a one-time lifetime purchase.",
+                    text = translated("Remove every ad in the app with a subscription or a one-time lifetime purchase."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -178,7 +202,7 @@ fun SettingsScreen(
                     onClick = onNavigateToPaywall,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Remove Ads / Go Premium")
+                    Text(translated("Remove Ads / Go Premium"))
                 }
             }
 
@@ -190,24 +214,24 @@ fun SettingsScreen(
                     onClick = { (context as? Activity)?.let(viewModel::showAdPrivacyOptions) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Ad privacy options")
+                    Text(translated("Ad privacy options"))
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "On-device LiteRT (Gemma)",
+                text = translated("On-device LiteRT (Gemma)"),
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = "Gemma 4 bundles from litert-community are public and don't need a token. This field is only required for gated Hugging Face repos — paste a read-only token from huggingface.co/settings/tokens if you hit a 401/403 on download.",
+                text = translated("Gemma 4 bundles from litert-community are public and don't need a token. This field is only required for gated Hugging Face repos - paste a read-only token from huggingface.co/settings/tokens if you hit a 401/403 on download."),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             OutlinedTextField(
                 value = huggingFaceToken,
                 onValueChange = viewModel::updateHuggingFaceToken,
-                label = { Text("Hugging Face token") },
+                label = { Text(translated("Hugging Face token")) },
                 placeholder = { Text("hf_…") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
@@ -215,7 +239,7 @@ fun SettingsScreen(
                 trailingIcon = {
                     if (huggingFaceToken.isNotEmpty()) {
                         IconButton(onClick = viewModel::clearHuggingFaceToken) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear token")
+                            Icon(Icons.Default.Clear, contentDescription = translated("Clear token"))
                         }
                     }
                 },
@@ -223,9 +247,9 @@ fun SettingsScreen(
             )
             Text(
                 text = if (huggingFaceToken.isBlank()) {
-                    "No token set — gated models will fail to download."
+                    translated("No token set - gated models will fail to download.")
                 } else {
-                    "Token saved on this device only."
+                    translated("Token saved on this device only.")
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -233,11 +257,11 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "Ollama connection",
+                text = translated("Ollama connection"),
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = "Increase this if Ollama times out on large models or slow hardware.",
+                text = translated("Increase this if Ollama times out on large models or slow hardware."),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -248,11 +272,11 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "Help",
+                text = translated("Help"),
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = "Open the same tips you see on first launch: remote Ollama vs on-device LiteRT.",
+                text = translated("Open the same tips you see on first launch: remote Ollama vs on-device LiteRT."),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -784,7 +808,7 @@ private fun AccountSyncSection(
     var showDeleteAccountConfirm by remember { mutableStateOf(false) }
 
     Text(
-        text = "Account & web sync",
+        text = translated("Account & web sync"),
         style = MaterialTheme.typography.titleMedium
     )
     Card(
@@ -799,7 +823,7 @@ private fun AccountSyncSection(
         ) {
             if (accountUiState.uid == null) {
                 Text(
-                    text = "Sign in to sync chats with the future web interface.",
+                    text = translated("Sign in to sync chats with the future web interface."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -810,12 +834,12 @@ private fun AccountSyncSection(
                 ) {
                     Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Continue with Google")
+                    Text(translated("Continue with Google"))
                 }
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") },
+                    label = { Text(translated("Email")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     modifier = Modifier.fillMaxWidth()
@@ -823,7 +847,7 @@ private fun AccountSyncSection(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Password") },
+                    label = { Text(translated("Password")) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -838,29 +862,29 @@ private fun AccountSyncSection(
                         enabled = email.isNotBlank() && password.isNotBlank() && authActionState !is AuthActionState.Loading,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Sign in")
+                        Text(translated("Sign in"))
                     }
                     OutlinedButton(
                         onClick = { onCreateAccount(email, password) },
                         enabled = email.isNotBlank() && password.length >= 6 && authActionState !is AuthActionState.Loading,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Create")
+                        Text(translated("Create"))
                     }
                 }
                 TextButton(
                     onClick = { onPasswordReset(email) },
                     enabled = email.isNotBlank() && authActionState !is AuthActionState.Loading
                 ) {
-                    Text("Send password reset")
+                    Text(translated("Send password reset"))
                 }
             } else {
                 Text(
-                    text = accountUiState.email ?: "Signed in",
+                    text = accountUiState.email ?: translated("Signed in"),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Providers: ${accountUiState.providerIds.joinToString().ifBlank { "Firebase" }}",
+                    text = translated("Providers: %s", accountUiState.providerIds.joinToString().ifBlank { "Firebase" }),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -870,12 +894,12 @@ private fun AccountSyncSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Web sync", style = MaterialTheme.typography.bodyLarge)
+                        Text(translated("Web sync"), style = MaterialTheme.typography.bodyLarge)
                         Text(
                             text = if (accountUiState.syncEnabled) {
-                                "Chats sync through Firebase Realtime Database."
+                                translated("Chats sync through Firebase Realtime Database.")
                             } else {
-                                "Off. Chats stay on this device."
+                                translated("Off. Chats stay on this device.")
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -894,13 +918,13 @@ private fun AccountSyncSection(
                     ) {
                         if (isWebSyncPremium) {
                             Text(
-                                text = "Unlimited web messages",
+                                text = translated("Unlimited web messages"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         } else {
                             Text(
-                                text = "3 free web messages / day",
+                                text = translated("3 free web messages / day"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -909,7 +933,7 @@ private fun AccountSyncSection(
                                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                             ) {
                                 Text(
-                                    text = "Upgrade",
+                                    text = translated("Upgrade"),
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
@@ -918,14 +942,14 @@ private fun AccountSyncSection(
                 }
                 if (accountUiState.lastSyncAt > 0L) {
                     Text(
-                        text = "Last sync: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(accountUiState.lastSyncAt))}",
+                        text = translated("Last sync: %s", java.text.DateFormat.getDateTimeInstance().format(java.util.Date(accountUiState.lastSyncAt))),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 accountUiState.lastSyncError?.let { error ->
                     Text(
-                        text = "Sync error: $error",
+                        text = translated("Sync error: %s", error),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -934,7 +958,7 @@ private fun AccountSyncSection(
                     onClick = onSignOut,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Sign out")
+                    Text(translated("Sign out"))
                 }
                 TextButton(
                     onClick = { showDeleteAccountConfirm = true },
@@ -943,7 +967,7 @@ private fun AccountSyncSection(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Delete account")
+                    Text(translated("Delete account"))
                 }
             }
 
@@ -951,11 +975,11 @@ private fun AccountSyncSection(
                 AuthActionState.Loading -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 is AuthActionState.Success -> AssistChip(
                     onClick = onDismissAuthMessage,
-                    label = { Text(authActionState.message) },
+                    label = { Text(translated(authActionState.message)) },
                     leadingIcon = { Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp)) }
                 )
                 is AuthActionState.Error -> Text(
-                    text = authActionState.message,
+                    text = translated(authActionState.message),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -967,13 +991,15 @@ private fun AccountSyncSection(
     if (showDeleteAccountConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteAccountConfirm = false },
-            title = { Text("Delete account?") },
+            title = { Text(translated("Delete account?")) },
             text = {
                 Text(
-                    "This permanently deletes your account and all synced data (chats, " +
-                        "messages, devices). Any active subscription will be cancelled. " +
-                        "This cannot be undone.\n\nIf you subscribed through Google Play, " +
-                        "also cancel it in the Play Store to stop future billing."
+                    translated(
+                        "This permanently deletes your account and all synced data (chats, " +
+                            "messages, devices). Any active subscription will be cancelled. " +
+                            "This cannot be undone.\n\nIf you subscribed through Google Play, " +
+                            "also cancel it in the Play Store to stop future billing."
+                    )
                 )
             },
             confirmButton = {
@@ -985,10 +1011,10 @@ private fun AccountSyncSection(
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
                     )
-                ) { Text("Delete account") }
+                ) { Text(translated("Delete account")) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteAccountConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteAccountConfirm = false }) { Text(translated("Cancel")) }
             }
         )
     }
@@ -1001,9 +1027,9 @@ private fun ThemeModeSelector(
     onSelect: (ThemeMode) -> Unit
 ) {
     val options = listOf(
-        ThemeMode.SYSTEM to "System",
-        ThemeMode.LIGHT to "Light",
-        ThemeMode.DARK to "Dark"
+        ThemeMode.SYSTEM to translated("System"),
+        ThemeMode.LIGHT to translated("Light"),
+        ThemeMode.DARK to translated("Dark")
     )
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1044,7 +1070,7 @@ private fun TimeoutSelector(
             value = label(selectedSeconds),
             onValueChange = {},
             readOnly = true,
-            label = { Text("Request timeout") },
+            label = { Text(translated("Request timeout")) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor()
@@ -1086,7 +1112,7 @@ private fun UriImagePreview(
     if (imageBitmap != null) {
         Image(
             bitmap = imageBitmap,
-            contentDescription = "Image preview",
+            contentDescription = translated("Image preview"),
             modifier = modifier,
             contentScale = ContentScale.Crop
         )

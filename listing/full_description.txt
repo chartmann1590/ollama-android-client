@@ -1,52 +1,54 @@
-🤖 Ollama AI Chat — Your Personal AI Assistant on Android
+Ollama AI Chat - private AI on Android
 
-Chat with powerful AI models on your own terms: connect to your Ollama server, or run models fully on-device with no server and no internet required. Beautiful, private, and fast.
+Chat with powerful AI models on your own terms. Connect to your own Ollama server, or run supported models fully on-device with LiteRT-LM. Your conversations are stored locally on your device.
 
-✨ TWO WAYS TO CHAT
+Two ways to chat
 
-🌐 Remote (Ollama server)
-Connect to any Ollama server on your network and chat with Llama, Mistral, Qwen, DeepSeek and more — with responses streamed in real time.
+Remote Ollama
+Connect to any Ollama server on your network and chat with Llama, Mistral, Qwen, DeepSeek, and more, with responses streamed in real time.
 
-📲 On-device (Google LiteRT-LM)
-Download and run models directly on your phone — Gemma 4, Gemma 3, Qwen 3, DeepSeek R1 Distill and Phi-4 Mini. No server, no network, nothing leaves your device.
+On-device models
+Download and run supported models directly on your phone. No server is required, and on-device model conversations do not need an internet connection after setup.
 
-✨ KEY FEATURES
+Key features
 
-💬 Real-time streaming chat in a clean Material Design 3 interface
-⏹️ Stop generation mid-reply — keep whatever was produced so far
-🎚️ Per-chat model parameters: temperature, top-p, top-k, context length (num_ctx) and seed
-📊 Token-speed stats: tokens/sec, token counts and response time under each reply
-🧠 Thinking models: see the reasoning from models like DeepSeek R1
-🖼️ Image support for vision-capable models, with smart compression
-🎙️ Voice input (speech-to-text) and read-aloud replies (text-to-speech)
-ℹ️ Model details: inspect parameters, quantization, template, license and modelfile
-🏷️ Organize chats with labels and filter the thread list by them
-📌 Pin and archive threads to keep things tidy
-🔎 Search within a chat, or 🌐 search across every conversation at once
-📤 Export and share chats — or single messages — as Markdown
-✏️ Per-message actions: copy, share, edit-and-resend, regenerate, delete
-📚 Persistent local history with a secure on-device database
-🎨 Full dark theme and Material You dynamic colors
-📱 Home-screen widget and a "resume last chat" launcher shortcut
+- Real-time streaming chat in a clean Material Design 3 interface
+- Stop generation mid-reply and keep the partial text
+- Per-chat model parameters: temperature, top-p, top-k, context length, and seed
+- Token-speed stats under assistant replies
+- Thinking-model support for reasoning traces where available
+- Image support for vision-capable models with smart compression
+- Voice input and read-aloud replies
+- On-device menu and error-message translation with language selection during onboarding and in Settings
+- Model details: inspect parameters, quantization, template, license, and modelfile
+- Organize chats with labels, pins, and archives
+- Search within a chat or across every conversation
+- Export and share chats or single messages as Markdown
+- Per-message actions: copy, share, edit and resend, regenerate, delete, and report
+- Persistent local history with a secure on-device database
+- Dark theme and Material You dynamic colors
+- Home-screen widget and launcher shortcuts
 
-🔒 PRIVACY-FIRST
-Your conversations stay on your device. With on-device models, nothing ever leaves your phone. With a remote server, you decide exactly where your data goes.
+Privacy first
 
-🔧 PERFECT FOR
-• Developers testing and comparing AI models
-• Researchers experimenting with LLMs
-• Anyone who wants private, offline-capable AI on their phone
+Your conversations stay on your device unless you choose to connect to a remote server. With on-device models, model prompts and replies stay local. With a remote server, you decide exactly where your data goes.
 
-💡 GETTING STARTED
-• On-device: open the app, add the on-device backend, download a model, and start chatting — no server setup required.
-• Remote: install Ollama on your computer (ollama.ai), then enter your server URL (e.g. http://192.168.1.100:11434) in the app.
+Language support
 
-📋 REQUIREMENTS
-• Android 7.0 (API 24) or higher
-• For remote chat: an accessible Ollama server
-• For on-device chat: free storage for the model you choose (≈300 MB–4 GB)
+The app can translate menus, settings, onboarding, and app-generated error messages using on-device ML Kit translation after the selected language model is downloaded. Translations are machine generated and may not always be accurate, so use care with important or safety-critical information.
 
-🌟 OPEN SOURCE
-Built with ❤️ using Kotlin and Jetpack Compose. Open source and welcoming contributions.
+Great for
 
-Download now and put a private AI assistant in your pocket!
+- Developers testing and comparing AI models
+- Researchers experimenting with LLMs
+- Anyone who wants private, offline-capable AI on their phone
+
+Requirements
+
+- Android 7.0 (API 24) or higher
+- For remote chat: an accessible Ollama server
+- For on-device chat: free storage for the model you choose
+
+Open source
+
+Built with Kotlin and Jetpack Compose. Open source and welcoming contributions.

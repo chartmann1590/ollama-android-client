@@ -17,6 +17,9 @@ import com.charles.ollama.client.data.repository.GitHubFeedbackRepository
 import com.charles.ollama.client.data.api.dto.GitHubCommentResponse
 import com.charles.ollama.client.data.sync.RealtimeChatSyncRepository
 import com.charles.ollama.client.data.sync.SyncPreferences
+import com.charles.ollama.client.data.translation.AppLanguage
+import com.charles.ollama.client.data.translation.TranslationRepository
+import com.charles.ollama.client.data.translation.TranslationStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -74,7 +77,8 @@ class SettingsViewModel @Inject constructor(
     private val syncPreferences: SyncPreferences,
     private val premiumManager: PremiumManager,
     private val realtimeChatSyncRepository: RealtimeChatSyncRepository,
-    private val adConsentManager: AdConsentManager
+    private val adConsentManager: AdConsentManager,
+    private val translationRepository: TranslationRepository
 ) : ViewModel() {
 
     /** Whether to surface the "Ad privacy options" entry (UMP-required regions). */
@@ -96,6 +100,9 @@ class SettingsViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> = uiPreferences.themeMode
     val dynamicColor: StateFlow<Boolean> = uiPreferences.dynamicColor
     val requestTimeoutSeconds: StateFlow<Int> = uiPreferences.requestTimeoutSeconds
+    val languageTag: StateFlow<String> = translationRepository.languageTag
+    val translationStatus: StateFlow<TranslationStatus> = translationRepository.status
+    val supportedLanguages: List<AppLanguage> = translationRepository.supportedLanguages
     val isPremium: StateFlow<Boolean> = adGate.isPremium
     val isWebSyncPremium: StateFlow<Boolean> = premiumManager.isWebSyncPremium
 
@@ -234,6 +241,12 @@ class SettingsViewModel @Inject constructor(
     fun setDynamicColor(enabled: Boolean) = uiPreferences.setDynamicColor(enabled)
 
     fun setRequestTimeoutSeconds(seconds: Int) = uiPreferences.setRequestTimeoutSeconds(seconds)
+
+    fun setLanguage(languageTag: String) {
+        viewModelScope.launch {
+            translationRepository.selectLanguage(languageTag)
+        }
+    }
 
     fun updateHuggingFaceToken(token: String) {
         _huggingFaceToken.value = token

@@ -1,11 +1,8 @@
 What's new:
 
-⏹️ Stop a reply mid-stream — partial text is kept
-🎚️ Model parameters per chat: temperature, top-p, top-k, context length, seed
-📊 Token-speed stats (tokens/sec, counts, response time) under each reply
-ℹ️ Model details: parameters, quantization, template, license & modelfile
-🏷️ Organize chats with labels and filter by them
-🌐 Global search across all conversations
-⌨️ Fixed the keyboard covering the message box
+- Added on-device translation for menus, settings, onboarding, and app-generated error messages
+- Choose a language during onboarding or change it anytime in Settings
+- Language models are downloaded to the device and reused locally
+- Added an accuracy warning for machine-translated text
 
-Plus on-device AI, voice input & read-aloud. Enjoy!
+Plus the existing private Ollama and on-device model chat experience.

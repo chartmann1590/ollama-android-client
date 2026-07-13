@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.charles.ollama.client.R
 import com.charles.ollama.client.domain.model.Server
+import com.charles.ollama.client.ui.localization.translated
 import com.charles.ollama.client.ui.navigation.InterstitialAdManagerEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.delay
@@ -72,7 +73,7 @@ fun FirstRunSetupTutorialSheet(
     if (!visible) return
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val litertLabel = stringResource(R.string.servers_add_litert)
+    val litertLabel = translated(stringResource(R.string.servers_add_litert))
 
     val dismiss: () -> Unit = {
         val wasUnseen = !adGate.hasSeenSetupTutorial()
@@ -95,31 +96,31 @@ fun FirstRunSetupTutorialSheet(
                 .verticalScroll(rememberScrollState()),
         ) {
             Text(
-                text = stringResource(R.string.setup_tutorial_title),
+                text = translated(stringResource(R.string.setup_tutorial_title)),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = stringResource(R.string.setup_tutorial_remote_heading),
+                text = translated(stringResource(R.string.setup_tutorial_remote_heading)),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = stringResource(R.string.setup_tutorial_remote_body),
+                text = translated(stringResource(R.string.setup_tutorial_remote_body)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = stringResource(R.string.setup_tutorial_ondevice_heading),
+                text = translated(stringResource(R.string.setup_tutorial_ondevice_heading)),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = stringResource(R.string.setup_tutorial_ondevice_body, litertLabel),
+                text = translated(stringResource(R.string.setup_tutorial_ondevice_body, litertLabel)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -130,7 +131,7 @@ fun FirstRunSetupTutorialSheet(
                     .fillMaxWidth()
                     .testTag("setup_tutorial_got_it"),
             ) {
-                Text(stringResource(R.string.setup_tutorial_got_it))
+                Text(translated(stringResource(R.string.setup_tutorial_got_it)))
             }
             Spacer(Modifier.height(8.dp))
         }

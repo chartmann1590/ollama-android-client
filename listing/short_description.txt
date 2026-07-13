@@ -1,1 +1,1 @@
-Chat with AI on your Ollama server or fully on-device. Private, voice & fast.
+Private AI chat with on-device models and multilingual menus.

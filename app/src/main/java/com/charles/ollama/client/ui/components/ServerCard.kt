@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.charles.ollama.client.R
 import com.charles.ollama.client.data.litert.ServerBackend
 import com.charles.ollama.client.domain.model.Server
+import com.charles.ollama.client.ui.localization.translated
 
 @Composable
 fun ServerCard(
@@ -47,7 +48,7 @@ fun ServerCard(
                             Spacer(modifier = Modifier.width(8.dp))
                             @OptIn(ExperimentalMaterial3Api::class)
                             Badge {
-                                Text("Default", style = MaterialTheme.typography.labelSmall)
+                                Text(translated("Default"), style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
@@ -70,14 +71,14 @@ fun ServerCard(
             ) {
                 if (!server.isDefault) {
                     TextButton(onClick = onSetDefault) {
-                        Text("Set as Default")
+                        Text(translated("Set as Default"))
                     }
                 }
                 TextButton(onClick = onEdit) {
-                    Text("Edit")
+                    Text(translated("Edit"))
                 }
                 TextButton(onClick = onDelete) {
-                    Text("Delete")
+                    Text(translated("Delete"))
                 }
             }
         }

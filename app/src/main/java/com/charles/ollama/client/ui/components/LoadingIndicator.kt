@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.charles.ollama.client.ui.localization.translated
 
 @Composable
 fun LoadingIndicator(
@@ -22,7 +23,7 @@ fun LoadingIndicator(
     ) {
         CircularProgressIndicator()
         Spacer(modifier = Modifier.height(16.dp))
-        Text(text = message)
+        Text(text = translated(message))
     }
 }
 

@@ -29,6 +29,7 @@ import com.charles.ollama.client.ui.components.ErrorDialog
 import com.charles.ollama.client.ui.components.LoadingIndicator
 import com.charles.ollama.client.ui.components.ServerCard
 import com.charles.ollama.client.ui.components.BannerAd
+import com.charles.ollama.client.ui.localization.translated
 import com.charles.ollama.client.util.PerformanceMonitor
 import androidx.compose.runtime.DisposableEffect
 
@@ -59,21 +60,21 @@ fun ServerListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Servers") },
+                title = { Text(translated("Servers")) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = translated("Back"))
                     }
                 },
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Outlined.Tune, contentDescription = "App settings")
+                        Icon(Icons.Outlined.Tune, contentDescription = translated("App settings"))
                     }
                     IconButton(onClick = onNavigateToRewards) {
-                        Icon(Icons.Default.CardGiftcard, contentDescription = "Rewards")
+                        Icon(Icons.Default.CardGiftcard, contentDescription = translated("Rewards"))
                     }
                     TextButton(onClick = onNavigateToModels) {
-                        Text("Models")
+                        Text(translated("Models"))
                     }
                     TextButton(onClick = { viewModel.addLitertLocalServer(isDefault = true) }) {
                         Text(stringResource(R.string.servers_add_litert))
@@ -83,7 +84,7 @@ fun ServerListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Server")
+                Icon(Icons.Default.Add, contentDescription = translated("Add Server"))
             }
         },
         bottomBar = {
@@ -180,13 +181,13 @@ fun ServerDialog(
             viewModel.clearConnectionTestResult()
             onDismiss()
         },
-        title = { Text(if (server == null) "Add Server" else "Edit Server") },
+        title = { Text(translated(if (server == null) "Add Server" else "Edit Server")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Server Name") },
+                    label = { Text(translated("Server Name")) },
                     singleLine = true
                 )
                 if (isLitert) {
@@ -245,7 +246,7 @@ fun ServerDialog(
                             checked = isDefault,
                             onCheckedChange = { isDefault = it }
                         )
-                        Text("Set as default")
+                        Text(translated("Set as default"))
                     }
                     Button(
                         onClick = { viewModel.testConnection(baseUrl) },
@@ -257,7 +258,7 @@ fun ServerDialog(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Test")
+                            Text(translated("Test"))
                         }
                     }
                 }
@@ -267,7 +268,7 @@ fun ServerDialog(
                             checked = isDefault,
                             onCheckedChange = { isDefault = it }
                         )
-                        Text("Set as default")
+                        Text(translated("Set as default"))
                     }
                 }
                 connectionTestResult?.let { result ->
@@ -281,7 +282,7 @@ fun ServerDialog(
                         )
                     ) {
                         Text(
-                            text = result,
+                            text = translated(result),
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -297,7 +298,7 @@ fun ServerDialog(
                 },
                 enabled = name.isNotBlank() && (isLitert || baseUrl.isNotBlank())
             ) {
-                Text("Save")
+                Text(translated("Save"))
             }
         },
         dismissButton = {
@@ -305,9 +306,8 @@ fun ServerDialog(
                 viewModel.clearConnectionTestResult()
                 onDismiss()
             }) {
-                Text("Cancel")
+                Text(translated("Cancel"))
             }
         }
     )
 }
-

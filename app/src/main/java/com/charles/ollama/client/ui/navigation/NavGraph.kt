@@ -26,6 +26,8 @@ import com.charles.ollama.client.ui.chat.ChatThreadsScreen
 import com.charles.ollama.client.ui.models.ModelDetailScreen
 import com.charles.ollama.client.ui.models.ModelsScreen
 import com.charles.ollama.client.ui.onboarding.FirstRunSetupTutorialSheet
+import com.charles.ollama.client.ui.onboarding.LanguageOnboardingSheet
+import com.charles.ollama.client.ui.onboarding.LanguageOnboardingViewModel
 import com.charles.ollama.client.ui.onboarding.WhatsNewPersonasSheet
 import com.charles.ollama.client.ui.premium.PaywallScreen
 import com.charles.ollama.client.ui.prompts.PromptLibraryScreen
@@ -63,7 +65,9 @@ fun NavGraph(
     }
     
     val serversViewModel: ServersViewModel = hiltViewModel()
+    val languageOnboardingViewModel: LanguageOnboardingViewModel = hiltViewModel()
     val defaultServer by serversViewModel.defaultServer.collectAsState()
+    val languageOnboardingComplete by languageOnboardingViewModel.complete.collectAsState()
     var setupTutorialFinishedSignal by remember { mutableStateOf(0) }
     
     // Compute the start destination based on defaultServer
@@ -335,22 +339,25 @@ fun NavGraph(
                 onNavigateBack = { navController.popBackStack() },
             )
         }
-    }
-        FirstRunSetupTutorialSheet(
-            defaultServer = defaultServer,
-            onFirstRunTutorialFinished = { setupTutorialFinishedSignal++ },
-        )
-        WhatsNewRewardsSheet(
-            defaultServer = defaultServer,
-            setupTutorialFinishedSignal = setupTutorialFinishedSignal,
-            onNavigateToRewards = {
-                navController.navigate(Screen.Rewards.route)
-            },
-        )
-        WhatsNewPersonasSheet(
-            defaultServer = defaultServer,
-            setupTutorialFinishedSignal = setupTutorialFinishedSignal,
-        )
+        }
+        LanguageOnboardingSheet(viewModel = languageOnboardingViewModel)
+        if (languageOnboardingComplete) {
+            FirstRunSetupTutorialSheet(
+                defaultServer = defaultServer,
+                onFirstRunTutorialFinished = { setupTutorialFinishedSignal++ },
+            )
+            WhatsNewRewardsSheet(
+                defaultServer = defaultServer,
+                setupTutorialFinishedSignal = setupTutorialFinishedSignal,
+                onNavigateToRewards = {
+                    navController.navigate(Screen.Rewards.route)
+                },
+            )
+            WhatsNewPersonasSheet(
+                defaultServer = defaultServer,
+                setupTutorialFinishedSignal = setupTutorialFinishedSignal,
+            )
+        }
     } else {
         // Show loading indicator while waiting for defaultServer to load
         // This prevents the flash of Servers screen

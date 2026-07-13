@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.charles.ollama.client.ui.localization.translated
 
 /**
  * A consistent, friendly empty-state block: large tinted icon, title, subtitle,
@@ -43,19 +44,19 @@ fun EmptyState(
             modifier = Modifier.size(56.dp)
         )
         Text(
-            text = title,
+            text = translated(title),
             style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center
         )
         Text(
-            text = subtitle,
+            text = translated(subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         if (actionLabel != null && onAction != null) {
             Button(onClick = onAction, modifier = Modifier.padding(top = 8.dp)) {
-                Text(actionLabel)
+                Text(translated(actionLabel))
             }
         }
     }

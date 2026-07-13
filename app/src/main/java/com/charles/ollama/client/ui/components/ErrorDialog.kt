@@ -5,6 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.charles.ollama.client.ui.localization.translated
 
 @Composable
 fun ErrorDialog(
@@ -15,11 +16,11 @@ fun ErrorDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = title) },
-        text = { Text(text = message) },
+        title = { Text(text = translated(title)) },
+        text = { Text(text = translated(message)) },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("OK")
+                Text(translated("OK"))
             }
         },
         modifier = modifier

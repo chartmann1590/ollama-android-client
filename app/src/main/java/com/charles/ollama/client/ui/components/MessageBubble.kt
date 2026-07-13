@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.charles.ollama.client.R
 import com.charles.ollama.client.domain.model.ChatMessage
+import com.charles.ollama.client.ui.localization.translated
 
 private fun copyMessageToClipboard(
     clipboardManager: ClipboardManager,
@@ -119,8 +120,9 @@ fun MessageBubble(
 ) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
-    val copySuccessMessage = stringResource(id = R.string.message_copy_success)
-    val nothingToCopyMessage = stringResource(id = R.string.message_copy_nothing)
+    val copySuccessMessage = translated(stringResource(id = R.string.message_copy_success))
+    val nothingToCopyMessage = translated(stringResource(id = R.string.message_copy_nothing))
+    val reportedMessage = translated("Thanks - this response has been reported for review.")
     val isUser = message.role == "user"
     val hasThinking = message.thinking != null && message.thinking.isNotBlank()
     var isThinkingExpanded by remember { mutableStateOf(showThinking && hasThinking) }
@@ -186,7 +188,7 @@ fun MessageBubble(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Thinking",
+                                text = translated("Thinking"),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
@@ -196,7 +198,7 @@ fun MessageBubble(
                             ) {
                                 Icon(
                                     imageVector = if (isThinkingExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                    contentDescription = if (isThinkingExpanded) "Hide thinking" else "Show thinking",
+                                    contentDescription = translated(if (isThinkingExpanded) "Hide thinking" else "Show thinking"),
                                     modifier = Modifier.size(16.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                 )
@@ -209,7 +211,7 @@ fun MessageBubble(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                             )
                             Text(
-                                text = message.thinking ?: "No thinking content available",
+                                text = message.thinking ?: translated("No thinking content available"),
                                 modifier = Modifier.padding(12.dp),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
@@ -220,7 +222,7 @@ fun MessageBubble(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                             )
                             Text(
-                                text = "Thinking enabled but no thinking content detected in this response.\n\nThe model may not be outputting thinking tags, or thinking may be disabled in the model configuration.",
+                                text = translated("Thinking enabled but no thinking content detected in this response.\n\nThe model may not be outputting thinking tags, or thinking may be disabled in the model configuration."),
                                 modifier = Modifier.padding(12.dp),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -279,7 +281,7 @@ fun MessageBubble(
                                     bitmap?.let {
                                         Image(
                                             bitmap = it.asImageBitmap(),
-                                            contentDescription = "Image",
+                                            contentDescription = translated("Image"),
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .heightIn(max = 300.dp)
@@ -346,7 +348,7 @@ fun MessageBubble(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Message actions",
+                                contentDescription = translated("Message actions"),
                                 modifier = Modifier.size(18.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             )
@@ -356,7 +358,7 @@ fun MessageBubble(
                             onDismissRequest = { menuExpanded = false },
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Copy") },
+                                text = { Text(translated("Copy")) },
                                 leadingIcon = {
                                     Icon(Icons.Default.ContentCopy, contentDescription = null)
                                 },
@@ -373,7 +375,7 @@ fun MessageBubble(
                             )
                             if (onShare != null) {
                                 DropdownMenuItem(
-                                    text = { Text("Share") },
+                                    text = { Text(translated("Share")) },
                                     leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
@@ -383,7 +385,7 @@ fun MessageBubble(
                             }
                             if (!isUser && onReadAloud != null) {
                                 DropdownMenuItem(
-                                    text = { Text("Read aloud") },
+                                    text = { Text(translated("Read aloud")) },
                                     leadingIcon = { Icon(Icons.Default.VolumeUp, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
@@ -393,7 +395,7 @@ fun MessageBubble(
                             }
                             if (!isUser && onRegenerate != null) {
                                 DropdownMenuItem(
-                                    text = { Text("Regenerate") },
+                                    text = { Text(translated("Regenerate")) },
                                     leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
@@ -403,7 +405,7 @@ fun MessageBubble(
                             }
                             if (isUser && onEditAndResend != null) {
                                 DropdownMenuItem(
-                                    text = { Text("Edit and resend") },
+                                    text = { Text(translated("Edit and resend")) },
                                     leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
@@ -413,7 +415,7 @@ fun MessageBubble(
                             }
                             if (onDelete != null) {
                                 DropdownMenuItem(
-                                    text = { Text("Delete") },
+                                    text = { Text(translated("Delete")) },
                                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
@@ -423,7 +425,7 @@ fun MessageBubble(
                             }
                             if (!isUser && onReport != null) {
                                 DropdownMenuItem(
-                                    text = { Text("Report") },
+                                    text = { Text(translated("Report")) },
                                     leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
@@ -456,23 +458,25 @@ fun MessageBubble(
     if (showDeleteConfirm && onDelete != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete this message?") },
+            title = { Text(translated("Delete this message?")) },
             text = {
                 Text(
-                    text = if (isUser)
-                        "Deleting this message will also remove every reply that came after it."
-                    else
-                        "This will remove just this assistant reply."
+                    text = translated(
+                        if (isUser)
+                            "Deleting this message will also remove every reply that came after it."
+                        else
+                            "This will remove just this assistant reply."
+                    )
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false
                     onDelete(message.id)
-                }) { Text("Delete") }
+                }) { Text(translated("Delete")) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteConfirm = false }) { Text(translated("Cancel")) }
             },
         )
     }
@@ -480,11 +484,13 @@ fun MessageBubble(
     if (showReportConfirm && onReport != null) {
         AlertDialog(
             onDismissRequest = { showReportConfirm = false },
-            title = { Text("Report this response?") },
+            title = { Text(translated("Report this response?")) },
             text = {
                 Text(
-                    "Flag this AI-generated reply as offensive, harmful, or otherwise " +
-                        "inappropriate. Our team will review reported content."
+                    translated(
+                        "Flag this AI-generated reply as offensive, harmful, or otherwise " +
+                            "inappropriate. Our team will review reported content."
+                    )
                 )
             },
             confirmButton = {
@@ -493,13 +499,13 @@ fun MessageBubble(
                     onReport(message.id)
                     Toast.makeText(
                         context,
-                        "Thanks — this response has been reported for review.",
+                        reportedMessage,
                         Toast.LENGTH_SHORT
                     ).show()
-                }) { Text("Report") }
+                }) { Text(translated("Report")) }
             },
             dismissButton = {
-                TextButton(onClick = { showReportConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showReportConfirm = false }) { Text(translated("Cancel")) }
             },
         )
     }
@@ -514,7 +520,7 @@ private fun EditMessageDialog(
     var text by remember { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit and resend") },
+        title = { Text(translated("Edit and resend")) },
         text = {
             OutlinedTextField(
                 value = text,
@@ -528,10 +534,10 @@ private fun EditMessageDialog(
             TextButton(
                 onClick = { onConfirm(text) },
                 enabled = text.isNotBlank() && text != initial,
-            ) { Text("Resend") }
+            ) { Text(translated("Resend")) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(translated("Cancel")) }
         },
     )
 }

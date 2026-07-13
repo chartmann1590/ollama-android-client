@@ -52,6 +52,7 @@ import com.charles.ollama.client.ui.components.LoadingIndicator
 import com.charles.ollama.client.ui.components.MessageBubble
 import com.charles.ollama.client.ui.components.BannerAd
 import com.charles.ollama.client.ui.components.NativeAdCard
+import com.charles.ollama.client.ui.localization.translated
 import com.charles.ollama.client.ui.models.displayTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -107,6 +108,8 @@ fun ChatScreen(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val speakPrompt = translated("Speak your message")
+    val speechUnavailable = translated("Speech recognizer not available on this device")
 
     // Shared send action so both the Send button and voice mode use one path.
     val performSend: (String) -> Unit = { text ->
@@ -149,14 +152,14 @@ fun ChatScreen(
                 RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
             )
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your message")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, speakPrompt)
         }
         try {
             speechLauncher.launch(intent)
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(
                 context,
-                "Speech recognizer not available on this device",
+                speechUnavailable,
                 Toast.LENGTH_SHORT
             ).show()
             voiceMode = false
@@ -253,7 +256,7 @@ fun ChatScreen(
                             value = searchQuery,
                             onValueChange = viewModel::updateSearchQuery,
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Search in chat") },
+                            placeholder = { Text(translated("Search in chat")) },
                             singleLine = true,
                             trailingIcon = {
                                 if (matchIndices.isNotEmpty()) {
@@ -273,7 +276,7 @@ fun ChatScreen(
                         )
                     } else {
                         Column {
-                            Text(thread?.title ?: "Chat")
+                            Text(thread?.title ?: translated("Chat"))
                             selectedModel?.let {
                                 Text(
                                     text = it,
@@ -290,7 +293,7 @@ fun ChatScreen(
                     }) {
                         Icon(
                             imageVector = if (searchActive) Icons.Default.Close else Icons.Default.ArrowBack,
-                            contentDescription = if (searchActive) "Close search" else "Back"
+                            contentDescription = translated(if (searchActive) "Close search" else "Back")
                         )
                     }
                 },
@@ -300,13 +303,13 @@ fun ChatScreen(
                             onClick = viewModel::previousMatch,
                             enabled = matchIndices.isNotEmpty()
                         ) {
-                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Previous match")
+                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = translated("Previous match"))
                         }
                         IconButton(
                             onClick = viewModel::nextMatch,
                             enabled = matchIndices.isNotEmpty()
                         ) {
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Next match")
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = translated("Next match"))
                         }
                     } else {
                         IconButton(onClick = {
@@ -315,30 +318,30 @@ fun ChatScreen(
                         }) {
                             Icon(
                                 imageVector = Icons.Default.RecordVoiceOver,
-                                contentDescription = if (voiceMode) "Turn off voice mode" else "Turn on voice mode",
+                                contentDescription = translated(if (voiceMode) "Turn off voice mode" else "Turn on voice mode"),
                                 tint = if (voiceMode) MaterialTheme.colorScheme.primary
                                 else LocalContentColor.current
                             )
                         }
                         IconButton(onClick = { viewModel.setSearchActive(true) }) {
-                            Icon(Icons.Default.Search, contentDescription = "Search this chat")
+                            Icon(Icons.Default.Search, contentDescription = translated("Search this chat"))
                         }
                         IconButton(onClick = { viewModel.shareCurrentThread() }) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = "Share chat as Markdown"
+                                contentDescription = translated("Share chat as Markdown")
                             )
                         }
                         IconButton(onClick = { showChatSettings = true }) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
-                                contentDescription = "Chat Settings"
+                                contentDescription = translated("Chat Settings")
                             )
                         }
                         IconButton(onClick = { showModelSelector = true }) {
                             Icon(
                                 imageVector = Icons.Default.Tune,
-                                contentDescription = "Select Model"
+                                contentDescription = translated("Select Model")
                             )
                         }
                     }
@@ -440,7 +443,7 @@ fun ChatScreen(
                             ) {
                                 Icon(
                                     Icons.Default.Close,
-                                    contentDescription = "Remove image",
+                                    contentDescription = translated("Remove image"),
                                     tint = MaterialTheme.colorScheme.error
                                 )
                             }
@@ -485,7 +488,7 @@ fun ChatScreen(
                     value = messageText,
                     onValueChange = { messageText = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Type a message...") },
+                    placeholder = { Text(translated("Type a message...")) },
                     enabled = selectedModel != null, // Allow typing even while loading
                     singleLine = false,
                     maxLines = 4
@@ -499,7 +502,7 @@ fun ChatScreen(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
                     ) {
-                        Icon(Icons.Default.Stop, contentDescription = "Stop generating")
+                        Icon(Icons.Default.Stop, contentDescription = translated("Stop generating"))
                     }
                 } else {
                     FloatingActionButton(
@@ -514,7 +517,7 @@ fun ChatScreen(
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant
                     ) {
-                        Icon(Icons.Default.Send, contentDescription = "Send")
+                        Icon(Icons.Default.Send, contentDescription = translated("Send"))
                     }
                 }
             }
@@ -606,7 +609,7 @@ fun ChatSettingsDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Chat Settings") },
+        title = { Text(translated("Chat Settings")) },
         text = {
             Column(
                 modifier = Modifier
@@ -622,11 +625,11 @@ fun ChatSettingsDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Stream Responses",
+                            text = translated("Stream Responses"),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "Enable streaming to see AI responses in real-time",
+                            text = translated("Enable streaming to see AI responses in real-time"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -650,11 +653,11 @@ fun ChatSettingsDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Vibration on Stream",
+                            text = translated("Vibration on Stream"),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "Vibrate when new text arrives from streaming responses",
+                            text = translated("Vibrate when new text arrives from streaming responses"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -678,11 +681,11 @@ fun ChatSettingsDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Show Thinking",
+                            text = translated("Show Thinking"),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "Show thinking process from thinking models",
+                            text = translated("Show thinking process from thinking models"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -705,7 +708,7 @@ fun ChatSettingsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Model Parameters",
+                            text = translated("Model Parameters"),
                             style = MaterialTheme.typography.titleMedium
                         )
                         TextButton(onClick = {
@@ -714,10 +717,10 @@ fun ChatSettingsDialog(
                             topKText = ""
                             numCtxText = ""
                             seedText = ""
-                        }) { Text("Reset") }
+                        }) { Text(translated("Reset")) }
                     }
                     Text(
-                        text = "Leave blank to use the model default. Applies to remote Ollama models only.",
+                        text = translated("Leave blank to use the model default. Applies to remote Ollama models only."),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -726,7 +729,7 @@ fun ChatSettingsDialog(
                         value = temperatureText,
                         onValueChange = { temperatureText = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Temperature") },
+                        label = { Text(translated("Temperature")) },
                         placeholder = { Text("e.g. 0.8") },
                         singleLine = true
                     )
@@ -735,7 +738,7 @@ fun ChatSettingsDialog(
                         value = topPText,
                         onValueChange = { topPText = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Top P") },
+                        label = { Text(translated("Top P")) },
                         placeholder = { Text("e.g. 0.9") },
                         singleLine = true
                     )
@@ -744,7 +747,7 @@ fun ChatSettingsDialog(
                         value = topKText,
                         onValueChange = { topKText = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Top K") },
+                        label = { Text(translated("Top K")) },
                         placeholder = { Text("e.g. 40") },
                         singleLine = true
                     )
@@ -753,7 +756,7 @@ fun ChatSettingsDialog(
                         value = numCtxText,
                         onValueChange = { numCtxText = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Context length (num_ctx)") },
+                        label = { Text(translated("Context length (num_ctx)")) },
                         placeholder = { Text("e.g. 4096") },
                         singleLine = true
                     )
@@ -762,7 +765,7 @@ fun ChatSettingsDialog(
                         value = seedText,
                         onValueChange = { seedText = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Seed") },
+                        label = { Text(translated("Seed")) },
                         placeholder = { Text("e.g. 42") },
                         singleLine = true
                     )
@@ -773,12 +776,12 @@ fun ChatSettingsDialog(
                 // System prompt editor
                 Column {
                     Text(
-                        text = "System Prompt",
+                        text = translated("System Prompt"),
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Modify how the AI responds by setting a system prompt",
+                        text = translated("Modify how the AI responds by setting a system prompt"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -787,14 +790,14 @@ fun ChatSettingsDialog(
                         onClick = onBrowseLibrary,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Browse prompt library")
+                        Text(translated("Browse prompt library"))
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = systemPrompt,
                         onValueChange = { systemPrompt = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Enter system prompt (optional)") },
+                        placeholder = { Text(translated("Enter system prompt (optional)")) },
                         minLines = 4,
                         maxLines = 8,
                         singleLine = false
@@ -816,12 +819,12 @@ fun ChatSettingsDialog(
                     onDismiss()
                 }
             ) {
-                Text("Save")
+                Text(translated("Save"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(translated("Cancel"))
             }
         }
     )
@@ -845,11 +848,11 @@ fun ModelSelectorDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Select Model")
+                Text(translated("Select Model"))
                 IconButton(onClick = onRefresh) {
                     Icon(
                         imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
-                        contentDescription = "Refresh"
+                        contentDescription = translated("Refresh")
                     )
                 }
             }
@@ -871,10 +874,10 @@ fun ModelSelectorDialog(
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("No models available")
+                    Text(translated("No models available"))
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Make sure your server is connected and has models installed",
+                        text = translated("Make sure your server is connected and has models installed"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -912,7 +915,7 @@ fun ModelSelectorDialog(
                                 if (model.parameterSize != null) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "Parameters: ${model.parameterSize}",
+                                        text = translated("Parameters: %s", model.parameterSize),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -920,7 +923,7 @@ fun ModelSelectorDialog(
                                 if (!canSelect) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "Download this bundle on the Models screen first",
+                                        text = translated("Download this bundle on the Models screen first"),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.error
                                     )
@@ -933,7 +936,7 @@ fun ModelSelectorDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(translated("Close"))
             }
         }
     )
@@ -958,4 +961,3 @@ private fun buildChatRows(messages: List<ChatMessage>, adAfter: Int): List<ChatR
     }
     return out
 }
-

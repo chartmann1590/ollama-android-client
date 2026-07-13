@@ -29,8 +29,10 @@ import com.charles.ollama.client.data.billing.PaymentReturnHandler
 import com.charles.ollama.client.data.billing.PremiumManager
 import com.google.android.gms.ads.MobileAds
 import com.charles.ollama.client.data.preferences.UiPreferences
+import com.charles.ollama.client.data.translation.TranslationRepository
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.charles.ollama.client.ui.navigation.NavGraph
+import com.charles.ollama.client.ui.localization.TranslationProvider
 import com.charles.ollama.client.ui.theme.OllamaAndroidTheme
 import com.charles.ollama.client.ui.update.UpdateAvailablePrompt
 import com.charles.ollama.client.util.AppShortcuts
@@ -66,6 +68,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var adConsentManager: AdConsentManager
+
+    @Inject
+    lateinit var translationRepository: TranslationRepository
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -118,6 +123,7 @@ class MainActivity : ComponentActivity() {
             val themeMode by uiPreferences.themeMode.collectAsState()
             val dynamicColor by uiPreferences.dynamicColor.collectAsState()
             OllamaAndroidTheme(themeMode = themeMode, dynamicColor = dynamicColor) {
+                TranslationProvider(repository = translationRepository) {
                 // Use mutableState so we can re-route when a new shortcut intent
                 // arrives via onNewIntent (singleTask launchMode).
                 var pendingThreadId by remember { mutableStateOf(initialThreadId) }
@@ -136,6 +142,7 @@ class MainActivity : ComponentActivity() {
                         onDestConsumed = { pendingDest = null }
                     )
                     UpdateAvailablePrompt()
+                }
                 }
             }
         }         } catch (e: RuntimeException) {

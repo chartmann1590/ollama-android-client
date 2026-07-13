@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import com.charles.ollama.client.domain.model.Model
+import com.charles.ollama.client.ui.localization.translated
 import com.charles.ollama.client.ui.models.displayTitle
 
 @Composable
@@ -52,7 +53,7 @@ fun ModelCard(
                     model.parameterSize?.let {
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Parameters: $it",
+                            text = translated("Parameters: %s", it),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -72,7 +73,7 @@ fun ModelCard(
                     if (model.isOnDeviceLitert() && !model.isLitertDownloaded()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Not downloaded - tap Download to add this bundle",
+                            text = translated("Not downloaded - tap Download to add this bundle"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -81,14 +82,14 @@ fun ModelCard(
                 Column(horizontalAlignment = Alignment.End) {
                     if (model.isOnDeviceLitert() && !model.isLitertDownloaded() && onDownload != null) {
                         FilledTonalButton(onClick = onDownload) {
-                            Text("Download")
+                            Text(translated("Download"))
                         }
                     }
                     if (onShowDetails != null) {
                         IconButton(onClick = onShowDetails) {
                             Icon(
                                 imageVector = Icons.Default.Info,
-                                contentDescription = "Model details"
+                                contentDescription = translated("Model details")
                             )
                         }
                     }
@@ -96,7 +97,7 @@ fun ModelCard(
                         IconButton(onClick = onDelete) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete model"
+                                contentDescription = translated("Delete model")
                             )
                         }
                     }
