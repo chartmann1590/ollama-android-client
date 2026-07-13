@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.charles.ollama.client.domain.model.Server
+import com.charles.ollama.client.ui.localization.translated
 import com.charles.ollama.client.ui.navigation.InterstitialAdManagerEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.delay
@@ -101,14 +102,14 @@ fun WhatsNewRewardsSheet(
             HeroBadge()
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "New: Reward credits",
+                text = translated("New: Reward credits"),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Earn credits by watching short ads, then spend them to mute every other ad in the app.",
+                text = translated("Earn credits by watching short ads, then spend them to mute every other ad in the app."),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -118,20 +119,20 @@ fun WhatsNewRewardsSheet(
 
             FeatureBullet(
                 icon = Icons.Default.MovieFilter,
-                title = "Watch a quick ad",
-                body = "Each rewarded video earns you 1 credit."
+                title = translated("Watch a quick ad"),
+                body = translated("Each rewarded video earns you 1 credit.")
             )
             Spacer(modifier = Modifier.height(10.dp))
             FeatureBullet(
                 icon = Icons.Default.Bolt,
-                title = "Spend on quiet time",
-                body = "1 credit = 30 minutes ad-free, or 3 credits = 2 hours. Earn and redeem up to 3 credits per day."
+                title = translated("Spend on quiet time"),
+                body = translated("1 credit = 30 minutes ad-free, or 3 credits = 2 hours. Earn and redeem up to 3 credits per day.")
             )
             Spacer(modifier = Modifier.height(10.dp))
             FeatureBullet(
                 icon = Icons.Default.Timer,
-                title = "Enjoy quiet time",
-                body = "Banners, native ads, interstitials, and app-open ads all stay hidden until your time runs out."
+                title = translated("Enjoy quiet time"),
+                body = translated("Banners, native ads, interstitials, and app-open ads all stay hidden until your time runs out.")
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -148,11 +149,11 @@ fun WhatsNewRewardsSheet(
             ) {
                 Icon(imageVector = Icons.Default.CardGiftcard, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Try it now", fontWeight = FontWeight.SemiBold)
+                Text(translated("Try it now"), fontWeight = FontWeight.SemiBold)
             }
             Spacer(modifier = Modifier.height(4.dp))
             TextButton(onClick = dismiss, modifier = Modifier.fillMaxWidth()) {
-                Text("Maybe later")
+                Text(translated("Maybe later"))
             }
             Spacer(modifier = Modifier.height(8.dp))
         }

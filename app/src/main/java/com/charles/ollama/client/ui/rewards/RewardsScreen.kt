@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.charles.ollama.client.ads.RewardTier
 import com.charles.ollama.client.ads.RewardedAdState
+import com.charles.ollama.client.ui.localization.translated
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,11 +64,12 @@ fun RewardsScreen(
     val earnableToday = (maxPerDay - earnedToday).coerceAtLeast(0)
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val toastSource = toast
+    val snackbarMessage = translated(toastSource ?: "")
 
-    LaunchedEffect(toast) {
-        val message = toast
-        if (message != null) {
-            snackbarHostState.showSnackbar(message)
+    LaunchedEffect(toastSource, snackbarMessage) {
+        if (toastSource != null && snackbarMessage.isNotBlank()) {
+            snackbarHostState.showSnackbar(snackbarMessage)
             viewModel.clearToast()
         }
     }
@@ -83,10 +85,10 @@ fun RewardsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Rewards") },
+                title = { Text(translated("Rewards")) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = translated("Back"))
                     }
                 }
             )
@@ -172,18 +174,18 @@ private fun GoPremiumCard(onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Go ad-free forever",
+                    text = translated("Remove ads forever"),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
-                    text = "Skip the watching — remove every ad with Premium.",
+                    text = translated("Skip the watching - remove every ad with Premium."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )
             }
             FilledTonalButton(onClick = onClick) {
-                Text("Upgrade")
+                Text(translated("Upgrade"))
             }
         }
     }
@@ -222,7 +224,7 @@ private fun CreditsHeroCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Your reward credits",
+                        text = translated("Your reward credits"),
                         color = Color.White.copy(alpha = 0.9f),
                         style = MaterialTheme.typography.titleMedium
                     )
@@ -236,14 +238,14 @@ private fun CreditsHeroCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (credits == 1) "credit" else "credits",
+                        text = if (credits == 1) translated("credit") else translated("credits"),
                         color = Color.White.copy(alpha = 0.9f),
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }
                 Text(
-                    text = "Watch a short ad to earn credits, then redeem them to mute every other ad in the app.",
+                    text = translated("Watch a short ad to earn credits, then redeem them to mute every other ad in the app."),
                     color = Color.White.copy(alpha = 0.85f),
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -252,8 +254,8 @@ private fun CreditsHeroCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    DailyChip(label = "Earned today", value = "$earnedToday / $maxPerDay")
-                    DailyChip(label = "Redeemed today", value = "$spentToday / $maxPerDay")
+                    DailyChip(label = translated("Earned today"), value = "$earnedToday / $maxPerDay")
+                    DailyChip(label = translated("Redeemed today"), value = "$spentToday / $maxPerDay")
                 }
             }
         }
@@ -318,7 +320,7 @@ private fun AdFreeStatusCard(isActive: Boolean, remainingMs: Long) {
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(
-                    text = if (isActive) "Ads disabled" else "No ad-free time active",
+                    text = if (isActive) translated("Ads disabled") else translated("No ad-free time active"),
                     color = onContainer,
                     fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.titleMedium
@@ -326,9 +328,9 @@ private fun AdFreeStatusCard(isActive: Boolean, remainingMs: Long) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = if (isActive)
-                        "Time remaining: ${formatRemaining(remainingMs)}"
+                        translated("Time remaining: %s", formatRemaining(remainingMs))
                     else
-                        "Redeem credits below to mute banners, native ads, and full-screen ads.",
+                        translated("Redeem credits below to mute banners, native ads, and full-screen ads."),
                     color = onContainer.copy(alpha = 0.85f),
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -354,10 +356,13 @@ private fun EarnSection(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SectionHeader(icon = Icons.Default.Bolt, title = "Earn credits")
+            SectionHeader(icon = Icons.Default.Bolt, title = translated("Earn credits"))
             Text(
-                text = "Watch a short rewarded video to earn $creditsPerAd credit. " +
-                    "You can earn up to $maxPerDay credits per day.",
+                text = translated(
+                    "Watch a short rewarded video to earn %d credit. You can earn up to %d credits per day.",
+                    creditsPerAd,
+                    maxPerDay
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -378,7 +383,7 @@ private fun EarnSection(
                 if (atDailyCap) {
                     Icon(imageVector = Icons.Default.HourglassEmpty, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Daily limit reached", fontWeight = FontWeight.SemiBold)
+                    Text(translated("Daily limit reached"), fontWeight = FontWeight.SemiBold)
                 } else if (isLoading) {
                     CircularProgressIndicator(
                         strokeWidth = 2.dp,
@@ -386,12 +391,15 @@ private fun EarnSection(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Loading ad…")
+                    Text(translated("Loading ad..."))
                 } else {
                     Icon(imageVector = Icons.Default.Movie, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isReady) "Watch ad — earn $creditsPerAd credit" else "Ad unavailable — tap to retry",
+                        text = if (isReady)
+                            translated("Watch ad - earn %d credit", creditsPerAd)
+                        else
+                            translated("Ad unavailable - tap to retry"),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -399,13 +407,16 @@ private fun EarnSection(
 
             if (atDailyCap) {
                 Text(
-                    text = "You've hit the daily earn limit. Come back tomorrow to watch more.",
+                    text = translated("You've hit the daily earn limit. Come back tomorrow to watch more."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
                 Text(
-                    text = "$earnableToday more credit${if (earnableToday == 1) "" else "s"} you can earn today.",
+                    text = if (earnableToday == 1)
+                        translated("%d more credit you can earn today.", earnableToday)
+                    else
+                        translated("%d more credits you can earn today.", earnableToday),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -417,7 +428,7 @@ private fun EarnSection(
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Text(
-                    text = "Couldn't load an ad right now. Check your connection and try again.",
+                    text = translated("Couldn't load an ad right now. Check your connection and try again."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -443,18 +454,23 @@ private fun RedeemSection(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SectionHeader(icon = Icons.Outlined.LocalActivity, title = "Redeem")
+            SectionHeader(icon = Icons.Outlined.LocalActivity, title = translated("Redeem"))
             Text(
-                text = "Spend credits to disable banners, native, interstitial, and app-open ads. " +
-                    "You can redeem up to $maxPerDay credits per day; times stack on top of any time you have left.",
+                text = translated(
+                    "Spend credits to disable banners, native, interstitial, and app-open ads. You can redeem up to %d credits per day, and any redeemed time is added to time you already have left.",
+                    maxPerDay
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = if (redeemableToday <= 0)
-                    "Daily redeem limit reached — try again tomorrow."
+                    translated("Daily redeem limit reached - try again tomorrow.")
                 else
-                    "$redeemableToday more credit${if (redeemableToday == 1) "" else "s"} you can redeem today.",
+                    if (redeemableToday == 1)
+                        translated("%d more credit you can redeem today.", redeemableToday)
+                    else
+                        translated("%d more credits you can redeem today.", redeemableToday),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -480,6 +496,7 @@ private fun TierRow(
     val canAfford = credits >= tier.cost
     val withinDailyLimit = tier.cost <= redeemableToday
     val canRedeem = canAfford && withinDailyLimit
+    val tierLabel = translated(tier.label)
 
     Surface(
         shape = RoundedCornerShape(14.dp),
@@ -497,20 +514,23 @@ private fun TierRow(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = tier.label + " ad-free",
+                    text = translated("No ads for %s", tierLabel),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "${tier.cost} ${if (tier.cost == 1) "credit" else "credits"}",
+                    text = if (tier.cost == 1)
+                        translated("%d credit", tier.cost)
+                    else
+                        translated("%d credits", tier.cost),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (!withinDailyLimit && canAfford) {
                     Text(
-                        text = "Over today's limit",
+                        text = translated("Over today's limit"),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -523,9 +543,9 @@ private fun TierRow(
             ) {
                 Text(
                     text = when {
-                        !canAfford -> "Need ${tier.cost - credits}"
-                        !withinDailyLimit -> "Maxed today"
-                        else -> "Redeem"
+                        !canAfford -> translated("Need %d", tier.cost - credits)
+                        !withinDailyLimit -> translated("Maxed today")
+                        else -> translated("Redeem")
                     }
                 )
             }
@@ -543,13 +563,13 @@ private fun HowItWorksCard(maxPerDay: Int) {
         )
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SectionHeader(icon = Icons.Default.Info, title = "How it works")
-            BulletRow(text = "Tap “Watch ad” to view a short rewarded video.")
-            BulletRow(text = "Earn 1 credit each time you finish watching.")
-            BulletRow(text = "Daily limit: earn up to $maxPerDay credits per day and redeem up to $maxPerDay credits per day.")
-            BulletRow(text = "Redeem credits below to disable ads for set periods.")
-            BulletRow(text = "Active ad-free time keeps banners, native ads, interstitials, and app-open ads hidden until it expires.")
-            BulletRow(text = "Redemptions stack on top of any time you already have left.")
+            SectionHeader(icon = Icons.Default.Info, title = translated("How it works"))
+            BulletRow(text = translated("Tap \"Watch ad\" to view a short rewarded video."))
+            BulletRow(text = translated("Earn 1 credit each time you finish watching."))
+            BulletRow(text = translated("Daily limit: earn up to %d credits per day and redeem up to %d credits per day.", maxPerDay, maxPerDay))
+            BulletRow(text = translated("Redeem credits below to disable ads for set periods."))
+            BulletRow(text = translated("Active ad-free time keeps banners, native ads, interstitials, and app-open ads hidden until it expires."))
+            BulletRow(text = translated("Redeemed time is added to any ad-free time you already have left."))
         }
     }
 }
@@ -570,7 +590,7 @@ private fun SectionHeader(icon: androidx.compose.ui.graphics.vector.ImageVector,
 @Composable
 private fun BulletRow(text: String) {
     Row(verticalAlignment = Alignment.Top) {
-        Text("•  ", style = MaterialTheme.typography.bodyMedium)
+        Text("-  ", style = MaterialTheme.typography.bodyMedium)
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,

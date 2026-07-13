@@ -58,7 +58,7 @@ class RewardsViewModel @Inject constructor(
                 _toast.value = "Need ${r.missing} more credit${if (r.missing == 1) "" else "s"}"
             is RedemptionResult.DailyLimit ->
                 _toast.value = if (r.remainingToday == 0)
-                    "Daily redeem limit reached — try again tomorrow"
+                    "Daily redeem limit reached - try again tomorrow"
                 else
                     "Only ${r.remainingToday} more credit${if (r.remainingToday == 1) "" else "s"} can be redeemed today"
         }
@@ -73,6 +73,6 @@ class RewardsViewModel @Inject constructor(
     fun rewardedManager(): RewardedAdManager = rewardedAdManager
 
     fun showEarnLimitToast() {
-        _toast.value = "Daily earn limit reached — come back tomorrow for more"
+        _toast.value = "Daily earn limit reached - come back tomorrow for more"
     }
 }
