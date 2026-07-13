@@ -192,6 +192,68 @@ jobs:
             exit 1
           fi
 
+      - name: Update Google Play listing metadata
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_PACKAGE_NAME: com.charles.ollama.client.play
+          PLAY_LISTING_LANGUAGE: en-US
+        run: |
+          python -m pip install --quiet google-auth requests
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          import google.auth.transport.requests
+          import requests
+          from google.oauth2 import service_account
+
+          package_name = os.environ["PLAY_PACKAGE_NAME"]
+          language = os.environ["PLAY_LISTING_LANGUAGE"]
+          service_account_json = os.environ["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"]
+          credentials = service_account.Credentials.from_service_account_info(
+              json.loads(service_account_json),
+              scopes=["https://www.googleapis.com/auth/androidpublisher"],
+          )
+          credentials.refresh(google.auth.transport.requests.Request())
+          headers = {
+              "Authorization": f"Bearer {credentials.token}",
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+          }
+
+          full_description = Path("listing/full_description.txt").read_text(encoding="utf-8").strip()
+          short_description = Path("listing/short_description.txt").read_text(encoding="utf-8").strip()
+          if not full_description:
+              raise SystemExit("listing/full_description.txt is empty")
+          if not short_description:
+              raise SystemExit("listing/short_description.txt is empty")
+          if len(full_description) > 4000:
+              raise SystemExit("listing/full_description.txt exceeds Google Play's 4000-character limit")
+          if len(short_description) > 80:
+              raise SystemExit("listing/short_description.txt exceeds Google Play's 80-character limit")
+
+          base = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{package_name}"
+          edit = requests.post(f"{base}/edits", headers=headers, timeout=30)
+          edit.raise_for_status()
+          edit_id = edit.json()["id"]
+
+          listing = requests.patch(
+              f"{base}/edits/{edit_id}/listings/{language}",
+              headers=headers,
+              json={
+                  "fullDescription": full_description,
+                  "shortDescription": short_description,
+              },
+              timeout=30,
+          )
+          listing.raise_for_status()
+
+          commit = requests.post(f"{base}/edits/{edit_id}:commit", headers=headers, timeout=30)
+          commit.raise_for_status()
+          print(f"Updated Google Play listing metadata for {package_name} ({language}).")
+          PY
+
       - name: Publish to Google Play production
         uses: r0adkll/upload-google-play@v1.1.5
         with:
