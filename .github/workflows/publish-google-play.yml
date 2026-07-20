@@ -222,12 +222,17 @@ jobs:
               "Content-Type": "application/json",
           }
 
+          title = Path("listing/app_name.txt").read_text(encoding="utf-8").strip()
           full_description = Path("listing/full_description.txt").read_text(encoding="utf-8").strip()
           short_description = Path("listing/short_description.txt").read_text(encoding="utf-8").strip()
+          if not title:
+              raise SystemExit("listing/app_name.txt is empty")
           if not full_description:
               raise SystemExit("listing/full_description.txt is empty")
           if not short_description:
               raise SystemExit("listing/short_description.txt is empty")
+          if len(title) > 30:
+              raise SystemExit("listing/app_name.txt exceeds Google Play's 30-character limit")
           if len(full_description) > 4000:
               raise SystemExit("listing/full_description.txt exceeds Google Play's 4000-character limit")
           if len(short_description) > 80:
@@ -242,6 +247,7 @@ jobs:
               f"{base}/edits/{edit_id}/listings/{language}",
               headers=headers,
               json={
+                  "title": title,
                   "fullDescription": full_description,
                   "shortDescription": short_description,
               },
