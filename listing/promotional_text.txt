@@ -1,1 +1,1 @@
-Now with model tuning, token-speed stats, labels, global search & on-device AI!
+Chat with Ollama or run Gemma/Qwen/Phi fully offline. Now with Web Chat sync!

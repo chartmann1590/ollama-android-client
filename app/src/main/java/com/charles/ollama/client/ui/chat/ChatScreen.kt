@@ -111,6 +111,17 @@ fun ChatScreen(
     val speakPrompt = translated("Speak your message")
     val speechUnavailable = translated("Speech recognizer not available on this device")
 
+    // Ask happy users to rate the app after a few successful replies (Play In-App Review API).
+    val shouldRequestReview by viewModel.shouldRequestReview.collectAsState()
+    LaunchedEffect(shouldRequestReview) {
+        if (shouldRequestReview) {
+            (context as? Activity)?.let { activity ->
+                viewModel.launchReviewFlow(activity)
+            }
+            viewModel.consumeReviewRequest()
+        }
+    }
+
     // Shared send action so both the Send button and voice mode use one path.
     val performSend: (String) -> Unit = { text ->
         val canSendNow = (text.isNotBlank() || selectedImages.isNotEmpty()) && selectedModel != null

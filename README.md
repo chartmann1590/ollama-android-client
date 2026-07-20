@@ -11,6 +11,17 @@
 
 An Android application for interacting with Ollama AI models — remote or fully on-device. Built with Jetpack Compose, this app provides a modern and intuitive interface for chatting with AI models running on your Ollama server **or on your phone itself** via Google's LiteRT-LM runtime. Your chats sync in real time to a **web interface** accessible from any browser.
 
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/chat_threads_screen.png" width="23%" alt="Chat threads list" />
+  <img src="screenshots/chat_text_only.png" width="23%" alt="Chat conversation" />
+  <img src="screenshots/chat_model_selection.png" width="23%" alt="Model selection" />
+  <img src="screenshots/ollama_screen.png" width="23%" alt="Server configuration" />
+</p>
+
+<p align="center"><img src="screenshots/homepage-desktop.png" width="80%" alt="Web Chat desktop interface" /></p>
+
 ## Features
 
 ### New: Web Chat & 2-Way Sync

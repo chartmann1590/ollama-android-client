@@ -1,1 +1,1 @@
-Private AI chat with on-device models and multilingual menus.
+Ollama AI chat client — remote server or fully offline on-device models.

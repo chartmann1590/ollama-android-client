@@ -1,7 +1,7 @@
 # Play Store Listing — Ollama AI Chat
 
 ## Short Description (80 chars max)
-Chat with AI on your phone or browser. Ollama + on-device LiteRT models.
+Ollama AI chat client — remote server or fully offline on-device models.
 
 ## Full Description
 

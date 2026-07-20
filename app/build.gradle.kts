@@ -370,6 +370,9 @@ dependencies {
     // Google Play Billing (Remove-Ads / Premium)
     implementation("com.android.billingclient:billing-ktx:7.1.1")
 
+    // In-app review prompt (asks happy users to rate on Play Store)
+    implementation("com.google.android.play:review-ktx:2.0.2")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:5.7.0")

@@ -1,54 +1,73 @@
-Ollama AI Chat - private AI on Android
+Ollama AI Chat — private AI on Android, or from any browser
 
-Chat with powerful AI models on your own terms. Connect to your own Ollama server, or run supported models fully on-device with LiteRT-LM. Your conversations are stored locally on your device.
+Ollama AI Chat connects to your Ollama server or runs powerful language models directly on your device — Gemma, Qwen, DeepSeek R1 Distill, and Phi-4 Mini — with no data leaving your phone. Now with Web Chat Sync: open a browser on any computer, sign in with the same account, and continue your conversations in real time.
 
-Two ways to chat
+NEW: Web Chat — chat from any browser
 
-Remote Ollama
-Connect to any Ollama server on your network and chat with Llama, Mistral, Qwen, DeepSeek, and more, with responses streamed in real time.
+No laptop app to install. Open the web chat page in any desktop or mobile browser, sign in with Google or your email, and all your threads appear instantly. Type a message and your Android phone receives it, runs AI inference (Ollama or on-device), and streams the response back to your browser in seconds.
 
-On-device models
-Download and run supported models directly on your phone. No server is required, and on-device model conversations do not need an internet connection after setup.
+- Phone offline? No problem — messages queue locally in the browser and dispatch automatically when your phone reconnects.
+- Real-time model selector shows only models you've actually installed, and pre-selects the right one per thread.
+- Phone presence indicator shows when your phone is online and ready.
 
-Key features
+On-device AI — no server, no internet required
 
-- Real-time streaming chat in a clean Material Design 3 interface
-- Stop generation mid-reply and keep the partial text
-- Per-chat model parameters: temperature, top-p, top-k, context length, and seed
-- Token-speed stats under assistant replies
-- Thinking-model support for reasoning traces where available
-- Image support for vision-capable models with smart compression
-- Voice input and read-aloud replies
-- On-device menu and error-message translation with language selection during onboarding and in Settings
-- Model details: inspect parameters, quantization, template, license, and modelfile
-- Organize chats with labels, pins, and archives
-- Search within a chat or across every conversation
-- Export and share chats or single messages as Markdown
-- Per-message actions: copy, share, edit and resend, regenerate, delete, and report
-- Persistent local history with a secure on-device database
-- Dark theme and Material You dynamic colors
-- Home-screen widget and launcher shortcuts
+Run state-of-the-art language models completely offline via Google's LiteRT-LM runtime. Download once, chat forever — no data ever leaves your device. Available models include Gemma 4, Gemma 3, Qwen 3, Qwen 2.5, DeepSeek R1 Distill, and Phi-4 Mini, ranging from ~300 MB to ~4 GB depending on capability.
 
-Privacy first
+Remote Ollama — full server power
 
-Your conversations stay on your device unless you choose to connect to a remote server. With on-device models, model prompts and replies stay local. With a remote server, you decide exactly where your data goes.
+Connect to your home or work Ollama server and access any model it hosts, with multiple servers, per-thread model switching, and real-time streaming.
 
-Language support
+Full feature list
 
-The app can translate menus, settings, onboarding, and app-generated error messages using on-device ML Kit translation after the selected language model is downloaded. Translations are machine generated and may not always be accurate, so use care with important or safety-critical information.
+Conversations
+- Real-time streaming responses (remote and on-device)
+- Persistent chat history saved locally
+- Pin, archive, and label threads for organization
+- Per-message copy, share, delete, edit & resend, regenerate
+- Stop generation mid-stream — partial response is kept
+- Export/share entire threads as Markdown
+
+Search
+- Search inside the current conversation
+- Global search across all conversations — jump directly to the message
+
+Images
+- Attach images for vision-capable remote models
+- Automatic compression for fast uploads
+
+Voice & Accessibility
+- Voice input via Android speech-to-text
+- Read-aloud replies via Text-to-Speech
+
+Model Control
+- Per-thread temperature, top_p, top_k, context window, and seed
+- Token-speed stats and response time under every reply
+- Full model info: parameters, quantization, template, license
+
+Web Sync
+- Enable in Settings, Web Sync
+- Sign in with Google or email/password
+- All threads and messages sync to Firebase Realtime Database
+- Access from any browser at no extra cost
+
+Privacy
+
+- Conversation history is stored locally on your device (Room database)
+- On-device inference: zero network traffic for chat content
+- Web Sync uses Firebase — only your own account data is synced, secured by Firebase Auth
+- No third-party advertising data collection for chat content
 
 Great for
 
 - Developers testing and comparing AI models
 - Researchers experimenting with LLMs
-- Anyone who wants private, offline-capable AI on their phone
+- Anyone who wants private, offline-capable AI on their phone or across devices
 
 Requirements
 
 - Android 7.0 (API 24) or higher
-- For remote chat: an accessible Ollama server
-- For on-device chat: free storage for the model you choose
+- Internet connection for Ollama remote inference and Web Chat Sync
+- On-device inference works fully offline after model download
 
-Open source
-
-Built with Kotlin and Jetpack Compose. Open source and welcoming contributions.
+Open source under the MIT License: github.com/chartmann1590/ollama-android-client

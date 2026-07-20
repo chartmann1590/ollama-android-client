@@ -16,6 +16,7 @@ import com.charles.ollama.client.util.VibrationHelper
 import com.charles.ollama.client.util.ThinkingParser
 import com.charles.ollama.client.util.PerformanceMonitor
 import com.charles.ollama.client.util.RecentThreadShortcut
+import com.charles.ollama.client.util.ReviewPromptHelper
 import com.charles.ollama.client.util.ThreadExporter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -34,8 +35,21 @@ class ChatViewModel @Inject constructor(
     private val getModelsUseCase: GetModelsUseCase,
     private val vibrationHelper: VibrationHelper,
     private val contentReportStorage: ContentReportStorage,
+    private val reviewPromptHelper: ReviewPromptHelper,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
+
+    private val _shouldRequestReview = MutableStateFlow(false)
+    val shouldRequestReview: StateFlow<Boolean> = _shouldRequestReview.asStateFlow()
+
+    /** Called by the UI once it has launched (or skipped) the review flow. */
+    fun consumeReviewRequest() {
+        _shouldRequestReview.value = false
+    }
+
+    fun launchReviewFlow(activity: android.app.Activity) {
+        reviewPromptHelper.requestReview(activity)
+    }
     
     private val _threadId = MutableStateFlow<Long?>(null)
     val threadId: StateFlow<Long?> = _threadId.asStateFlow()
@@ -365,7 +379,10 @@ class ChatViewModel @Inject constructor(
                     // Log final content length for debugging
                     android.util.Log.d("ChatViewModel", "Streaming completed. Final content length: [REDACTED], Final thinking length: [REDACTED]")
                     _error.value = null
-                    
+                    if (reviewPromptHelper.onSuccessfulReply()) {
+                        _shouldRequestReview.value = true
+                    }
+
                     PerformanceMonitor.addMetric(trace, "stream_deltas", deltaCount)
                     PerformanceMonitor.addMetric(trace, "final_content_length", fullContent.length.toLong())
                     PerformanceMonitor.addMetric(trace, "final_thinking_length", fullThinking.length.toLong())
@@ -416,8 +433,11 @@ class ChatViewModel @Inject constructor(
                 }
                 result.onSuccess {
                     _error.value = null
+                    if (reviewPromptHelper.onSuccessfulReply()) {
+                        _shouldRequestReview.value = true
+                    }
                 }
-                
+
                 _isLoading.value = false
             }
             PerformanceMonitor.stopTrace(trace)
