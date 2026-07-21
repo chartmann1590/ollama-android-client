@@ -90,13 +90,13 @@ plugins {
 
 android {
     namespace = "com.charles.ollama.client"
-    compileSdk = 35
+    compileSdk = 36
     flavorDimensions += "distribution"
 
     defaultConfig {
         applicationId = "com.charles.ollama.client"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
 
         // Play Store requires versionCode to monotonically increase per upload.
         // In CI we offset GITHUB_RUN_NUMBER by 1000 so it can never collide
