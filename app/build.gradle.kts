@@ -368,7 +368,7 @@ dependencies {
     implementation("com.google.android.ump:user-messaging-platform:2.2.0")
 
     // Google Play Billing (Remove-Ads / Premium)
-    implementation("com.android.billingclient:billing-ktx:7.1.1")
+    implementation("com.android.billingclient:billing-ktx:9.0.0")
 
     // In-app review prompt (asks happy users to rate on Play Store)
     implementation("com.google.android.play:review-ktx:2.0.2")
