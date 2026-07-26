@@ -26,6 +26,18 @@ class LiteRtChatService @Inject constructor(
     @Volatile private var nativeLogSeverityApplied = false
 
     /**
+     * The litertlm-android AAR only ships native binaries for arm64-v8a and
+     * x86_64 (verified by inspecting the AAR's jni/ directory across every
+     * version currently in use) — there is no armeabi-v7a (32-bit ARM) build.
+     * Devices whose primary ABI isn't one of these two get a real
+     * UnsatisfiedLinkError the moment LiteRT tries to load its native library.
+     * Check this up front so callers can show a clear message instead of
+     * attempting and crashing (Crashlytics #19/#29/#33/#37).
+     */
+    fun isDeviceSupported(): Boolean =
+        android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" || it == "x86_64" }
+
+    /**
      * Streams assistant text deltas for one user turn. Prior history is passed
      * as [historyBeforeUser] (DB rows in order, excluding the current user
      * message row just inserted).
@@ -78,7 +90,7 @@ class LiteRtChatService @Inject constructor(
             .distinctBy { it.size }
             .map { pairs -> pairsToMessages(pairs) }
 
-        var lastAttemptError: Exception? = null
+        var lastAttemptError: Throwable? = null
         for (backend in backendAttempts) {
             for (history in historyAttempts) {
                 val engineConfig = EngineConfig(
@@ -108,7 +120,16 @@ class LiteRtChatService @Inject constructor(
                     }
                     generatedChunks.forEach { emit(it) }
                     return@flow
-                } catch (e: Exception) {
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    // Catch Throwable, not just Exception: loading litertlm_jni throws
+                    // UnsatisfiedLinkError (a LinkageError, i.e. an Error, not an
+                    // Exception) on devices missing the native ABI (arm64-v8a/x86_64
+                    // only - see isDeviceSupported()). Exception-only used to let that
+                    // escape uncaught before this fallback loop ever ran, crashing the
+                    // app instead of trying the next backend/history combination
+                    // (Crashlytics #19/#29/#33/#37).
                     lastAttemptError = e
                     Log.w(
                         TAG,
@@ -119,7 +140,13 @@ class LiteRtChatService @Inject constructor(
                 }
             }
         }
-        throw lastAttemptError ?: IllegalStateException("Failed to run LiteRT engine.")
+        // Normalize to a plain Exception before it leaves this function: every
+        // attempt above failed identically for the same underlying reason (most
+        // commonly UnsatisfiedLinkError on an unsupported ABI), and callers up
+        // the stack (ChatRepository, ViewModels) already assume `catch (e:
+        // Exception)` is enough - don't make them all learn about LinkageError too.
+        val failure = lastAttemptError ?: IllegalStateException("Failed to run LiteRT engine.")
+        throw if (failure is Exception) failure else RuntimeException(failure.message ?: "Failed to run LiteRT engine.", failure)
     }.flowOn(Dispatchers.Default)
 
     /**

@@ -351,6 +351,9 @@ class ChatRepository @Inject constructor(
             val defaultServerNs = serverRepository.getDefaultServerSync()
             val backendNs = defaultServerNs?.let { ServerBackend.fromStored(it.backendType) } ?: ServerBackend.OLLAMA
             if (backendNs == ServerBackend.LITERT_LOCAL) {
+                if (!liteRtChatService.isDeviceSupported()) {
+                    return Result.failure(IllegalStateException("On-device AI isn't supported on this device's processor. Set an Ollama server as your default instead."))
+                }
                 if (!images.isNullOrEmpty()) {
                     return Result.failure(UnsupportedOperationException("Images are not supported for on-device LiteRT in this build."))
                 }
@@ -517,6 +520,9 @@ class ChatRepository @Inject constructor(
             val defaultServer = serverRepository.getDefaultServerSync()
             val backend = defaultServer?.let { ServerBackend.fromStored(it.backendType) } ?: ServerBackend.OLLAMA
             val litertContext = if (backend == ServerBackend.LITERT_LOCAL) {
+                if (!liteRtChatService.isDeviceSupported()) {
+                    throw IllegalStateException("On-device AI isn't supported on this device's processor. Set an Ollama server as your default instead.")
+                }
                 if (!images.isNullOrEmpty()) {
                     throw UnsupportedOperationException("Images are not supported for on-device LiteRT in this build.")
                 }
