@@ -157,6 +157,20 @@ internal fun isSuppressibleFrameworkBug(t: Throwable): Boolean {
     // Treat these as non-fatal rather than killing the process.
     if (t is com.google.firebase.database.DatabaseException) return true
 
+    // NullPointerExceptions surfacing from Looper.loop() whose entire stack trace is
+    // inside platform/library packages (nothing from this app's own code) can't be a
+    // bug in our code - there's no app frame between the try block and Looper.loop()
+    // for the NPE to originate from. This mirrors the two named-bug checks below, but
+    // generalized: rather than matching one specific documented framework bug by class/
+    // method name, it verifies app-code involvement is impossible before suppressing,
+    // so it can't mask a real app-code NPE (Crashlytics issue #38 - the reported crash's
+    // full stack trace wasn't retrievable via the Crashlytics REST API, which only
+    // exposes issue summaries, not per-event traces; this is the safe fallback).
+    if (t is NullPointerException && t.stackTrace.isNotEmpty()) {
+        val touchesAppCode = t.stackTrace.any { it.className.startsWith("com.charles.ollama.client") }
+        if (!touchesAppCode) return true
+    }
+
     if (t !is IllegalArgumentException) return false
     val msg = t.message ?: return false
 
