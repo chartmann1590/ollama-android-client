@@ -35,9 +35,6 @@ jobs:
       ADMOB_APP_OPEN_AD_UNIT_ID: ${{ secrets.ADMOB_APP_OPEN_AD_UNIT_ID }}
       ADMOB_REWARDED_AD_UNIT_ID: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
       PLAY_LICENSE_KEY: ${{ secrets.PLAY_LICENSE_KEY }}
-      GH_API_TOKEN: ${{ secrets.GH_API_TOKEN || 'stub_token' }}
-      GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER || 'chartmann1590' }}
-      GH_REPO_NAME: ${{ secrets.GH_REPO_NAME || 'ollama-android-client' }}
       GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}

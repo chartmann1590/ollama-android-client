@@ -68,9 +68,7 @@ class GitHubFeedbackRepository @Inject constructor(
         }
 
         val response = apiService.createIssue(
-            owner = BuildConfig.GITHUB_OWNER,
-            repo = BuildConfig.GITHUB_REPO,
-            request = CreateIssueRequest(title = title, body = finalBody)
+            CreateIssueRequest(title = title, body = finalBody)
         )
 
         val localReport = LocalBugReport(
@@ -86,11 +84,7 @@ class GitHubFeedbackRepository @Inject constructor(
     }
 
     suspend fun refreshIssueStatus(issueNumber: Int): LocalBugReport = withContext(Dispatchers.IO) {
-        val response = apiService.getIssue(
-            owner = BuildConfig.GITHUB_OWNER,
-            repo = BuildConfig.GITHUB_REPO,
-            number = issueNumber
-        )
+        val response = apiService.getIssue(number = issueNumber)
         val localReport = LocalBugReport(
             issueNumber = response.number,
             title = response.title,
@@ -103,11 +97,7 @@ class GitHubFeedbackRepository @Inject constructor(
     }
 
     suspend fun getComments(issueNumber: Int): List<GitHubCommentResponse> = withContext(Dispatchers.IO) {
-        apiService.getComments(
-            owner = BuildConfig.GITHUB_OWNER,
-            repo = BuildConfig.GITHUB_REPO,
-            number = issueNumber
-        )
+        apiService.getComments(number = issueNumber)
     }
 
     suspend fun postComment(
@@ -128,8 +118,6 @@ class GitHubFeedbackRepository @Inject constructor(
         }
 
         apiService.postComment(
-            owner = BuildConfig.GITHUB_OWNER,
-            repo = BuildConfig.GITHUB_REPO,
             number = issueNumber,
             request = PostCommentRequest(body = finalBody)
         )
@@ -141,13 +129,7 @@ class GitHubFeedbackRepository @Inject constructor(
         val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
         
         val response = apiService.uploadAsset(
-            owner = BuildConfig.GITHUB_OWNER,
-            repo = BuildConfig.GITHUB_REPO,
-            filename = filename,
-            request = UploadContentRequest(
-                message = "Upload feedback screenshot: $filename",
-                content = base64
-            )
+            UploadContentRequest(filename = filename, contentBase64 = base64)
         )
         return response.content.downloadUrl
     }

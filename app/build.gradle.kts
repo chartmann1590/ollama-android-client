@@ -117,14 +117,15 @@ android {
             useSupportLibrary = true
         }
 
-        val githubOwner = githubProp("GH_REPO_OWNER", "github.repo.owner", "chartmann1590")
-        val githubRepo = githubProp("GH_REPO_NAME", "github.repo.name", "ollama-android-client")
-        val githubApiToken = githubProp("GH_API_TOKEN", "github.api.token", "")
         val googleWebClientId = githubProp("GOOGLE_WEB_CLIENT_ID", "google.webClientId", "")
 
-        buildConfigField("String", "GITHUB_OWNER", "\"$githubOwner\"")
-        buildConfigField("String", "GITHUB_REPO", "\"$githubRepo\"")
-        buildConfigField("String", "GITHUB_API_TOKEN", "\"$githubApiToken\"")
+        // Not secret — just identifies which repo the "github" flavor's self-update
+        // checker (UpdateChecker.kt) polls via an unauthenticated public GET to
+        // GitHub's Releases API. Unrelated to the feedback reporter's GitHub token,
+        // which is no longer client-side at all (see cloudflare-worker/).
+        buildConfigField("String", "GITHUB_OWNER", "\"chartmann1590\"")
+        buildConfigField("String", "GITHUB_REPO", "\"ollama-android-client\"")
+
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
         buildConfigField("long", "BUILD_COMMIT_EPOCH_SECONDS", "${gitCommitEpochSeconds()}L")
         buildConfigField("String", "BUILD_GIT_SHA", "\"${gitShortSha()}\"")

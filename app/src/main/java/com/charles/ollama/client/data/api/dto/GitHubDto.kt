@@ -13,8 +13,8 @@ data class PostCommentRequest(
 )
 
 data class UploadContentRequest(
-    val message: String,
-    val content: String // Base64 encoded
+    val filename: String,
+    val contentBase64: String // Base64 encoded
 )
 
 data class GitHubIssueResponse(

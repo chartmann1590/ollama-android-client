@@ -3,42 +3,27 @@ package com.charles.ollama.client.data.api
 import com.charles.ollama.client.data.api.dto.*
 import retrofit2.http.*
 
+/**
+ * Talks to the cloudflare-worker/ feedback relay, not api.github.com directly. See
+ * NetworkModule.provideGitHubRetrofit and cloudflare-worker/src/index.ts.
+ */
 interface GitHubApiService {
 
-    @POST("repos/{owner}/{repo}/issues")
-    suspend fun createIssue(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String,
-        @Body request: CreateIssueRequest
-    ): GitHubIssueResponse
+    @POST("issue")
+    suspend fun createIssue(@Body request: CreateIssueRequest): GitHubIssueResponse
 
-    @GET("repos/{owner}/{repo}/issues/{number}")
-    suspend fun getIssue(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String,
-        @Path("number") number: Int
-    ): GitHubIssueResponse
+    @GET("issue/{number}")
+    suspend fun getIssue(@Path("number") number: Int): GitHubIssueResponse
 
-    @GET("repos/{owner}/{repo}/issues/{number}/comments")
-    suspend fun getComments(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String,
-        @Path("number") number: Int
-    ): List<GitHubCommentResponse>
+    @GET("issue/{number}/comments")
+    suspend fun getComments(@Path("number") number: Int): List<GitHubCommentResponse>
 
-    @POST("repos/{owner}/{repo}/issues/{number}/comments")
+    @POST("issue/{number}/comments")
     suspend fun postComment(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String,
         @Path("number") number: Int,
         @Body request: PostCommentRequest
     ): GitHubCommentResponse
 
-    @PUT("repos/{owner}/{repo}/contents/feedback-assets/{filename}")
-    suspend fun uploadAsset(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String,
-        @Path("filename") filename: String,
-        @Body request: UploadContentRequest
-    ): UploadContentResponse
+    @POST("upload-image")
+    suspend fun uploadAsset(@Body request: UploadContentRequest): UploadContentResponse
 }

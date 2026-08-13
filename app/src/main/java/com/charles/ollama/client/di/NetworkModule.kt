@@ -2,7 +2,6 @@ package com.charles.ollama.client.di
 
 import com.charles.ollama.client.data.api.OllamaApi
 import com.charles.ollama.client.data.api.GitHubApiService
-import com.charles.ollama.client.BuildConfig
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -95,6 +94,12 @@ object NetworkModule {
         return com.charles.ollama.client.data.api.OllamaStreamingService(okHttpClient, gson, uiPreferences)
     }
 
+    // Talks to the cloudflare-worker/ feedback relay, not api.github.com directly — the
+    // Worker holds the GitHub token as a server-side secret and hardcodes this app's own
+    // repo, so no owner/repo/credential ever needs to travel through this app. Previously
+    // embedded BuildConfig.GITHUB_API_TOKEN client-side as an Authorization header, which
+    // shipped a real repo-write PAT in every release build (extractable from the APK).
+    // See cloudflare-worker/src/index.ts.
     @Provides
     @Singleton
     @GitHubClient
@@ -104,15 +109,6 @@ object NetworkModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
-            .addInterceptor { chain ->
-                val original = chain.request()
-                val requestBuilder = original.newBuilder()
-                    .header("Accept", "application/vnd.github+json")
-                if (BuildConfig.GITHUB_API_TOKEN.isNotEmpty()) {
-                    requestBuilder.header("Authorization", "token ${BuildConfig.GITHUB_API_TOKEN}")
-                }
-                chain.proceed(requestBuilder.build())
-            }
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -127,7 +123,7 @@ object NetworkModule {
         gson: Gson
     ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://api.github.com/")
+            .baseUrl("https://ollama-android-client-github-feedback.charles-h-hartmann1.workers.dev/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
