@@ -33,8 +33,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +55,11 @@ import com.charles.ollama.client.data.billing.PremiumPlan
 import com.charles.ollama.client.data.billing.PremiumProducts
 import com.charles.ollama.client.ui.theme.BrandGradientEnd
 import com.charles.ollama.client.ui.theme.BrandGradientStart
+import kotlinx.coroutines.delay
+
+/** How long a just-tapped plan button stays disabled, to absorb double-taps
+ * while the checkout-session request is in flight. */
+private const val PURCHASE_TAP_LOCKOUT_MS = 3_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,6 +74,17 @@ fun PaywallScreen(
     val details by viewModel.productDetails.collectAsState()
     val options = viewModel.planOptions(details)
     val requiresSignIn = viewModel.requiresSignInToPurchase
+
+    // Debounce: a plan stays disabled for a short lockout after being tapped so
+    // a fast double-tap can't fire two purchase flows (e.g. two Stripe Checkout
+    // sessions) before the first request lands.
+    var lockedPlan by remember { mutableStateOf<PremiumPlan?>(null) }
+    LaunchedEffect(lockedPlan) {
+        if (lockedPlan != null) {
+            delay(PURCHASE_TAP_LOCKOUT_MS)
+            lockedPlan = null
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -155,7 +175,13 @@ fun PaywallScreen(
                 webSyncOptions.forEach { option ->
                     PlanCard(
                         option = option,
-                        onClick = { activity?.let { viewModel.purchase(it, option.plan) } }
+                        enabled = lockedPlan == null,
+                        onClick = {
+                            activity?.let {
+                                lockedPlan = option.plan
+                                viewModel.purchase(it, option.plan)
+                            }
+                        }
                     )
                     Spacer(Modifier.height(12.dp))
                 }
@@ -172,7 +198,13 @@ fun PaywallScreen(
                 adFreeOptions.forEach { option ->
                     PlanCard(
                         option = option,
-                        onClick = { activity?.let { viewModel.purchase(it, option.plan) } }
+                        enabled = lockedPlan == null,
+                        onClick = {
+                            activity?.let {
+                                lockedPlan = option.plan
+                                viewModel.purchase(it, option.plan)
+                            }
+                        }
                     )
                     Spacer(Modifier.height(12.dp))
                 }
@@ -194,7 +226,7 @@ fun PaywallScreen(
 }
 
 @Composable
-private fun PlanCard(option: PlanOption, onClick: () -> Unit) {
+private fun PlanCard(option: PlanOption, enabled: Boolean = true, onClick: () -> Unit) {
     val container = if (option.highlight) {
         CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     } else {
@@ -235,6 +267,7 @@ private fun PlanCard(option: PlanOption, onClick: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = onClick,
+                enabled = enabled,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 val displayPrice = option.price ?: option.fallbackPrice

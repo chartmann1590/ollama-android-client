@@ -80,6 +80,17 @@ serve(async (req) => {
         "line_items[0][quantity]": "1",
         "metadata[device_id]": deviceId,
         "metadata[product_id]": productId,
+        // Also stamp the metadata onto the subscription itself (not just the
+        // checkout session). customer.subscription.created/updated events can
+        // arrive before this handler finishes inserting a row for the
+        // subscription — carrying the metadata here lets the webhook create
+        // the row directly from that event instead of depending on ordering.
+        ...(config.type === "subscription"
+          ? {
+              "subscription_data[metadata][device_id]": deviceId,
+              "subscription_data[metadata][product_id]": productId,
+            }
+          : {}),
       }),
     });
 

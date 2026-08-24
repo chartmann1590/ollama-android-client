@@ -65,15 +65,7 @@ serve(async (req) => {
 
           // Recurring purchases live only in `subscriptions`; cancellation or
           // expiry then correctly revokes access.
-          const subResp = await fetch(
-            "https://api.stripe.com/v1/subscriptions/" + session.subscription,
-            {
-              headers: {
-                "Authorization": "Bearer " + STRIPE_SECRET_KEY,
-              },
-            },
-          );
-          const subscription = await subResp.json();
+          const subscription = await fetchSubscriptionWithPeriod(session.subscription);
 
           await supabase.from("subscriptions").upsert(
             {
@@ -119,8 +111,16 @@ serve(async (req) => {
         break;
       }
 
+      case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
+        // checkout.session.completed fetches the subscription immediately on
+        // checkout completion, but Stripe doesn't always have current_period_*
+        // populated on the subscription yet at that exact instant, which would
+        // otherwise persist as epoch-zero (permanently "expired"). Handling
+        // customer.subscription.created here — using the fields embedded in
+        // the event itself rather than a fresh fetch — self-heals that row
+        // moments later once Stripe has finished computing the period.
         const subscription = event.data.object;
         const subId = subscription.id;
 
@@ -130,11 +130,18 @@ serve(async (req) => {
           .eq("stripe_subscription_id", subId)
           .limit(1);
 
-        if (existingSubs && existingSubs.length > 0) {
+        // Fall back to the metadata stamped on the subscription itself
+        // (subscription_data[metadata] set at checkout) when no row exists
+        // yet — covers customer.subscription.created arriving before
+        // checkout.session.completed has finished inserting its row.
+        const deviceId = existingSubs?.[0]?.device_id ?? subscription.metadata?.device_id;
+        const productId = existingSubs?.[0]?.product_id ?? subscription.metadata?.product_id;
+
+        if (deviceId && productId) {
           await supabase.from("subscriptions").upsert(
             {
-              device_id: existingSubs[0].device_id,
-              product_id: existingSubs[0].product_id,
+              device_id: deviceId,
+              product_id: productId,
               stripe_subscription_id: subId,
               status: subscription.status,
               current_period_start: new Date(
@@ -202,6 +209,37 @@ async function hasActiveSubscription(
   const { data, error } = await query;
   if (error) throw error;
   return Boolean(data && data.length > 0);
+}
+
+/**
+ * Fetch a subscription's details right after checkout completes. Stripe
+ * doesn't always have current_period_start/end populated on the subscription
+ * the instant checkout.session.completed fires — an immediate GET can return
+ * them as null, which would otherwise be written as epoch-zero and read as
+ * "already expired" forever. Retry briefly until they're populated.
+ */
+async function fetchSubscriptionWithPeriod(
+  stripeSubscriptionId: string,
+  attempts = 6,
+  delayMs = 3000,
+  // deno-lint-ignore no-explicit-any
+): Promise<any> {
+  let subscription: Record<string, unknown> = {};
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const resp = await fetch(
+      "https://api.stripe.com/v1/subscriptions/" + stripeSubscriptionId,
+      { headers: { "Authorization": "Bearer " + STRIPE_SECRET_KEY } },
+    );
+    subscription = await resp.json();
+    if (subscription.current_period_end) return subscription;
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  console.error("current_period_end still missing after retries", {
+    stripeSubscriptionId,
+  });
+  return subscription;
 }
 
 async function cancelStripeSubscription(stripeSubscriptionId: string): Promise<void> {

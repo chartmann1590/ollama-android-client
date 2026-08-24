@@ -371,6 +371,17 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+[functions.stripe-webhook]
+# Stripe calls this endpoint directly and only sends a `stripe-signature`
+# header — never a Supabase Authorization/apikey header — so the platform
+# JWT gate must be off here or Kong rejects every webhook with 401 before
+# the function's own verifyStripeSignature() ever runs. Authentication for
+# this endpoint is the Stripe signature check inside the function itself.
+verify_jwt = false
+
+[functions.keepalive]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
