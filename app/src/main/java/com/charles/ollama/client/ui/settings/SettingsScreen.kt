@@ -985,6 +985,8 @@ private fun AccountSyncSection(
                 )
                 AuthActionState.Idle -> Unit
             }
+            MoreAppsSection()
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
