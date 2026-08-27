@@ -42,6 +42,9 @@ import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.analytics.ktx.logEvent
 import com.google.firebase.ktx.Firebase
 import android.os.Bundle as AndroidBundle
+import com.charles.ollama.client.review.PlayReviewHelper
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -94,6 +97,18 @@ class MainActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Play In-App Review - trigger after 3 launches
+        try {
+            val prefs = getSharedPreferences("play_review", MODE_PRIVATE)
+            val count = prefs.getInt("launch_count", 0) + 1
+            prefs.edit().putInt("launch_count", count).apply()
+            if (count >= 3 && count % 5 == 0) {
+                lifecycleScope.launch {
+                    PlayReviewHelper.requestAndLaunch(this@MainActivity)
+                }
+            }
+        } catch (_: Exception) {}
+
         
         // Request notification permission on Android 13+ (API 33+)
         requestNotificationPermission()
