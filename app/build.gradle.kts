@@ -351,7 +351,8 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-crashlytics-ktx")
     implementation("com.google.firebase:firebase-database")
-    implementation("com.google.firebase:firebase-appcheck-playintegrity")
+    // Play Integrity App Check only in the Play flavor; direct-download (github) builds skip it.
+    "playImplementation"("com.google.firebase:firebase-appcheck-playintegrity")
     debugImplementation("com.google.firebase:firebase-appcheck-debug")
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-config-ktx")
@@ -369,7 +370,7 @@ dependencies {
     implementation("com.google.android.ump:user-messaging-platform:2.2.0")
 
     // Google Play Billing (Remove-Ads / Premium)
-    implementation("com.android.billingclient:billing-ktx:9.0.0")
+    "playImplementation"("com.android.billingclient:billing-ktx:9.0.0")
 
     // In-app review prompt (asks happy users to rate on Play Store)
     implementation("com.google.android.play:review-ktx:2.0.2")

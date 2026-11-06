@@ -23,6 +23,8 @@ class ReviewPromptHelper @Inject constructor(
     }
 
     fun requestReview(activity: Activity) {
+        // Direct-download (github) builds aren't installed from Google Play, so Play's review flow doesn't apply.
+        if (com.charles.ollama.client.BuildConfig.FLAVOR == "github") return
         preferences.markPrompted()
         val manager = ReviewManagerFactory.create(activity)
         manager.requestReviewFlow().addOnCompleteListener { request ->

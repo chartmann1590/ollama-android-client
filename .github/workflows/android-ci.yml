@@ -452,9 +452,15 @@ jobs:
           printf '%s' "$RELEASE_BODY" > release_notes.md
           # Make the step idempotent on re-runs: drop any partial release/tag first.
           gh release delete "$RELEASE_TAG" --yes --cleanup-tag 2>/dev/null || true
+          # Branch builds (e.g. direct-stripe) make a DRAFT release; only master/main publishes.
+          if [ "$GITHUB_REF" = "refs/heads/master" ] || [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            PUBLISH_FLAGS="--latest"
+          else
+            PUBLISH_FLAGS="--draft"
+          fi
           gh release create "$RELEASE_TAG" \
             --target "$GITHUB_SHA" \
             --title "$RELEASE_NAME" \
             --notes-file release_notes.md \
-            --latest \
+            $PUBLISH_FLAGS \
             release/*.apk release/*.aab
