@@ -1,0 +1,22 @@
+launch
+wait 15
+shot 01-launch
+taploop (?i)^(next|next step|continue|get started|skip|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|english)$
+wait 3
+shot 02-after-onboarding
+taploop (?i)^(next|next step|continue|get started|skip|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|english)$
+shot 03-main
+tap (?i)premium|upgrade|remove ads|go pro
+wait 5
+shot 04-paywall
+tap (?i)lifetime
+wait 2
+tap (?i)^(subscribe|buy|purchase|continue|upgrade|get premium|unlock).*
+wait 8
+shot 05-iap
+back
+wait 2
+shot 06-after
+tap (?i)settings
+wait 3
+shot 07-settings

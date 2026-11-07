@@ -1,0 +1,40 @@
+{
+  "premium_monthly": {
+    "itemType": "SUBSCRIPTION",
+    "price": 0.99,
+    "title": "Ad-Free (Monthly)",
+    "description": "Removes ads",
+    "subscriptionParent": "premium_adfree",
+    "term": "Monthly"
+  },
+  "premium_yearly": {
+    "itemType": "SUBSCRIPTION",
+    "price": 9.99,
+    "title": "Ad-Free (Yearly)",
+    "description": "Removes ads",
+    "subscriptionParent": "premium_adfree",
+    "term": "Annually"
+  },
+  "premium_lifetime": {
+    "itemType": "ENTITLED",
+    "price": 19.99,
+    "title": "Ad-Free (Lifetime)",
+    "description": "Removes ads forever"
+  },
+  "websync_monthly": {
+    "itemType": "SUBSCRIPTION",
+    "price": 1.99,
+    "title": "Web Sync + Ad-Free (Monthly)",
+    "description": "Unlimited web messages + no ads",
+    "subscriptionParent": "premium_websync",
+    "term": "Monthly"
+  },
+  "websync_yearly": {
+    "itemType": "SUBSCRIPTION",
+    "price": 14.99,
+    "title": "Web Sync + Ad-Free (Yearly)",
+    "description": "Unlimited web messages + no ads",
+    "subscriptionParent": "premium_websync",
+    "term": "Annually"
+  }
+}

@@ -208,6 +208,16 @@ android {
             buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
         }
+        create("amazon") {
+            dimension = "distribution"
+            // Amazon Appstore (Fire): Amazon In-App Purchasing (Appstore SDK), no Play Billing,
+            // no Play Integrity, no Stripe, no GitHub self-update. Same package id as play, so
+            // google-services.json's play client applies.
+            applicationId = "com.charles.ollama.client.play"
+            resValue("string", "app_name", "Ollama Chat")
+            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_PROMPT", "false")
+            proguardFile("proguard-amazon.pro")
+        }
     }
 
     signingConfigs {
@@ -371,6 +381,8 @@ dependencies {
 
     // Google Play Billing (Remove-Ads / Premium)
     "playImplementation"("com.android.billingclient:billing-ktx:9.0.0")
+    // Amazon flavor: Amazon Appstore SDK (In-App Purchasing). A plain jar on Maven Central.
+    "amazonImplementation"("com.amazon.device:amazon-appstore-sdk:3.0.9")
 
     // In-app review prompt (asks happy users to rate on Play Store)
     implementation("com.google.android.play:review-ktx:2.0.2")

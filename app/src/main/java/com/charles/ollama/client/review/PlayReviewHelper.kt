@@ -10,7 +10,7 @@ import kotlinx.coroutines.tasks.await
 object PlayReviewHelper {
     suspend fun requestAndLaunch(activity: Activity) {
         // Direct-download (github) builds aren't installed from Google Play, so Play's review flow doesn't apply.
-        if (com.charles.ollama.client.BuildConfig.FLAVOR == "github") return
+        if (com.charles.ollama.client.BuildConfig.FLAVOR != "play") return
         try {
             val manager = ReviewManagerFactory.create(activity)
             val reviewInfo = manager.requestReviewFlow().await()

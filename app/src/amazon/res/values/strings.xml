@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Amazon flavor: purchases go through Amazon In-App Purchasing (no sign-in needed). -->
+    <string name="paywall_signin_note">Purchases are made securely through your Amazon account.</string>
+</resources>
