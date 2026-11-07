@@ -7,6 +7,12 @@ wait 3
 shot 02-after-onboarding
 taploop (?i)^(next|next step|continue|skip|skip for now|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|while using the app|only this time)$
 adclose
+tap (?i)^close sheet$
+wait 3
+tap (?i)^close sheet$
+wait 3
+tap (?i)^close sheet$
+wait 3
 shot 03-main
 tap (?i)^app settings$
 wait 4
