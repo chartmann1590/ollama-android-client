@@ -1,29 +1,26 @@
 launch
 wait 15
 shot 01-launch
-swipeup
-swipeup
-taploop (?i)^(next|next step|continue|get started|skip|skip for now|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|english|while using the app|only this time)$
+taploop (?i)^(next|next step|continue|get started|skip|skip for now|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|while using the app|only this time)$
 adclose
 wait 3
 shot 02-after-onboarding
-swipeup
-swipeup
-taploop (?i)^(next|next step|continue|get started|skip|skip for now|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|english|while using the app|only this time)$
-adclose
+taploop (?i)^(next|next step|continue|get started|skip|skip for now|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|while using the app|only this time)$
 adclose
 shot 03-main
-tap (?i)^settings$
+tap (?i)^app settings$
 wait 4
 adclose
 shot 04-settings
 scrollto (?i)remove ads
 wait 4
 shot 05-paywall
-scrollto (?i)lifetime
-wait 2
-shot 06-plan
-scrollto (?i)^(subscribe|continue|buy|purchase)
+scrollto (?i)^(subscribe|continue)
 wait 8
-shot 07-iap
+shot 06-iap-first-plan
+back
+wait 3
+shot 07-after-iap
+back
 wait 2
+shot 08-after

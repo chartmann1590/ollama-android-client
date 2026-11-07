@@ -3,19 +3,19 @@ wait 15
 shot 01-launch
 swipeup
 swipeup
-taploop (?i)^(next|next step|continue|get started|skip|skip for now|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|english|while using the app|only this time)$
+taploop (?i)^(next|next step|continue|get started|skip|skip for now|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|while using the app|only this time)$
 adclose
 wait 3
 shot 02-after-onboarding
 swipeup
 swipeup
-taploop (?i)^(next|next step|continue|get started|skip|skip for now|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|english|while using the app|only this time)$
+taploop (?i)^(next|next step|continue|get started|skip|skip for now|allow|ok|accept|agree|got it|start|i agree|not now|later|maybe later|no thanks|done|finish tutorial|while using the app|only this time)$
 adclose
 adclose
 shot 03-main
 swipeup
 shot 04-scrolled
-tap (?i)^settings$
+tap (?i)^app settings$
 wait 4
 adclose
 shot 05-settings
