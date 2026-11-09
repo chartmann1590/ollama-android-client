@@ -181,12 +181,18 @@ fun SettingsScreen(
                 onNavigateToPaywall = onNavigateToPaywall
             )
 
+            // Amazon build: Amazon IAP stays off until the account's non-US tax details are done
+            // (Amazon refuses paid items before that), so the Premium section is hidden on Fire. (Tab, Nov 9 2026)
+            if (com.charles.ollama.client.BuildConfig.FLAVOR != "amazon") {
             Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = translated("Premium"),
                 style = MaterialTheme.typography.titleMedium
             )
-            if (isPremium) {
+            }
+            if (com.charles.ollama.client.BuildConfig.FLAVOR == "amazon") {
+                // nothing: no purchases in the Amazon build
+            } else if (isPremium) {
                 Text(
                     text = translated("Premium active - all ads are removed. Thanks for your support!"),
                     style = MaterialTheme.typography.bodySmall,
@@ -827,7 +833,8 @@ private fun AccountSyncSection(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                OutlinedButton(
+                // Amazon build: no Google sign-in (Fire tablets have no Google Play services); email sign-in stays.
+                if (com.charles.ollama.client.BuildConfig.FLAVOR != "amazon") OutlinedButton(
                     onClick = onGoogleSignIn,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = authActionState !is AuthActionState.Loading
@@ -928,7 +935,7 @@ private fun AccountSyncSection(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            TextButton(
+                            if (com.charles.ollama.client.BuildConfig.FLAVOR != "amazon") TextButton(
                                 onClick = onNavigateToPaywall,
                                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                             ) {

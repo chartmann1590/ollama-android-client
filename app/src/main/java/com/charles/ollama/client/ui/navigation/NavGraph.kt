@@ -346,7 +346,7 @@ fun NavGraph(
                 defaultServer = defaultServer,
                 onFirstRunTutorialFinished = { setupTutorialFinishedSignal++ },
             )
-            WhatsNewRewardsSheet(
+            if (com.charles.ollama.client.BuildConfig.FLAVOR != "amazon") WhatsNewRewardsSheet(
                 defaultServer = defaultServer,
                 setupTutorialFinishedSignal = setupTutorialFinishedSignal,
                 onNavigateToRewards = {

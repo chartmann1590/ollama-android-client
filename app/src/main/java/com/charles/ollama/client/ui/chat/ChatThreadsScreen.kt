@@ -100,7 +100,8 @@ fun ChatThreadsScreen(
                     IconButton(onClick = onNavigateToSearch) {
                         Icon(Icons.Default.Search, contentDescription = "Search all chats")
                     }
-                    IconButton(onClick = onNavigateToRewards) {
+                    // Amazon build: no rewarded-ad Rewards screen (Google rewarded ads can't load on Fire).
+                    if (com.charles.ollama.client.BuildConfig.FLAVOR != "amazon") IconButton(onClick = onNavigateToRewards) {
                         Icon(Icons.Default.CardGiftcard, contentDescription = "Rewards")
                     }
                     IconButton(onClick = onNavigateToModels) {

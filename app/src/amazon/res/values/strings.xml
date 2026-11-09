@@ -2,4 +2,6 @@
 <resources>
     <!-- Amazon flavor: purchases go through Amazon In-App Purchasing (no sign-in needed). -->
     <string name="paywall_signin_note">Purchases are made securely through your Amazon account.</string>
+    <string name="about_website_subtitle">Features, screenshots and FAQ</string>
+    <string name="settings_about_subtitle">Version and website</string>
 </resources>

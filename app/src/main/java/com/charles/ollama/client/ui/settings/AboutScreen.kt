@@ -166,7 +166,8 @@ fun AboutScreen(
                 }
             }
 
-            OutlinedCard(
+            // Amazon build: no outside-payment (donation) link (Amazon monetization policy).
+            if (com.charles.ollama.client.BuildConfig.FLAVOR != "amazon") OutlinedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { openUrl(SponsorUrl) },
