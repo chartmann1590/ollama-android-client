@@ -42,6 +42,10 @@ fun ModelsScreen(
     val isLitertBackend by viewModel.isLitertBackend.collectAsState()
     
     var showPullDialog by remember { mutableStateOf(false) }
+    // LiteRT-LM has native code for arm64-v8a / x86_64 only; 32-bit devices (e.g. most Fire
+    // tablets) can't run on-device models, so don't offer downloads that could never load.
+    val litertUnsupported = isLitertBackend &&
+        !android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" || it == "x86_64" }
     
     LaunchedEffect(Unit) {
         viewModel.loadModels()
@@ -57,7 +61,7 @@ fun ModelsScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = { showPullDialog = true }) {
+                    if (!litertUnsupported) TextButton(onClick = { showPullDialog = true }) {
                         Text(if (isLitertBackend) "Download model" else "Pull Model")
                     }
                 }
@@ -80,6 +84,15 @@ fun ModelsScreen(
             }
         } else {
             Column(modifier = Modifier.padding(padding)) {
+                if (litertUnsupported) {
+                    Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                        Text(
+                            "On-device models need a 64-bit device, so they can't run here. " +
+                                "Add a remote Ollama server from the Servers screen to chat on this device.",
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
                 if (isPulling && pullProgress != null) {
                     val progress = pullProgress!!
                     Card(
@@ -108,7 +121,7 @@ fun ModelsScreen(
                         ModelCard(
                             model = model,
                             onDelete = { viewModel.deleteModel(model.name) },
-                            onDownload = if (isLitertBackend) {
+                            onDownload = if (isLitertBackend && !litertUnsupported) {
                                 { viewModel.pullModel(model.name) }
                             } else null,
                             onShowDetails = if (!model.isOnDeviceLitert()) {
