@@ -203,6 +203,15 @@ android {
             applicationId = "com.charles.ollama.client.github"
             versionNameSuffix = "-github"
             buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_PROMPT", "true")
+            // Direct (GitHub) builds use their OWN AdMob app "Ollama AI Chat (direct)" (not linked to any
+            // store): the Play-linked AdMob app is restricted while the Play listing is down (Nov 2026).
+            buildConfigField("String", "ADMOB_APP_ID", "\"ca-app-pub-8382831211800454~6351473628\"")
+            buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"ca-app-pub-8382831211800454/1704671664\"")
+            buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", "\"ca-app-pub-8382831211800454/4099221516\"")
+            buildConfigField("String", "ADMOB_NATIVE_AD_UNIT_ID", "\"ca-app-pub-8382831211800454/6765426657\"")
+            buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"ca-app-pub-8382831211800454/5264963526\"")
+            buildConfigField("String", "ADMOB_REWARDED_AD_UNIT_ID", "\"ca-app-pub-8382831211800454/7699555179\"")
+            manifestPlaceholders["admobAppId"] = "ca-app-pub-8382831211800454~6351473628"
             val supabaseUrl = adProp("SUPABASE_URL", "supabase.url", "")
             val supabaseAnonKey = adProp("SUPABASE_ANON_KEY", "supabase.anonKey", "")
             buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
