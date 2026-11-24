@@ -12,6 +12,12 @@ on:
         required: false
         type: string
 
+      changes_not_sent_for_review:
+        description: 'Commit Play edits with changesNotSentForReview=true (upload only, never sends for review). Required to resubmit a removed app.'
+        required: false
+        type: boolean
+        default: false
+
 concurrency:
   group: publish-google-play
   cancel-in-progress: false
@@ -194,6 +200,7 @@ jobs:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           PLAY_PACKAGE_NAME: com.charles.ollama.client.play
           PLAY_LISTING_LANGUAGE: en-US
+          CHANGES_NOT_SENT_FOR_REVIEW: ${{ inputs.changes_not_sent_for_review }}
         run: |
           python -m pip install --quiet google-auth requests
           python - <<'PY'
@@ -252,12 +259,16 @@ jobs:
           )
           listing.raise_for_status()
 
-          commit = requests.post(f"{base}/edits/{edit_id}:commit", headers=headers, timeout=30)
+          commit_url = f"{base}/edits/{edit_id}:commit"
+          if os.environ.get("CHANGES_NOT_SENT_FOR_REVIEW") == "true":
+              commit_url += "?changesNotSentForReview=true"
+          commit = requests.post(commit_url, headers=headers, timeout=30)
           commit.raise_for_status()
           print(f"Updated Google Play listing metadata for {package_name} ({language}).")
           PY
 
       - name: Publish to Google Play production
+        if: ${{ inputs.changes_not_sent_for_review != true }}
         uses: r0adkll/upload-google-play@v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
@@ -267,3 +278,73 @@ jobs:
           status: completed
           whatsNewDirectory: distribution/whatsnew
           mappingFile: app/build/outputs/mapping/playRelease/mapping.txt
+
+      - name: Publish to Google Play production (unsent - changesNotSentForReview)
+        if: ${{ inputs.changes_not_sent_for_review == true }}
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          python -m pip install --quiet google-auth requests
+          python - <<'PY'
+          import glob
+          import json
+          import os
+          from pathlib import Path
+
+          import google.auth.transport.requests
+          import requests
+          from google.oauth2 import service_account
+
+          package_name = "com.charles.ollama.client.play"
+          credentials = service_account.Credentials.from_service_account_info(
+              json.loads(os.environ["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"]),
+              scopes=["https://www.googleapis.com/auth/androidpublisher"],
+          )
+          credentials.refresh(google.auth.transport.requests.Request())
+          headers = {
+              "Authorization": f"Bearer {credentials.token}",
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+          }
+          base = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{package_name}"
+
+          edit = requests.post(f"{base}/edits", headers=headers, timeout=30)
+          edit.raise_for_status()
+          edit_id = edit.json()["id"]
+
+          aab = sorted(glob.glob("app/build/outputs/bundle/playRelease/*.aab"))[0]
+          init = requests.post(
+              f"https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/{package_name}/edits/{edit_id}/bundles?uploadType=resumable",
+              headers={"Authorization": f"Bearer {credentials.token}", "Content-Type": "application/octet-stream"},
+              timeout=60,
+          )
+          init.raise_for_status()
+          session_url = init.headers["Location"]
+          with open(aab, "rb") as fh:
+              payload = fh.read()
+          put = requests.put(session_url, data=payload, headers={"Content-Type": "application/octet-stream"}, timeout=1200)
+          put.raise_for_status()
+          version_code = put.json()["versionCode"]
+          print(f"Uploaded bundle versionCode={version_code}")
+
+          notes = Path("distribution/whatsnew/whatsnew-en-US").read_text(encoding="utf-8").strip()
+          track = requests.put(
+              f"{base}/edits/{edit_id}/tracks/production",
+              headers=headers,
+              json={
+                  "track": "production",
+                  "releases": [{
+                      "name": str(version_code),
+                      "versionCodes": [str(version_code)],
+                      "status": "completed",
+                      "releaseNotes": [{"language": "en-US", "text": notes}],
+                  }],
+              },
+              timeout=60,
+          )
+          track.raise_for_status()
+
+          commit = requests.post(f"{base}/edits/{edit_id}:commit?changesNotSentForReview=true", headers=headers, timeout=60)
+          commit.raise_for_status()
+          print(f"Committed edit {edit_id} with changesNotSentForReview=true; release {version_code} uploaded but NOT sent for review.")
+          PY

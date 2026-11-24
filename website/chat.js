@@ -170,7 +170,32 @@ document.getElementById('btn-delete-account').addEventListener('click', async ()
     const uid = user.uid;
     try {
         // Remove synced data first (DB rules require auth on this uid).
-        await db.ref('users/' + uid).remove();
+        // The rules grant write access per node under users/{uid}, not on
+        // the user node itself, so delete node by node: messages first
+        // (their rule requires the parent thread to still exist), then
+        // threads, devices and web requests item by item, then the
+        // remaining child nodes.
+        const userRef = db.ref('users/' + uid);
+        const snap = await userRef.once('value');
+        if (snap.exists()) {
+            const data = snap.val() || {};
+            const messages = data.messages || {};
+            for (const tid of Object.keys(messages)) {
+                for (const mid of Object.keys(messages[tid] || {})) {
+                    await userRef.child('messages/' + tid + '/' + mid).remove();
+                }
+            }
+            for (const name of ['threads', 'devices', 'webRequests']) {
+                for (const id of Object.keys(data[name] || {})) {
+                    await userRef.child(name + '/' + id).remove();
+                }
+            }
+            for (const name of ['profile', 'subscription', 'webSyncDailyUsage', 'availableModels']) {
+                if (data[name] !== undefined) {
+                    await userRef.child(name).remove();
+                }
+            }
+        }
         try {
             await user.delete();
         } catch (err) {

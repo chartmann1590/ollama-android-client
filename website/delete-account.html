@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Delete your Ollama AI Chat account and all synced data — in the app or on the web.">
+    <meta name="robots" content="index, follow">
+    <title>Delete your account — Ollama AI Chat</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <style>
+        .privacy-section {
+            padding: 8rem 0 6rem 0;
+            background: var(--bg-secondary);
+            min-height: 100vh;
+        }
+        .privacy-content {
+            max-width: 850px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            padding: 3rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+        }
+        .privacy-content h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+        .privacy-content .last-updated {
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 2.5rem;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1.5rem;
+        }
+        .privacy-content h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+        .privacy-content p, .privacy-content li {
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+        .btn-delete-web {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.85rem 1.75rem;
+            border-radius: 10px;
+            background: #d93025;
+            color: #fff;
+            font-weight: 600;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <a href="index.html" class="logo" style="text-decoration: none;">
+                    <img src="assets/images/icon.png" alt="Ollama AI Chat" class="logo-icon">
+                    <span class="logo-text">Ollama AI Chat</span>
+                </a>
+                <div class="nav-links">
+                    <a href="index.html#features">Features</a>
+                    <a href="chat.html">Web Chat</a>
+                    <a href="privacy.html">Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <section class="privacy-section">
+        <div class="container">
+            <div class="privacy-content">
+                <h1>Delete your account</h1>
+                <div class="last-updated">For Ollama AI Chat (Android and Web Chat)</div>
+
+                <p>You can permanently delete your Ollama AI Chat account and all data we hold for it at any time, either in the app or on the web. Deletion is immediate and cannot be undone.</p>
+
+                <h2>What gets deleted</h2>
+                <ul>
+                    <li>Your Firebase account (email address and user ID).</li>
+                    <li>All synced data stored under your account in Firebase Realtime Database: chat threads, messages, device records, your profile, web requests, and subscription flags.</li>
+                    <li>Server-side premium entitlement records tied to your account.</li>
+                </ul>
+                <p>Chats stored only on your phone are not held by us. Deleting your account does not erase the app's local database on your device — delete threads in the app, clear the app's storage, or uninstall the app to remove local data.</p>
+
+                <h2>Option 1 — In the app</h2>
+                <p>Open Ollama AI Chat and go to <strong>Settings → Account &amp; web sync → Delete account</strong>, then confirm. Your synced data is wiped first, then your account is deleted.</p>
+
+                <h2>Option 2 — On the web</h2>
+                <p>Open the Web Chat page, sign in with the same account you use in the app, and choose <strong>Delete account</strong>. Your synced data is wiped first, then your account is deleted. For security, Google may ask you to sign in again before the deletion completes.</p>
+                <a class="btn-delete-web" href="chat.html">Open Web Chat to delete your account</a>
+
+                <h2>Subscriptions</h2>
+                <p>Deleting your account does <strong>not</strong> cancel a Google Play subscription. To stop future billing, also cancel the subscription in the Google Play Store under <strong>Payments &amp; subscriptions → Subscriptions</strong>.</p>
+
+                <h2>Can't sign in?</h2>
+                <p>If you can no longer access your account, open a deletion request on our <a href="https://github.com/chartmann1590/ollama-android-client/issues" target="_blank" rel="noopener noreferrer">GitHub issues page</a> and we will help you delete the account after verifying ownership.</p>
+            </div>
+        </div>
+    </section>
+
+    <script src="script.js"></script>
+</body>
+</html>
