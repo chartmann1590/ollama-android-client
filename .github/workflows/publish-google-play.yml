@@ -330,7 +330,7 @@ jobs:
           )
           if not init.ok:
               raise SystemExit(f"Upload initiation failed: {init.status_code} {init.text[:500]}")
-          session_url = init.headers["Location"]
+          session_url = init.headers.get("X-Goog-Upload-URL") or init.headers["Location"]
           put = requests.put(
               session_url,
               data=payload,
