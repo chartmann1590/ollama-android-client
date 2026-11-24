@@ -24,7 +24,7 @@ Conversations
 - Real-time streaming responses (remote and on-device)
 - Persistent chat history saved locally
 - Pin, archive, and label threads for organization
-- Per-message copy, share, delete, edit & resend, regenerate
+- Per-message copy, share, delete, edit & resend, regenerate, report
 - Stop generation mid-stream — partial response is kept
 - Export/share entire threads as Markdown
 

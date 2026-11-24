@@ -289,7 +289,34 @@ class RealtimeChatSyncRepository @Inject constructor(
      * user is still authenticated (DB rules require auth on the uid).
      */
     suspend fun deleteAllUserData(uid: String) {
-        userRef(uid).removeValue().await()
+        // The database rules grant write access per node under users/{uid}
+        // (profile, each thread, each message, ...) but not on the
+        // users/{uid} node itself, so a single removeValue() on the user
+        // node would be denied. Delete node by node instead: messages
+        // first (their write rule requires the parent thread to still
+        // exist), then threads, devices and web requests item by item,
+        // then the remaining child nodes that carry their own write grant.
+        // A node whose children are all removed disappears on its own.
+        val root = userRef(uid)
+        val snapshot = root.get().await()
+        if (!snapshot.exists()) return
+
+        snapshot.child("messages").children.forEach { threadNode ->
+            threadNode.children.forEach { messageNode ->
+                root.child("messages").child(threadNode.key!!).child(messageNode.key!!)
+                    .removeValue().await()
+            }
+        }
+        for (collection in listOf("threads", "devices", "webRequests")) {
+            snapshot.child(collection).children.forEach { item ->
+                root.child(collection).child(item.key!!).removeValue().await()
+            }
+        }
+        for (node in listOf("profile", "subscription", "webSyncDailyUsage", "availableModels")) {
+            if (snapshot.hasChild(node)) {
+                root.child(node).removeValue().await()
+            }
+        }
     }
 
     companion object {

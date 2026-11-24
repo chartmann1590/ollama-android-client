@@ -119,15 +119,12 @@ android {
 
         val googleWebClientId = githubProp("GOOGLE_WEB_CLIENT_ID", "google.webClientId", "")
 
-        // Not secret — just identifies which repo the "github" flavor's self-update
-        // checker (UpdateChecker.kt) polls via an unauthenticated public GET to
-        // GitHub's Releases API. Unrelated to the feedback reporter's GitHub token,
-        // which is no longer client-side at all (see cloudflare-worker/).
-        buildConfigField("String", "GITHUB_OWNER", "\"chartmann1590\"")
-        buildConfigField("String", "GITHUB_REPO", "\"ollama-android-client\"")
+        // The GitHub repo coordinates and build epoch used by the "github"
+        // flavor's self-update checker (UpdateChecker.kt) are declared in that
+        // flavor's block below, so the Play build's BuildConfig carries no
+        // reference to the updater at all.
 
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
-        buildConfigField("long", "BUILD_COMMIT_EPOCH_SECONDS", "${gitCommitEpochSeconds()}L")
         buildConfigField("String", "BUILD_GIT_SHA", "\"${gitShortSha()}\"")
 
         // AdMob — defaults are Google's public test IDs, so a freshly-cloned
@@ -196,17 +193,22 @@ android {
             dimension = "distribution"
             applicationId = "com.charles.ollama.client.play"
             resValue("string", "app_name", "Ollama Chat")
-            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_PROMPT", "false")
         }
         create("github") {
             dimension = "distribution"
             applicationId = "com.charles.ollama.client.github"
             versionNameSuffix = "-github"
-            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_PROMPT", "true")
             val supabaseUrl = adProp("SUPABASE_URL", "supabase.url", "")
             val supabaseAnonKey = adProp("SUPABASE_ANON_KEY", "supabase.anonKey", "")
             buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+            // Self-update checker inputs (github flavor only). These exist
+            // solely so UpdateChecker.kt can poll this repo's GitHub Releases
+            // API; they are deliberately not in defaultConfig so the Play
+            // build contains no trace of the updater.
+            buildConfigField("String", "GITHUB_OWNER", "\"chartmann1590\"")
+            buildConfigField("String", "GITHUB_REPO", "\"ollama-android-client\"")
+            buildConfigField("long", "BUILD_COMMIT_EPOCH_SECONDS", "${gitCommitEpochSeconds()}L")
         }
     }
 
@@ -364,7 +366,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     
     // AdMob
-    implementation("com.google.android.gms:play-services-ads:22.6.0")
+    implementation("com.google.android.gms:play-services-ads:23.6.0")
     // User Messaging Platform — GDPR/EEA ad consent (Google-certified CMP)
     implementation("com.google.android.ump:user-messaging-platform:2.2.0")
 
