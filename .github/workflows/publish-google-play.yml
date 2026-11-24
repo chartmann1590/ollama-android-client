@@ -313,17 +313,36 @@ jobs:
           edit_id = edit.json()["id"]
 
           aab = sorted(glob.glob("app/build/outputs/bundle/playRelease/*.aab"))[0]
-          init = requests.post(
-              f"https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/{package_name}/edits/{edit_id}/bundles?uploadType=resumable",
-              headers={"Authorization": f"Bearer {credentials.token}", "Content-Type": "application/octet-stream"},
-              timeout=60,
-          )
-          init.raise_for_status()
-          session_url = init.headers["Location"]
           with open(aab, "rb") as fh:
               payload = fh.read()
-          put = requests.put(session_url, data=payload, headers={"Content-Type": "application/octet-stream"}, timeout=1200)
-          put.raise_for_status()
+          # Google resumable-upload protocol (X-Goog-Upload-*): declare the
+          # total size up front, then send the bytes with upload+finalize.
+          init = requests.post(
+              f"https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/{package_name}/edits/{edit_id}/bundles?uploadType=resumable",
+              headers={
+                  "Authorization": f"Bearer {credentials.token}",
+                  "X-Goog-Upload-Protocol": "resumable",
+                  "X-Goog-Upload-Command": "start",
+                  "X-Goog-Upload-Header-Content-Length": str(len(payload)),
+                  "X-Goog-Upload-Header-Content-Type": "application/octet-stream",
+              },
+              timeout=60,
+          )
+          if not init.ok:
+              raise SystemExit(f"Upload initiation failed: {init.status_code} {init.text[:500]}")
+          session_url = init.headers["Location"]
+          put = requests.put(
+              session_url,
+              data=payload,
+              headers={
+                  "Content-Type": "application/octet-stream",
+                  "X-Goog-Upload-Command": "upload, finalize",
+                  "X-Goog-Upload-Offset": "0",
+              },
+              timeout=1200,
+          )
+          if not put.ok:
+              raise SystemExit(f"Bundle upload failed: {put.status_code} {put.text[:500]}")
           version_code = put.json()["versionCode"]
           print(f"Uploaded bundle versionCode={version_code}")
 
